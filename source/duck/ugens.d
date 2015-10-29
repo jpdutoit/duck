@@ -2,7 +2,7 @@ module duck.ugens;
 
 import std.math, std.random, std.stdio, std.array;
 
-import duck.model, duck.units, duck.global, duck.pa, duck.scheduler;
+import duck, duck.runtime.model, duck.units, duck.global, duck.scheduler;
 
 
 struct Value(T) {
@@ -118,7 +118,7 @@ struct Pat {
       _output = 0;
     }
     */
-    
+
   }
 
   mixin UGEN!Pat;
@@ -135,7 +135,7 @@ struct Log {
   void tick() {
 
     if (_input != _output) {
-      writefln("%s: %s", message, _input);
+      writeln(message, ":", _input);
       _output = _input;
     }
     //writefln("%s, %s", _input, _output);
@@ -211,16 +211,17 @@ struct SinOsc {
       float _min = -1;
       float _max = 1;
     }
-    range _range;  
+    range _range;
   }
 
   void tick() {
-    double delta = cast(double)_freq / SAMPLE_RATE;
+    double delta = (_freq / SAMPLE_RATE);
     _output = scale!(-1, 1)(sin(_phase * 2 * PI), _range);
     _phase = (_phase + delta) % 1.0;
+    //writefln("sinonsc %s", _output);
     //_output = (sin(_phase * 2 * PI) + 1) / 2 * (_max - _min) + _min;
   }
-  
+
   mixin UGEN!SinOsc;
 }
 
@@ -228,10 +229,10 @@ struct SinOsc {
 
 struct Pitch {
   mono _input;
-  mono _output;
+  frequency _output;
 
   void tick() {
-    _output = 440 * pow(2, (_input - 49)/ 12);
+    _output = frequency(440 * pow(2, (_input - 49)/ 12));
   }
   mixin UGEN!Pitch;
 };
@@ -245,12 +246,12 @@ struct SawTooth {
   float _max = 1;
 
   void tick() {
-    double delta = cast(double)_freq / SAMPLE_RATE;
+    double delta = _freq / SAMPLE_RATE;
     _phase = (_phase + delta) % 1.0;
     _output = _phase * (_max - _min) + _min;
     //_output = sin(_phase * 2 * PI);
   }
-  
+
   mixin UGEN!SawTooth;
 }
 
@@ -264,12 +265,12 @@ struct Square {
   float _max = 1;
 
   void tick() {
-    double delta = cast(double)_freq / SAMPLE_RATE;
+    double delta = _freq / SAMPLE_RATE;
     _phase = (_phase + delta) % 1.0;
     _output = _phase < 0.5f ? _max : _min;
     //_output = sin(_phase * 2 * PI);
   }
-  
+
   mixin UGEN!Square;
 }
 
@@ -282,21 +283,26 @@ struct Triangle {
   float _max = 1;
 
   void tick() {
-    double delta = cast(double)_freq / SAMPLE_RATE;
+    double delta = _freq / SAMPLE_RATE;
     _phase = (_phase + delta) % 1.0;
     _output = abs(_phase * 2 - 1.0) * (_max - _min) + _min;
     //_output = sin(_phase * 2 * PI);
   }
-  
+
   mixin UGEN!Triangle;
 }
 
 struct ScaleQuant {
   short[] _scale = [0, 2, 4, 5, 7, 9, 11];
-  int _key = 49;
+  float _key = 49;
   mono _output = 0;
   mono _input = 0;
 
+  this(Key)(Key key, short[] scale) {
+    //key.output >> this.key;
+    //pipe(key.output, this.key);
+    _scale = scale;
+  }
   this(int key, short[] scale) {
     _key = key;
     _scale = scale;
@@ -307,12 +313,12 @@ struct ScaleQuant {
     int index = cast(int)floor((_input - _key) * len / 12);
     int mod = cast(int)((index + len*10000) % len);
     int note = _scale[mod];
-    int index2 = cast(int)((index - mod) / len * 12 + note) + _key;
+    int index2 = cast(int)((index - mod) / len * 12 + note) + cast(int)_key;
     _output = index2;
     //writefln("%s %s %s %s %s", _input, index, index-mod, note, index2);
     //_output = round((_input - _min) / (_max - _min) * _levels) / _levels * (_max - _min) + _min;
   }
-  
+
   mixin UGEN!ScaleQuant;
 }
 
@@ -324,7 +330,7 @@ struct Quant {
     _output = round(_input);
     //_output = round((_input - _min) / (_max - _min) * _levels) / _levels * (_max - _min) + _min;
   }
-  
+
   mixin UGEN!Quant;
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -336,13 +342,17 @@ struct Clock {
     _freq = freq;
   }
 
+  //this(T)(T freq) {
+    //pipe(freq, this.freq);
+  //}
+
   frequency _freq = 1.hz;
   alias _input = _freq;
   mono _output = 1;
   double _phase = 1.0;
 
   void tick() {
-    double delta = cast(double)_freq / SAMPLE_RATE;
+    double delta = _freq / SAMPLE_RATE;
     _phase = (_phase + delta);
     //if (_phase > 0.99 || _phase < 0.01)
     //writefln(" , %s %s", now.time, _phase);
@@ -354,7 +364,7 @@ struct Clock {
     } else {
       _output = 0;
     }
-    
+
   }
 };
 
@@ -386,7 +396,7 @@ struct ADSR {
         lastInput = _input;
       }
     }
-    
+
 
     if (lastInput > 0) {
       // ADS
@@ -421,8 +431,8 @@ struct ADSR {
 struct AR {
   mixin UGEN!AR;
 
-  mono _attack = 1000;
-  mono _release = 1000;
+  Duration _attack = 1000.samples;
+  Duration _release = 1000.samples;
 
   mono _input = 0;
   mono _output = 0;
@@ -430,23 +440,23 @@ struct AR {
   void tick() {
     //writefln("%s %s %s", elapsed, _input, lastInput);
     if (_input > 0 && lastInput <= 0) {
-      elapsed = 0;
+      elapsed = 0.samples;
       att = _attack;
       rel = _release;
       lastInput = _input;
     }
     if (_input <= 0 && lastInput > 0) {
       if (elapsed >= att) {
-        elapsed = 0;
+        elapsed = 0.samples;
         lastInput = _input;
       }
     }
-    
+
 
     if (lastInput > 0) {
       // ADS
       if (elapsed < att) {
-        _output += (1 - _output) / (att - elapsed);
+        _output += (1 - _output) * 1.samples / (att - elapsed);
       } else {
         _output = 1.0;
         return;
@@ -454,20 +464,20 @@ struct AR {
     } else {
       // R
       if (elapsed < rel) {
-        _output += (0 - _output) / (rel - elapsed);
+        _output += (0 - _output) * 1.samples / (rel - elapsed);
       }
       else {
         _output = 0;
         return;
       }
     }
-    elapsed++;
+    elapsed = elapsed + 1;
   }
 
 //private:
-  mono att = 0, rel = 0;
+  Duration att = 0.samples, rel = 0.samples;
   mono lastInput = 0;
-  mono elapsed = 0;
+  Duration elapsed = 0.samples;
 }
 
 struct Delay {
@@ -522,7 +532,8 @@ struct ADC {
 
   void tick() {
     if (++index == 64) {
-      audio.read(cast(void*)&buffer[0]);
+      version(USE_PORT_AUDIO)
+        audio.read(cast(void*)&buffer[0]);
       index = 0;
     }
     _output = buffer[index];
@@ -560,13 +571,13 @@ struct Assert {
     if (index % expected.length == 0) {
       for (int i = 0; i < expected.length; ++i) {
         if (fabs(expected[i] - received[i]) > 1e-5) {
-            writefln("(%d) Expected %s, got %s at index %d", line, this.expected, this.received, index - expected.length);
+            writefln("(%d) \033[0;31mExpected %s, got %s at index %d\033[0m", line, this.expected, this.received, index - expected.length);
             failed = true;
             break;
         }
       }
     }
-  
+
     /*if (_input == cast(long)_input)
       writef("%d ", cast(long)_input);
     else
@@ -609,11 +620,30 @@ struct DAC {
     stereo _input;
   };
 
+
+
   void tick() {
     //.tick();
     buffer[index++] = _input;
     if (index == 64) {
-      audio.write(cast(void*)buffer);
+      final switch(outputMode) {
+        case OutputMode.AU: {
+          for (int i = 0; i < 64; ++i) {
+            writeBuffer[i*2] = buffer[i][0].bigEndian;
+            writeBuffer[i*2+1] = buffer[i][1].bigEndian;
+          }
+          stdout.rawWrite(writeBuffer);
+          break;
+        }
+        case OutputMode.PortAudio: {
+          version(USE_PORT_AUDIO)
+            audio.write(cast(void*)buffer);
+          break;
+        }
+      }
+
+      //writefln("%s", _input);
+      //
       index = 0;
     }
   }
@@ -621,6 +651,7 @@ struct DAC {
 
   static enum isEndPoint = true;
 private:
+  uint[64*2] writeBuffer;
   stereo[64] buffer;
   int index;
 

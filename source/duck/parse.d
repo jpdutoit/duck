@@ -197,12 +197,13 @@ const(char)[] parse(const(char)[] input) {
 }
 
 const(char)[] compile(const(char)[] input) {
-	
-	auto s = 
-	q{import duck, std.stdio, duck.global, duck.types;} 
-	~ "void start() { " ~ parse(input) ~ "\n}" ~ 
+	import duck.compiler;
+	return duck.compiler.compile(input);
+	/*auto s =
+	q{import duck, std.stdio, duck.global, duck.types;}
+	~ "void start() { " ~ parse(input) ~ "\n}" ~
 	q{
-		void main() { 
+		void main() {
 			Duck(&start);
 		}
 	};
@@ -210,6 +211,5 @@ const(char)[] compile(const(char)[] input) {
 	//auto app = appender!string();
 	//doit("test.d", cast(ubyte[])(input.dup), app);
 	//writefln("%s => %s", input, s);
-	return s;
+	return s;*/
 }
-

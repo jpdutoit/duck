@@ -1,5 +1,5 @@
 module duck.registry;
-import std.stdio;
+//import std.stdio;
 
 interface Connection {
   void execute(ulong sampleIndex);
@@ -8,14 +8,15 @@ interface Connection {
 struct UGenInfo {
   ulong sampleIndex = ulong.max;
   bool endpoint;
-  void delegate() ugenTick;
+  void delegate(ulong) ugenTick;
   Connection[] connections;
 
   void tick(ulong nextSampleIndex) {
+    ugenTick(nextSampleIndex);
     //writefln("sampleIndex=%s, nextSampleIndex=%s, connections.length=%s", sampleIndex, nextSampleIndex,  connections.length);
-    if (sampleIndex == nextSampleIndex)
+    /*if (sampleIndex == nextSampleIndex)
       return;
-    
+
     sampleIndex = nextSampleIndex;
     // Process connections
     for (int c = 0; c < connections.length; ++c) {
@@ -23,7 +24,7 @@ struct UGenInfo {
     }
     //writefln("%s", s);
     if (ugenTick)
-      ugenTick();
+      ugenTick();*/
   }
 };
 
@@ -32,23 +33,23 @@ struct UGenRegistry {
   static UGenInfo*[void*]endPoints;
 
   static ref UGenInfo register(T)(T* obj) {
-    //writefln("Register UGEN: %s %s", T.stringof, obj); stdout.flush();
     UGenInfo *info;
     if (obj !in all) {
+      //writefln("Register UGEN: %s %s %s", T.stringof, obj, T.isEndPoint); stdout.flush();
       info = new UGenInfo();
       //info.object = obj;
       //info.size = (*obj).sizeof;
       info.endpoint = T.isEndPoint;
-      //pragma(msg, "Register ", T); 
-      static if (is(typeof(&obj.tick)))
-        info.ugenTick = &obj.tick;
+      //pragma(msg, "Register ", T);
+      static if (is(typeof(&obj.__tick)))
+        info.ugenTick = &obj.__tick;
 
       all[obj] = info;
       //writefln("Registered UGEN: %s %s", T.stringof, obj); stdout.flush();
 
       if (info.endpoint)
         endPoints[obj] = info;
-    } 
+    }
     else info = all[obj];
     return *info;
   }

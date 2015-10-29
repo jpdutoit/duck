@@ -13,10 +13,10 @@ struct Tuple(E...)
 }*/
 
 // Implicit conversion
-struct ValueProc(Source, Target) 
-  if (isImplicitlyConvertible!(Source, Target)) 
+struct ValueProc(Source, Target)
+  if (isImplicitlyConvertible!(Source, Target))
 {
-  pragma(msg, "VP", Source, " ", Target);
+  //pragma(msg, "VP", Source, " ", Target);
   static void set(ref Source src, ref Target tgt) {
     pragma(inline, true);
     //writefln("Copy %s to %s", Source.stringof, Target.stringof);
@@ -27,7 +27,7 @@ struct ValueProc(Source, Target)
 // Implicit conversion - Array Case
 struct ValueProc(Source : A[N], Target : B[N], A, B, int N)
   if (is(ValueProc!(A, B)))
-  //if (isImplicitlyConvertible!(A, B)) 
+  //if (isImplicitlyConvertible!(A, B))
 {
   static void set(ref Source src, ref Target tgt) {
     pragma(inline, true);
@@ -40,7 +40,7 @@ struct ValueProc(Source : A[N], Target : B[N], A, B, int N)
 /*
 // Implicit conversion - Tuple to Array Case
 struct ValueProc(Source : Tuple!A, Target : B[2], B, A...)
-  if (isImplicitlyConvertible!(A[0], B) && isImplicitlyConvertible!(A[1], B)) 
+  if (isImplicitlyConvertible!(A[0], B) && isImplicitlyConvertible!(A[1], B))
 {
   static void set(ref Source src, ref Target tgt) {
     pragma(msg, A);
@@ -54,7 +54,7 @@ struct ValueProc(Source : Tuple!A, Target : B[2], B, A...)
 
 /*pragma(msg, "B");
 struct ValueProc(Source, Target)
-if (!isImplicitlyConvertible!(Source, Target) && !) 
+if (!isImplicitlyConvertible!(Source, Target) && !)
 {
   pragma(msg, "A");
   static if (is(typeof(Source.value))) {// && is(isImplicitlyConvertible!(typeof(Source.value), Target))) {
@@ -74,7 +74,7 @@ if (!isImplicitlyConvertible!(Source, Target) && !)
     }
   }*/
 //}
-
+/*
 struct ValueProc(Source, Target)
 if (!isImplicitlyConvertible!(Source, Target) && is(typeof(
     (Source src, ref Target tgt)
@@ -86,7 +86,7 @@ if (!isImplicitlyConvertible!(Source, Target) && is(typeof(
       pragma(inline, true);
       tgt = src.value;
     }
-  
+
 }
 
 struct ValueProc(Source, Target)
@@ -101,10 +101,10 @@ if (!isImplicitlyConvertible!(Source, Target) && is(typeof(
       pragma(inline, true);
       tgt = Target(src);
     }
-  
-}
+
+}*/
 /*
-struct ValueProc(Source, Target) 
+struct ValueProc(Source, Target)
   if (is(typeof(Source.value)) && isImplicitlyConvertible!(typeof(Source.value), Target))
 {
   static void set(Source src, auto ref Target tgt) {
@@ -113,7 +113,7 @@ struct ValueProc(Source, Target)
   }
 }
 
-struct ValueProc(Source, Target) 
+struct ValueProc(Source, Target)
   if (is(typeof(Target.value)) && isImplicitlyConvertible!(Source, typeof(Target.value)))
 {
   static void set(Source src, auto ref Target tgt) {
@@ -123,7 +123,7 @@ struct ValueProc(Source, Target)
 }*/
 
 
-/*struct ValueProc(Source : Frequency, Target) 
+/*struct ValueProc(Source : Frequency, Target)
   if (isImplicitlyConvertible!(float, Target))
 {
   static void set(ref Source src, ref Target tgt) {
@@ -135,7 +135,7 @@ struct ValueProc(Source, Target)
 
 /*
 // Mono to Multi channel
-struct ValueProc(Source, Target : A[N], A, int N) 
+struct ValueProc(Source, Target : A[N], A, int N)
   if (is(ValueProc!(Source, A)) && N != 2)
   //if (isImplicitlyConvertible!(Source, A) && N!=20)
 {
@@ -148,7 +148,7 @@ struct ValueProc(Source, Target : A[N], A, int N)
   }
 }
 */
-struct ValueProc(Source, Target : A[N], A, int N) 
+struct ValueProc(Source, Target : A[N], A, int N)
   if (N == 2 && is(ValueProc!(Source, A)))
 {
   static void set(ref Source src, ref Target tgt) {
@@ -161,7 +161,7 @@ struct ValueProc(Source, Target : A[N], A, int N)
   }
 }
 
-struct ValueProc(Source, Target : A[N], A, int N) 
+struct ValueProc(Source, Target : A[N], A, int N)
   if (N == 3 && is(ValueProc!(Source, A)))
 {
   static void set(ref Source src, ref Target tgt) {

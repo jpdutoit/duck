@@ -11,13 +11,17 @@ void writeHelp() {
 duck
 
 Commands:
-  build duck_file 
+  build duck_file
   check duck_file
   run duck_file
 
 TXT");
 }
 
+void log(T...)(T t) {
+  writefln(t);
+  stdout.flush();
+}
 
 import core.sys.posix.signal;
 
@@ -53,6 +57,7 @@ string temporaryFileName() {
     return "duck_temp" ~ tmpIndex.to!string;
 }
 
+
 struct DuckFile {
     string filename;
 
@@ -73,13 +78,16 @@ struct DuckFile {
         src.close();
 
         // Save converted intermediate file
+        log("Converting to D");
         auto s = .compile(buf);
         File dst = File(output, "w");
         dst.rawWrite(s);
         dst.close();
+        log("Converted to D");
         return DFile(output);
     }
 }
+
 
 struct DFile {
     string filename;
@@ -93,9 +101,13 @@ struct DFile {
     }
 
     Executable compile(string output) {
-        auto command = "dmd " ~ this.filename ~ " -release -inline -of" ~ output ~ buildCommand(sourceFiles, libraries, frameworks);
+        log("Compiling");
+        stdout.flush();
+        auto command = "dmd " ~ this.filename ~ " -debug -of" ~ output ~ buildCommand(sourceFiles, libraries, frameworks);
+        log("%s", command);
         Pid compile = spawnShell(command, stdin, stdout, stdout, null, Config.none, null);
         auto result = .wait(compile);
+        log("Done compiling");
         return Executable(output);
     }
 
@@ -107,18 +119,18 @@ struct DFile {
     }
 
 
-    static auto sourceFiles = ["duck/scales", "duck/parse", "duck/package", "duck/entry", "duck/pa", "duck/global", "duck/model", "duck/units", "duck/registry", "duck/scheduler", "duck/types", "duck/ugens"];
+    static auto sourceFiles = ["duck/scales", "duck/package", "duck/entry", "duck/pa", "duck/global", "duck/runtime/model", "duck/units", "duck/registry", "duck/scheduler", "duck/types", "duck/ugens"];
     static auto libraries  = ["libportaudio.a"];//, "source/duck.a"];
     static auto frameworks = ["CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"];
 
     static string buildCommand(string[] sourceFiles = null, string[] libraries = null, string[] frameworks = null) {
-        string command = " -unittest -I" ~ path ~ "source -I" ~ path;
+        string command = " -I" ~ path ~ "source -inline -version=NO_PORT_AUDIO -release -I" ~ path;
         foreach(string sourceFile; sourceFiles)
             command ~= " " ~ path ~ "source/" ~ sourceFile;
-        foreach(string library; libraries)
-            command ~= " -L" ~ path ~ library;
-        foreach(string framework; frameworks)
-            command ~= " -L-framework -L" ~ framework;
+        //foreach(string library; libraries)
+        //    command ~= " -L" ~ path ~ library;
+        //foreach(string framework; frameworks)
+        //    command ~= " -L-framework -L" ~ framework;
         return command;
     }
 }
@@ -199,7 +211,7 @@ Command parseCommand(string s) {
             command.name = c[1];
         }
         else
-            command.args ~= c[1]; 
+            command.args ~= c[1];
 
     }
     //writefln("%s %s", command, command.args.length);
@@ -239,7 +251,7 @@ void interactiveMode() {
                         }
                     }
                 }
-                
+
                 procList = procList.filter!(a => a.alive)().array;
             }
             else if (cmd.name == "list") {
@@ -271,7 +283,7 @@ void interactiveMode() {
 
 void main(string[] args) {
     version(unittest) {
-        writefln("Unittests passed.");
+        log("Unittests passed.");
         return;
     }
     import std.path : dirName;
@@ -284,13 +296,16 @@ void main(string[] args) {
         writeHelp();
         return;
     }*/
+    log("Start");
     if (args.length > 1) {
         string command = args[1];
 
-
-        if (command == "check") {   
+        if (command == "nothing") {
+          return;
+        }
+        if (command == "check") {
             string target = args[2];
-            DuckFile(target).convertToD.check;
+            DuckFile(target).convertToD;
             return;
         }
         else if (command == "build") {
@@ -306,5 +321,5 @@ void main(string[] args) {
         else writeHelp();
     } else {
         interactiveMode();
-    } 
+    }
 }

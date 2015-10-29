@@ -2,7 +2,7 @@ module duck.scheduler;
 
 //import std.concurrency : spawn, Tid, send;
 private import core.thread : Fiber;
-private import std.stdio : writefln, stdin, stdout;
+private import std.stdio : write, writeln, stdin, stdout, stderr;
 //private import duck.server;
 private import duck.registry;
 
@@ -39,7 +39,7 @@ struct Scheduler {
 
   extern(C)
   static void signalHandler(int value){
-    writefln("Stopping nicely, ctrl-c again to force.");
+    stderr.writeln("Stopping nicely, ctrl-c again to force.");
     finished = true;
     stdin.close();
     sigset(SIGINT, SIG_DFL);
@@ -47,7 +47,7 @@ struct Scheduler {
 
   static void sleep()
   {
-    ProcFiber fiber = cast(ProcFiber)Fiber.getThis(); 
+    ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     if (fiber) {
       while (true) {
         Duration waitTime = 1000.0.seconds;
@@ -89,7 +89,7 @@ struct Scheduler {
       stdout.flush();
   }*/
 
-  static void start(T)(scope T dg) 
+  static void start(T)(scope T dg)
     if (is (T:void delegate()) || is (T:void function()))
   {
     ProcFiber parent = cast(ProcFiber)Fiber.getThis();
@@ -124,19 +124,25 @@ struct Scheduler {
           fibers[i].call();
           if (fibers[i].state == Fiber.State.TERM) {
             activeFibers--;
-            writefln("Fiber %s done", fibers[i].uuid);
+            stderr.write("Fiber ");
+            stderr.write(fibers[i].uuid);
+            stderr.writeln(" done");
             fibers[i] = null;
           }
         }
       }
       if (activeFibers == 0) return;
-
+      //writefln("nex");
       foreach(UGenInfo *info; UGenRegistry.endPoints.byValue()) {
+        /*/writefln("%s", info.connections);*/
         info.tick(sampleIndex);
       }
+
+      //writefln("nex");
       sampleIndex++;
 
       now.time = now.time + 1.samples;
+      //writefln("nex");
 
 /*      auto received =
             receiveTimeout(0.dur!"seconds",
@@ -146,11 +152,12 @@ struct Scheduler {
                            });*/
       //if (sampleIndex % 16 == 0)
       //  server.update();
-
-      //if (now.time.samples == 44100*100) {
-        //writefln("%s", now.time);
+      //writefln("sampleIndex %s", sampleIndex);
+      if (sampleIndex % 44100 == 0) {
+        stderr.writeln(sampleIndex);
+        //std.flush();
         //return;
-      //}
+      }
     }
     //Scheduler.server.stop();
   }
@@ -178,10 +185,14 @@ struct Now {
     sleep(other);
   }
 
+  void opOpAssign(string op: "+")(auto ref Duration other) {
+    stderr.write("sleep ");
+    stderr.writeln(other.value);
+    sleep(other);
+  }
+
   void set() {
-    
+
   }
 }
 Now now;
-
-

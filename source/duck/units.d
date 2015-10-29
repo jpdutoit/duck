@@ -1,10 +1,11 @@
 module duck.units;
 
 import std.string : format;
-import std.math, std.traits;
+import std.math;
 import core.time;
+import std.traits: isNumeric;
 
-import duck.model, duck.global;
+import duck.runtime.model, duck.global;
 
 alias mono = float;
 alias stereo = float[2];
@@ -32,6 +33,8 @@ Range!float range(float a, float b) {
 
 struct Time {
   double samples;
+  alias value = samples;
+
   this(Duration d) {
     samples = d.samples;
   }
@@ -68,13 +71,14 @@ struct Time {
 
 struct Duration {
   double samples;
+  alias value = samples;
 
   static Duration withSamples(double samples) {
     Duration t;
     t.samples = samples;
     return t;
   }
-  Duration opBinary(string op:"%")(auto ref Duration other) {
+  /*Duration opBinary(string op:"%")(auto ref Duration other) {
     return Duration.withSamples(mixin("samples"~op~"other.samples"));
   }
   Duration opBinary(string op)(auto ref Duration other) if (op != ">>") {
@@ -82,23 +86,29 @@ struct Duration {
   }
   Time opBinary(string op)(auto ref Time other)  if (op != ">>") {
     return Time.withSamples(mixin("samples"~op~"other.samples"));
-  }
+  }*/
   int opCmp(Duration other) {
     return samples < other.samples ? -1 : samples > other.samples ? 1 : 0;
   }
   string toString() {
     return format("%fs (%s samples)", samples / SAMPLE_RATE, samples);
   }
+  mixin UnitOperators mix;
 };
 
 @property
 Duration seconds(double s) {
-  return Duration(s * SAMPLE_RATE);
+  return Duration(s * SAMPLE_RATE.value);
 }
 
 @property
 Duration samples(double s) {
   return Duration(s);
+}
+
+@property
+Duration ms(float ms) {
+  return Duration(ms / 1000 * SAMPLE_RATE.value);
 }
 
 /*
@@ -121,19 +131,24 @@ Note note(float n) {
 }
 
 mixin template UnitOperators() {
-  auto opBinary(string op)(auto ref typeof(this) rhs) {
+  auto opBinary(string op)(auto ref typeof(this) rhs) if (op=="+" || op=="-"){
     pragma(inline, true);
     return typeof(this)(mixin("this.value"~op~"rhs.value"));
   }
 
-  auto opBinary(string op, T)(auto ref T rhs) 
+  auto opBinary(string op:"/")(auto ref typeof(this) rhs) {
+    pragma(inline, true);
+    return mixin("cast(double)this.value"~op~"rhs.value");
+  }
+
+  auto opBinary(string op, T)(auto ref T rhs)
     if (isNumeric!T)
   {
     pragma(inline, true);
     return typeof(this)(mixin("this.value"~op~"rhs"));
   }
 
-  auto opBinaryRight(string op, T)(auto ref T lhs) 
+  auto opBinaryRight(string op, T)(auto ref T lhs)
     if (isNumeric!T)
   {
     pragma(inline, true);
@@ -146,6 +161,7 @@ mixin template UnitOperators() {
     pragma(inline, true);
     return cast(T)value;
   }
+
 }
 
 struct frequency {
@@ -173,11 +189,11 @@ struct frequency {
   }*/
 
   /*void opAssign(Note n) {
-    
+
     value = 440 * pow(2, n.index - 49);
   }*/
 
-  mixin UnitOperators; 
+  mixin UnitOperators mix;
 
   //alias value this;
 }
@@ -192,13 +208,11 @@ frequency hz(float f) {
 }
 
 
+
 unittest {
   frequency f1 = frequency(10);
   frequency f2 = frequency(20);
   assert(frequency(20) == 2 * f1);
   assert(frequency(20) == f1 * 2);
   assert(cast(double)f1 == 10);
-  assert(frequency(200) == f1 * f2);
-  assert(frequency(200) == f2 * f1);
 }
-
