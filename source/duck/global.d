@@ -1,8 +1,5 @@
 module duck.global;
 
-import duck.units;
-
-__gshared frequency SAMPLE_RATE = 44100.hz;
 
 enum OutputMode {
   AU,

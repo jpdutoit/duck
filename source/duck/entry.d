@@ -1,6 +1,7 @@
 module duck.entry;
-import duck, duck.global, std.stdio : stderr;
-import duck.ugens : bigEndian;
+import duck.runtime, std.stdio : stderr;
+import duck.stdlib;
+import duck.stdlib.ugens : bigEndian;
 import std.conv : to;
 
 void initialize(string args[]) {

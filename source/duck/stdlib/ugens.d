@@ -1,8 +1,8 @@
-module duck.ugens;
+module duck.stdlib.ugens;
 
 import std.math, std.random, std.stdio, std.array;
 
-import duck, duck.runtime.model, duck.units, duck.global, duck.scheduler;
+import duck.runtime, duck.stdlib, duck.global;
 
 
 struct Value(T) {

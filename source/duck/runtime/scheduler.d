@@ -1,14 +1,14 @@
-module duck.scheduler;
+module duck.runtime.scheduler;
 
 //import std.concurrency : spawn, Tid, send;
 private import core.thread : Fiber;
 private import std.stdio : write, writeln, stdin, stdout, stderr;
 //private import duck.server;
-private import duck.registry;
+private import duck.runtime.registry;
 
 private import core.sys.posix.signal;
 
-import duck.units;
+import duck.stdlib.units;
 
 class ProcFiber : Fiber
 {

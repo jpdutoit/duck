@@ -119,14 +119,21 @@ struct DFile {
     }
 
 
-    static auto sourceFiles = ["duck/scales", "duck/package", "duck/entry", "duck/pa", "duck/global", "duck/runtime/model", "duck/units", "duck/registry", "duck/scheduler", "duck/types", "duck/ugens"];
-    static auto libraries  = ["libportaudio.a"];//, "source/duck.a"];
+    static auto sourceFiles = [
+      "duck/runtime/package", "duck/runtime/model",
+        "duck/runtime/registry", "duck/runtime/scheduler", "duck/runtime/types",
+
+      "duck/stdlib/package", "duck/stdlib/scales",
+        "duck/stdlib/units", "duck/stdlib/ugens",
+      "duck/package", "duck/entry", "duck/pa",
+      "duck/global"];
+    static auto libraries  = ["lib/libportaudio.a"];//, "source/duck.a"];
     static auto frameworks = ["CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"];
 
     static string buildCommand(string[] sourceFiles = null, string[] libraries = null, string[] frameworks = null) {
         string command = " -I" ~ path ~ "source -inline -version=NO_PORT_AUDIO -release -I" ~ path;
         foreach(string sourceFile; sourceFiles)
-            command ~= " " ~ path ~ "source/" ~ sourceFile;
+            command ~= " " ~ path ~ "source/" ~ sourceFile ~ ".d";
         //foreach(string library; libraries)
         //    command ~= " -L" ~ path ~ library;
         //foreach(string framework; frameworks)

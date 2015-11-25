@@ -1,4 +1,4 @@
-module duck.registry;
+module duck.runtime.registry;
 //import std.stdio;
 
 interface Connection {

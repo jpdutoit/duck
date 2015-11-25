@@ -84,7 +84,7 @@ struct AST {
 
 		writefln("%s", code);
 
-		auto s = q{import duck, std.stdio, duck.global;}
+		auto s = q{import duck.runtime, duck.stdlib, std.stdio; }
 		~ "void start() { " ~ code ~ "\n}" ~
 		q{
 			void main(string[] args) {

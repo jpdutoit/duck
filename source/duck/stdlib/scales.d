@@ -1,4 +1,4 @@
-module duck.scales;
+module duck.stdlib.scales;
 
 struct Scale {
 	static ubyte[] Major = [0, 2, 4, 5, 7, 9, 11];

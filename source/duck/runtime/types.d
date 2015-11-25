@@ -1,6 +1,6 @@
-module duck.types;
+module duck.runtime.types;
 private import std.traits : isImplicitlyConvertible;
-import duck.units;
+import duck.stdlib.units;
 
 struct Tuple(E...)
 {

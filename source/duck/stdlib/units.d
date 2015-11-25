@@ -1,4 +1,6 @@
-module duck.units;
+module duck.stdlib.units;
+
+import duck.stdlib;
 
 import std.string : format;
 import std.math;
