@@ -1,0 +1,8 @@
+{
+	"name": "Duck",
+	"description": "DuckAudio",
+	"copyright": "Copyright © 2015, Jacques P. du Toit",
+	"authors": ["jpdutoit@gmail.com "],
+	"dependencies": {
+	}
+}
