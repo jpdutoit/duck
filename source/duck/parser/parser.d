@@ -70,7 +70,7 @@ struct Parser {
     //writefln("Expected %s found %s", tokenType, lexer.front.type);
     Token token = lexer.consume(tokenType);
     if (!token) {
-      context.error(lexer.front.span, "%s not '%s'", message, lexer.front.value);
+      context.error(lexer.front, "%s not '%s'", message, lexer.front.value);
 
       return None;
     }
@@ -79,15 +79,15 @@ struct Parser {
 
   Expr expect(Expr expr, string message) {
       if (!expr) {
-        context.error(lexer.front.span, message);
-        return new ErrorExpr(lexer.front.span);
+        context.error(lexer.front, message);
+        return new ErrorExpr(lexer.front);
       }
       return expr;
   }
 
   T expect(T)(T node, string message) if (is(T: Node)) {
     if (!node) {
-      context.error(lexer.front.span, message);
+      context.error(lexer.front, message);
       //import core.stdc.stdlib : exit;
       //exit(2);
     }
@@ -235,11 +235,6 @@ struct Parser {
     }
     return null;
   }
-
-  /*Token token(Token.Type type, String s) {
-
-    return Token(type, s, 0, cast(int)(s.length));
-  }*/
 
   Decl parseField(StructDecl structDecl)
   {

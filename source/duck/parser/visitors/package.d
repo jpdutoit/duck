@@ -8,6 +8,8 @@ debug public import duck.compilers.visitors.expr_print;
 debug public import duck.compilers.visitors.tree_print;
 public import duck.compilers.visitors.codegen;
 
+import duck.compiler.buffer;
+
 alias String = const(char)[];
 
 String className(Type type) {
@@ -98,65 +100,65 @@ struct Dup {
 
 
 struct LineNumber {
-  Span visit(ErrorExpr expr) {
-      return expr.span;
+  Slice visit(ErrorExpr expr) {
+      return expr.slice;
   }
-  Span visit(TypeExpr expr) {
+  Slice visit(TypeExpr expr) {
     return expr.expr.accept(this);
   }
-  Span visit(ArrayLiteralExpr expr) {
-    Span s;
+  Slice visit(ArrayLiteralExpr expr) {
+    Slice s;
     foreach (i, arg ; expr.exprs) {
       s = s + arg.accept(this);
     }
-    return Span();
+    return Slice();
   }
-  Span visit(InlineDeclExpr expr) {
+  Slice visit(InlineDeclExpr expr) {
     return expr.declStmt.accept(this);
   }
-  Span visit(RefExpr expr) {
-    return expr.identifier.span;
+  Slice visit(RefExpr expr) {
+    return expr.identifier.slice;
   }
-  Span visit(MemberExpr expr) {
-    return expr.expr.accept(this) + expr.identifier.span();
+  Slice visit(MemberExpr expr) {
+    return expr.expr.accept(this) + expr.identifier;
   }
-  Span visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
-    return expr.token.span();
+  Slice visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
+    return expr.token.slice;
   }
-  Span visit(PipeExpr expr) {
-    return expr.left.accept(this) + expr.operator.span() +expr.right.accept(this);
+  Slice visit(PipeExpr expr) {
+    return expr.left.accept(this) + expr.operator +expr.right.accept(this);
   }
-  Span visit(BinaryExpr expr) {
-    return expr.left.accept(this) + expr.operator.span() + expr.right.accept(this);
+  Slice visit(BinaryExpr expr) {
+    return expr.left.accept(this) + expr.operator + expr.right.accept(this);
   }
-  Span visit(AssignExpr expr) {
-    return expr.left.accept(this) + expr.operator.span() + expr.right.accept(this);
+  Slice visit(AssignExpr expr) {
+    return expr.left.accept(this) + expr.operator + expr.right.accept(this);
   }
-  Span visit(UnaryExpr expr) {
-    return expr.operator.span() + expr.operand.accept(this);
+  Slice visit(UnaryExpr expr) {
+    return expr.operator + expr.operand.accept(this);
   }
-  Span visit(CallExpr expr) {
-    Span s = expr.expr.accept(this);
+  Slice visit(CallExpr expr) {
+    Slice s = expr.expr.accept(this);
     foreach (i, arg ; expr.arguments) {
       s = s + arg.accept(this);
     }
     return s;
   }
-  Span visit(ExprStmt stmt) {
+  Slice visit(ExprStmt stmt) {
     return stmt.expr.accept(this);
   }
-  Span visit(Stmts stmt) {
-    Span s;
+  Slice visit(Stmts stmt) {
+    Slice s;
     foreach (i, sm; stmt.stmts) {
       s = s + sm.accept(this);
     }
     return s;
   }
-  Span visit(VarDeclStmt s) {
+  Slice visit(VarDeclStmt s) {
     return s.expr.accept(this);
   }
-  Span visit(TypeDeclStmt s) {
-    return Span();
+  Slice visit(TypeDeclStmt s) {
+    return Slice();
     //return s.decl.accept(this);
   }
   /*int visit(Node node) {

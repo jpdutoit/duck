@@ -18,7 +18,7 @@ struct Lexer {
 
   void expect(Token.Type type, string message) {
     if (!consume(type)) {
-      context.error(front.span, "%s not '%s'", message, front.value);
+      context.error(front, "%s not '%s'", message, front.value);
       //auto msg = "(" ~ front.span.to!string ~ "): " ~ message ~ " not " ~ front.value.idup;
       //error(msg);
     }
@@ -104,7 +104,7 @@ struct Lexer {
             else input.consume();
           }
           if (depth != 0) {
-            context.error(input.tokenSince(tokenType, saved).span, "Unterminated comment");
+            context.error(input.tokenSince(tokenType, saved), "Unterminated comment");
           }
           tokenType = Comment;
           /+
@@ -128,7 +128,7 @@ struct Lexer {
           input.consume();
         }
         if (!input.consume('"')) {
-          context.error(input.tokenSince(tokenType, saved).span, "Unterminated string");
+          context.error(input.tokenSince(tokenType, saved), "Unterminated string");
         }
         tokenType = StringLiteral;
         break;
@@ -194,7 +194,7 @@ struct Lexer {
         input.consume();
         tokenType = Unknown;
         front = input.tokenSince(tokenType, saved);
-        context.error(front.span, "Unexpected character '%s'", front.value);
+        context.error(front, "Unexpected character '%s'", front.value);
         return;
     }
     front = input.tokenSince(tokenType, saved);

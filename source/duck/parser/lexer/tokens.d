@@ -41,4 +41,4 @@ alias EOL = Tok!"\n";
 alias Comment = Tok!"__Comment";
 alias Unknown = Tok!"__Unknown";
 
-enum None = Token(0, null);
+enum None = Token();

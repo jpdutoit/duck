@@ -42,7 +42,7 @@ struct Input {
   }
 
   Token tokenSince(Token.Type type, ref Input input) {
-    auto t = Token(type, this.buffer, input.index, index);
+    auto t = Token(type, this.buffer[input.index .. index]);
     import std.stdio;
     return t;
   }

@@ -25,17 +25,17 @@ class Context {
     return "__tmp" ~ (++temporaries).to!(const(char)[]);
   }*/
 
-  void error(Args...)(Span span, string format, Args args)
+  void error(Args...)(Slice slice, string format, Args args)
   {
     errors++;
-    stderr.write(span.toString());
+    stderr.write(slice.toLocationString());
     stderr.write(": Error: ");
     stderr.writefln(format, args);
   }
 
-  void error(Span span, string str) {
+  void error(Slice slice, string str) {
     errors++;
-    stderr.write(span.toString());
+    stderr.write(slice.toLocationString());
     stderr.write(": Error: ");
     stderr.writeln(str);
   }

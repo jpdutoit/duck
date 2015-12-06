@@ -153,7 +153,7 @@ struct SemanticAnalysis {
   }
 
   void error(Token token, string message) {
-    context.error(token.span, message);
+    context.error(token, message);
   }
 
 
@@ -675,7 +675,7 @@ struct SemanticAnalysis {
 
     auto p = buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck");
     if (!p.exists) {
-      context.error(stmt.identifier.span, "Cannot find library at '%s'", p);
+      context.error(stmt.identifier, "Cannot find library at '%s'", p);
     } else {
       auto AST = SourceBuffer(new FileBuffer(p)).parse();
       if (auto program = cast(Program)AST.program) {

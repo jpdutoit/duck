@@ -305,9 +305,9 @@ abstract class Expr : Node {
 
 class ErrorExpr : Expr {
     mixin NodeMixin;
-    Span span;
-    this(Span span) {
-      this.span = span;
+    Slice slice;
+    this(Slice span) {
+      this.slice = slice;
       this.exprType = errorType;
     }
 }

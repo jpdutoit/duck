@@ -328,14 +328,13 @@ struct CodeGen {
   }
 
   void line(Node node) {
-
-    auto span = node.accept(LineNumber());
-    if (cast(FileBuffer)span.buffer) {
+    auto slice = node.accept(LineNumber());
+    if (cast(FileBuffer)slice.buffer) {
       import std.conv : to;
       emit("#line ");
-      emit(span.a.line.to!String);
+      emit(slice.lineNumber.to!String);
       emit(" \"");
-      emit(span.buffer.name);
+      emit(slice.buffer.name);
       emit("\" ");
       emit("\n");
     }
