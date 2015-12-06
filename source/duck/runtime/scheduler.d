@@ -49,12 +49,12 @@ struct Scheduler {
     ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     if (fiber) {
       while (true) {
-        Duration waitTime = 1000.0.seconds;
+        duration waitTime = 1000.0.seconds;
         int alive = 0;
         for (int i = 0; i < fiber.children.length; ++i) {
           if (fiber.children[i].state != Fiber.State.TERM) {
             alive++;
-            Duration newWaitTime = fiber.children[i].wakeTime - now;
+            duration newWaitTime = fiber.children[i].wakeTime - now;
             if (newWaitTime < waitTime)
               waitTime = newWaitTime;
           }
@@ -69,7 +69,7 @@ struct Scheduler {
     }
   }
 
-  static void sleep(Duration dur)
+  static void sleep(duration dur)
   {
     ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     fiber.wakeTime = fiber.wakeTime + dur;
@@ -193,7 +193,7 @@ void sleep() {
   Scheduler.sleep();
 }
 
-void sleep(Duration dur) {
+void sleep(duration dur) {
   Scheduler.sleep(dur);
 }
 
@@ -207,11 +207,11 @@ struct Now {
   Time time = Time.withSamples(0);
   alias time this;
 
-  void opBinaryRight(string op: ">>")(auto ref Duration other) {
+  void opBinaryRight(string op: ">>")(auto ref duration other) {
     sleep(other);
   }
 
-  void opOpAssign(string op: "+")(auto ref Duration other) {
+  void opOpAssign(string op: "+")(auto ref duration other) {
     /*print("sleep ");
     print(other.value);
     print("\n");*/

@@ -107,8 +107,8 @@ struct TreePrint {
     writefln("%sDecl %s", padding, decl.declType.mangled);
     return decl;
   }
-  Node visit(DeclStmt stmt) {
-    writefln("%sDeclStmt %s - %s", padding, stmt.identifier.value, mangled(stmt.expr._exprType));
+  Node visit(VarDeclStmt stmt) {
+    writefln("%sVarDeclStmt %s - %s", padding, stmt.identifier.value, mangled(stmt.expr._exprType));
     depth++;
     stmt.expr.accept(this);
     depth--;

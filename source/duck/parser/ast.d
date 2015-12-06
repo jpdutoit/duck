@@ -19,7 +19,8 @@ alias NodeTypes = AliasSeq!(
   StructDecl,
   AliasDecl,
   ExprStmt,
-  DeclStmt,
+  VarDeclStmt,
+  TypeDeclStmt,
   ScopeStmt,
   ImportStmt,
   Stmts,
@@ -65,7 +66,7 @@ class Program : Node {
   Decl[] decls;
   DeclTable imported;
 
-  this(Node[] nodes, Decl decls[]) {
+  this(Node[] nodes, Decl[] decls = []) {
     this.imported = new DeclTable();
     this.nodes = nodes;
     this.decls = decls;
@@ -244,7 +245,7 @@ class ImportStmt : Stmt {
   }
 }
 
-class DeclStmt : Stmt {
+class VarDeclStmt : Stmt {
   mixin NodeMixin;
 
   Token identifier;
@@ -257,6 +258,17 @@ class DeclStmt : Stmt {
     this.expr = expr;
   }
 }
+
+class TypeDeclStmt : Stmt {
+  mixin NodeMixin;
+
+  Decl decl;
+
+  this(Decl decl) {
+    this.decl = decl;
+  }
+}
+
 
 class ScopeStmt : Stmt {
   mixin NodeMixin;
@@ -312,9 +324,9 @@ class ExprStmt : Stmt {
 class InlineDeclExpr : IdentifierExpr {
   mixin NodeMixin;
 
-  DeclStmt declStmt;
+  VarDeclStmt declStmt;
 
-  this(Token token, DeclStmt declStmt) {
+  this(Token token, VarDeclStmt declStmt) {
     super(token);
     this.declStmt = declStmt;
   }

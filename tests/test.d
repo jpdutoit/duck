@@ -6,6 +6,7 @@ import std.string;
 import core.thread, std.process, std.concurrency;
 import core.sys.posix.signal;
 import std.exception;
+import std.algorithm.searching;
 
 import duck.test;
 
@@ -15,6 +16,8 @@ string succeedCompilation = "compilable";
 string runnable = "runnable";
 
 bool verbose = false;
+
+string[] specifiedFiles;
 
 struct Proc {
     string filename;
@@ -26,7 +29,7 @@ struct Proc {
         auto command = [duckExecutable, method, this.filename];
         if (options)
           command ~= options.split(" ");
-        this.pipes = pipeProcess(command);
+        this.pipes = pipeProcess(command);//, Redirect.stderr);
         this.pid = this.pipes.pid;
         //spawn(&streamReader, this.pid.processID(), this.pipes.stderr().getFP());
     }
@@ -111,7 +114,8 @@ auto findFiles(string where) {
   string[] files;
   auto dFiles = dirEntries(where, "*.{duck}", SpanMode.depth);
   foreach(d; dFiles) {
-    files ~= d.name;
+    if (specifiedFiles.length == 0 || specifiedFiles.canFind(d.name))
+      files ~= d.name;
   }
   return files;
 }
@@ -253,13 +257,14 @@ auto testRunnable() {
 
 int main(string[] args) {
   foreach (arg; args[1..$]) {
-      if (arg == "--verbose" || arg == "-v") {
-        verbose = true;
-      }
-      else {
-        stderr.writeln("Unexpected argument: ", arg);
-        return 1;
-      }
+    if (arg == "--verbose" || arg == "-v") {
+      verbose = true;
+    }
+    else if (arg.startsWith("-")) {
+      stderr.writeln("Unexpected argument: ", arg);
+      return 1;
+    }
+    specifiedFiles ~= arg;
   }
 
   if (verbose) {

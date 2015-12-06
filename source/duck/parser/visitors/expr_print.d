@@ -68,8 +68,8 @@ struct ExprPrint {
     writefln("%s Decl %s", padding, decl.declType.mangled);
     return decl;
   }
-  Node visit(DeclStmt stmt) {
-    writefln("%s DeclStmt %s", padding, stmt.identifier.value);
+  Node visit(VarDeclStmt stmt) {
+    writefln("%s VarDeclStmt %s", padding, stmt.identifier.value);
     depth++;
     stmt.expr.accept(this);
     depth--;

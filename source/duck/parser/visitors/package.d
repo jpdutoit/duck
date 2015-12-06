@@ -152,8 +152,12 @@ struct LineNumber {
     }
     return s;
   }
-  Span visit(DeclStmt s) {
+  Span visit(VarDeclStmt s) {
     return s.expr.accept(this);
+  }
+  Span visit(TypeDeclStmt s) {
+    return Span();
+    //return s.decl.accept(this);
   }
   /*int visit(Node node) {
     return 0;

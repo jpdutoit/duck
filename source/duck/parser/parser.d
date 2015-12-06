@@ -178,7 +178,7 @@ struct Parser {
         } else {
           ctor = new CallExpr(left, []);
         }
-        return new InlineDeclExpr(token, new DeclStmt(token, new VarDecl(left, token), ctor));
+        return new InlineDeclExpr(token, new VarDeclStmt(token, new VarDecl(left, token), ctor));
       }
       case Tok!"(":
         lexer.consume;
@@ -279,7 +279,7 @@ struct Parser {
     return new MethodDecl(new FunctionType(voidType, []), name, methodBody, structDecl);
   }
 
-  void parseGenerator() {
+  TypeDeclStmt parseGenerator() {
     bool isExtern = lexer.consume(Tok!"extern") != None;
     lexer.expect(Tok!"generator", "Expected generator");
     Token ident = expect(Identifier, "Expected identifier");
@@ -304,8 +304,8 @@ struct Parser {
     expect(Tok!"}", "Expected '}'");
 
     //new NamedType(ident.value.idup, new GeneratorType())
-
-    decls ~= structDecl;
+    return new TypeDeclStmt(structDecl);
+    //decls ~= structDecl;
   }
 
   ImportStmt parseImport() {
@@ -323,8 +323,7 @@ struct Parser {
         return parseImport();
       case Tok!"extern":
       case Tok!"generator":
-        parseGenerator();
-        return parseStatement();
+        return parseGenerator();
       case Tok!"{":
         // Block statement
         return expect(parseBlock(), "Block expected");
@@ -354,7 +353,7 @@ struct Parser {
   }
 
   Program parseModule() {
-    auto prog = new Program([parseStatements()], decls);
+    auto prog = new Program([parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }

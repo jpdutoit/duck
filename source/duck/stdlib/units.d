@@ -1,14 +1,15 @@
 module duck.stdlib.units;
 
-import duck.stdlib;
-
 import core.time;
+import duck.stdlib;
+import duck.runtime;
+import duck.runtime.model;
+import duck.global;
 
-import duck.runtime, duck.runtime.model, duck.global;
+nothrow:
 
 alias mono = float;
 alias stereo = float[2];
-
 alias range = float[2];
 
 auto scale(double min, double max, T)(T t, range r)
@@ -16,29 +17,15 @@ auto scale(double min, double max, T)(T t, range r)
   return (t - min) / (max-min) * (r[1]-r[0]) + r[0];
 }
 
-nothrow:
-/*struct Range(T) {
-  T min;
-  T max;
-  this(T _min, T _max) {
-    min = _min;
-    max = _max;
-  }
-};
-
-Range!float range(float a, float b) {
-  return Range!float(a, b);
-}*/
-///10 - (now % 10) => now;
 
 struct Time {
   double samples;
   alias value = samples;
 
-  this(Duration d) {
+  this(duration d) {
     samples = d.samples;
   }
-  void opAssign(Duration d) {
+  void opAssign(duration d) {
     samples = d.samples;
   }
 
@@ -49,13 +36,13 @@ struct Time {
     return t;
   }
 
-  Duration opBinary(string op:"%")(auto ref Duration other) {
-    return Duration.withSamples(mixin("samples"~op~"other.samples"));
+  duration opBinary(string op:"%")(auto ref duration other) {
+    return duration.withSamples(mixin("samples"~op~"other.samples"));
   }
-  Duration opBinary(string op:"-")(auto ref Time other) {
-    return Duration.withSamples(mixin("samples"~op~"other.samples"));
+  duration opBinary(string op:"-")(auto ref Time other) {
+    return duration.withSamples(mixin("samples"~op~"other.samples"));
   }
-  Time opBinary(string op)(auto ref Duration other) if (op != ">>") {
+  Time opBinary(string op)(auto ref duration other) if (op != ">>") {
     return Time.withSamples(mixin("samples"~op~"other.samples"));
   }
   Time opBinary(string op)(auto ref Time other) if (op != ">>") {
@@ -66,47 +53,47 @@ struct Time {
   }
 }
 
-struct Duration {
+struct duration {
   double samples;
   alias value = samples;
 
-  static Duration withSamples(double samples) {
-    Duration t;
+  static duration withSamples(double samples) {
+    duration t;
     t.samples = samples;
     return t;
   }
-  /*Duration opBinary(string op:"%")(auto ref Duration other) {
-    return Duration.withSamples(mixin("samples"~op~"other.samples"));
+  /*duration opBinary(string op:"%")(auto ref duration other) {
+    return duration.withSamples(mixin("samples"~op~"other.samples"));
   }
-  Duration opBinary(string op)(auto ref Duration other) if (op != ">>") {
-    return Duration.withSamples(mixin("samples"~op~"other.samples"));
+  duration opBinary(string op)(auto ref duration other) if (op != ">>") {
+    return duration.withSamples(mixin("samples"~op~"other.samples"));
   }
   Time opBinary(string op)(auto ref Time other)  if (op != ">>") {
     return Time.withSamples(mixin("samples"~op~"other.samples"));
   }*/
-  int opCmp(Duration other) {
+  int opCmp(duration other) {
     return samples < other.samples ? -1 : samples > other.samples ? 1 : 0;
   }
   mixin UnitOperators mix;
 };
 
 @property
-Duration seconds(double s) {
-  return Duration(s * SAMPLE_RATE.value);
+duration seconds(double s) {
+  return duration(s * SAMPLE_RATE.value);
 }
 
 @property
-Duration samples(double s) {
-  return Duration(s);
+duration samples(double s) {
+  return duration(s);
 }
 
 @property
-Duration ms(float ms) {
-  return Duration(ms / 1000 * SAMPLE_RATE.value);
+duration ms(float ms) {
+  return duration(ms / 1000 * SAMPLE_RATE.value);
 }
 
 /*
-void advance(Duration s) {
+void advance(duration s) {
 
 }*/
 
@@ -181,21 +168,7 @@ struct frequency {
     return freq;
   }
 
-  /*this(float f) {
-    value = f;
-  }
-  this(Note n) {
-    value = 440 * pow(2, n.index - 49);
-  }*/
-
-  /*void opAssign(Note n) {
-
-    value = 440 * pow(2, n.index - 49);
-  }*/
-
   mixin UnitOperators mix;
-
-  //alias value this;
 }
 
 unittest {

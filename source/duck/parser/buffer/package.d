@@ -3,12 +3,45 @@ import duck.compiler.lexer.token;
 
 alias String = const(char)[];
 
+struct LineCol {
+  int line;
+  int col;
+};
+
 abstract class Buffer {
   string name;
   string path;
   this(string name, string path) {
     this.name = name;
     this.path = path;
+  }
+
+  LineCol[2] calcLineCol(int start, int end) {
+    LineCol[2] r;
+    r[0] = calcLineCol(start);
+    r[1] = r[0];
+    for (int i = start; i < end; ++i) {
+      if (contents[i] == '\n') {
+        r[1].col = 0;
+        r[1].line++;
+      }
+      r[1].col++;
+    }
+    return r;
+  }
+
+  LineCol calcLineCol(int start) {
+    LineCol r;
+    r.line = 1;
+    r.col = 1;
+    for (int i = 0; i < start; ++i) {
+      if (contents[i] == '\n') {
+        r.col = 0;
+        r.line++;
+      }
+      r.col++;
+    }
+    return r;
   }
   char[] contents;
 };

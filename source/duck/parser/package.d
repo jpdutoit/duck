@@ -55,14 +55,12 @@ struct AST {
     //writefln("%s", code);
 
     auto s = q{import duck.runtime, duck.stdlib; }
-    ~ "void start() { " ~ code ~ "\n}" ~
-    q{
-      void main(string[] args) {
-        initialize(args);
-        Duck(&start);
-        Scheduler.run();
-      }
-    };
+    ~ "\n\nvoid start() {\n" ~ code ~ "\n}\n\n" 
+    "void main(string[] args) {\n"
+    "  initialize(args);\n"
+    "  Duck(&start);\n"
+    "  Scheduler.run();\n"
+    "}\n";
 
     return DCode(cast(String)s);
   }

@@ -7,17 +7,6 @@ struct UGenRegistry {
   static void*[void*] all;
   static TickDg[void*]endPoints;
 
-  static void register(T)(T* obj) {
-    if (obj !in all) {
-      //writefln("Register UGEN: %s %s %s", T.stringof, obj, T.isEndPoint); stdout.flush();
-      static if (is(typeof(&obj._tick))) {
-        if (T.isEndPoint)
-          endPoints[obj] = &obj._tick;
-      }
-      all[obj] = cast(void*)obj;
-    }
-  }
-
   static void register(void* obj, TickDg dg) {
     if (obj !in all) {
       import duck.runtime;

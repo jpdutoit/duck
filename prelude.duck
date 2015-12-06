@@ -44,8 +44,8 @@ extern generator SinOsc {
 }*/
 
 extern generator AR {
-  Duration attack;
-  Duration release;
+  duration attack;
+  duration release;
   mono input;
   mono output;
 }
@@ -146,8 +146,8 @@ generator SnareDrum {
   mono input : trigger.input;
   mono output;
 
-  Duration release : trigger.release;
-  Duration attack : trigger.attack;
+  duration release : trigger.release;
+  duration attack : trigger.attack;
 
   init() {
     50 ms => release;
@@ -165,14 +165,14 @@ struct duration {
   }
 }
 typedef float duration;
-function op+(Duration l, Duration r) -> Duration {
-  return Duration(float(l) + float(r));
+function op+(duration l, duration r) -> duration {
+  return duration(float(l) + float(r));
 }
-function op*(Duration l, double r) -> Duration {
-  return Duration(float(l) * r);
+function op*(duration l, double r) -> duration {
+  return duration(float(l) * r);
 }
-function op*(double l, Duration r) -> Duration {
-  return Duration(l * float(r));
+function op*(double l, duration r) -> duration {
+  return duration(l * float(r));
 }
 
 */
@@ -181,9 +181,9 @@ function op*(double l, Duration r) -> Duration {
 
 function seconds(float s) => duration(s * SAMPLE_RATE);
 function ms(float s) => duration(s * SAMPLE_RATE);
-function op+(Duration l, Duration r) => duration(l.raw + r.raw);
-function op-(Duration l, Duration r) => duration(l.raw - r.raw);
-function op/(Duration l, Duration r) => l.raw / r.raw;
+function op+(duration l, duration r) => duration(l.raw + r.raw);
+function op-(duration l, duration r) => duration(l.raw - r.raw);
+function op/(duration l, duration r) => l.raw / r.raw;
 
 unit duration;
 
@@ -198,13 +198,13 @@ unit hz = 1 / 1 seconds;
 unit bpm = 1 / 1 minute;
 
 extern function operator/(num, frequency) => period;
-extern function operator/(Duration, frequency) => num;
+extern function operator/(duration, frequency) => num;
 
-extern function operator+(Duration, Duration) => Duration;
+extern function operator+(duration, duration) => duration;
 
-extern function operator+(Duration, Duration) => Duration;
-extern function operator*(Duration, float) => Duration;
+extern function operator+(duration, duration) => duration;
+extern function operator*(duration, float) => duration;
 
-extern function ramp(ref float value, Duration duration);
+extern function ramp(ref float value, duration duration);
 
 */

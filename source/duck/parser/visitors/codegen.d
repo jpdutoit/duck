@@ -51,7 +51,6 @@ auto findTarget(Node node) {
 }
 
 struct FindOwnerDecl {
-  int depth = 0;
   StructDecl visit(Node node) {
     return null;
   }
@@ -62,10 +61,10 @@ struct FindOwnerDecl {
     return cast(StructDecl)expr.expr.exprType.decl;
     /*if (expr.expr.exprType.kind == GeneratorType.Kind)) return expr.expr;
     if (cast(MemberExpr)expr.expr) {
-      return expr.expr.accept(this);
+      return accept(expr.expr);
     }
     return expr.expr.
-    return expr.expr.accept(this);*/
+    return accept(expr.expr);*/
   }
 };
 
@@ -98,10 +97,34 @@ auto findGenerators(Node node) {
   return fg.generators;
 }
 
-struct CodeGen {
-
+struct CodeAppender {
   import std.array;
+  int depth = 0;
   Appender!String output;
+
+  enum string PAD = "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+  void put(String s) {
+    import std.string;
+    output.put(s.replace("\n", PAD[0..depth+1]));
+  }
+
+  void indent() {
+    depth++;
+  }
+
+  void outdent() {
+    depth--;
+  }
+
+  auto data() {
+    return output.data;
+  }
+}
+
+struct CodeGen {
+  debug(CodeGen) mixin TreeLogger;
+
+  CodeAppender output;
 
   String[] generators;
 
@@ -115,15 +138,24 @@ struct CodeGen {
     output.put(s);
   }
 
+  void indent() { output.indent(); }
+  void outdent() { output.outdent(); }
+
+  void accept(Node n) {
+    debug(CodeGen) logIndent();
+    n.accept(this);
+    debug(CodeGen) logOutdent();
+  }
+
   void visit(MemberExpr expr) {
-    debug(CodeGen) writefln("MemberExpr");
-    //String owner = expr.expr.accept(this);
+    debug(CodeGen) log("MemberExpr");
+    //String owner = accept(expr.expr);
 
 
 //      writefln("%s", expr.expr.exprType);
 
       //emit("(");
-      expr.expr.accept(this);
+      accept(expr.expr);
       emit(".");
       emit(expr.identifier.value);
       //emit(")");
@@ -132,11 +164,11 @@ struct CodeGen {
   }
 
   void visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
-    debug(CodeGen) writefln("Ident/LiteralExpr");
+    debug(CodeGen) log("Ident/LiteralExpr");
     emit(expr.token.value);
   }
   void visit(ArrayLiteralExpr expr) {
-    debug(CodeGen) writefln("ArrayLiteralExpr");
+    debug(CodeGen) log("ArrayLiteralExpr");
     emit("[");
     foreach (i, expr1 ; expr.exprs) {
       if (i != 0) emit(",");
@@ -145,28 +177,31 @@ struct CodeGen {
     emit("]");
   }
   void visit(BinaryExpr expr) {
-    debug(CodeGen) writefln("BinaryExpr");
+    debug(CodeGen) log("BinaryExpr");
     emit("(");
-    expr.left.accept(this);
+    accept(expr.left);
     emit(expr.operator.value);
-    expr.right.accept(this);
+    accept(expr.right);
     emit(")");
   }
 
   void visit(PipeExpr expr) {
-    debug(CodeGen) writefln("PipeExpr");
+    debug(CodeGen) log("PipeExpr", expr);
 
-    StructDecl owner = findOwnerDecl(expr.right);
     String target = expr.right.findTarget();
     generators = findGenerators(expr.left);
 
     if (generators.length == 0) {
-      new AssignExpr(context.token(Tok!"=", "="), expr.right, expr.left).accept(this);
-      /*expr.right.accept(this);
+      debug(CodeGen) log("=> Rewrite as:");
+      accept(new AssignExpr(context.token(Tok!"=", "="), expr.right, expr.left));
+      /*accept(expr.right);
       emit(" = ");
-      expr.left.accept(this);*/
+      accept(expr.left);*/
       return;
     }
+
+    StructDecl owner = findOwnerDecl(expr.right);
+    debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
 
     if (!owner.external) {
       emit(expr.right.lvalueToString());
@@ -180,9 +215,9 @@ struct CodeGen {
         //}
       }
       emit(" ");
-      expr.right.accept(this);
+      accept(expr.right);
       emit(" = ");
-      expr.left.accept(this);
+      accept(expr.left);
       emit(";}");
     }
     else {
@@ -196,18 +231,23 @@ struct CodeGen {
         //}
       }
       emit(" ");
-      expr.right.accept(this);
+      accept(expr.right);
       emit(" = ");
-      expr.left.accept(this);
+      accept(expr.left);
       emit(";})");
     }
   }
   void visit(AssignExpr expr) {
+    debug(CodeGen) log("AssignExpr", expr);
+
     StructDecl owner = findOwnerDecl(expr.left);
     String target = expr.left.findTarget();
     generators = findGenerators(expr.right);
 
-    if (owner) {
+
+    debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
+
+    if (owner && !owner.external) {
       emit(expr.left.lvalueToString());
       emit("__dg = ");
       emit("null;\n");
@@ -219,35 +259,37 @@ struct CodeGen {
       emit("._tick(); ");
       //}
     }
-    debug(CodeGen) writefln("AssignExpr");
-    expr.left.accept(this);
+
+    debug(CodeGen) log("=> LHS:");
+    accept(expr.left);
     emit(expr.operator.value);
-    expr.right.accept(this);
+    debug(CodeGen) log("=> RHS:");
+    accept(expr.right);
     //return "assign!\""~expr.operator.value~"\"(" ~ expr.left.accept(this) ~ "," ~  expr.right.accept(this) ~ ")";
   }
   void visit(UnaryExpr expr) {
-    debug(CodeGen) writefln("UnaryExpr");
+    debug(CodeGen) log("UnaryExpr");
     emit("(");
     emit(expr.operator.value);
-    expr.operand.accept(this);
+    accept(expr.operand);
     emit(")");
   }
   void visit(CallExpr expr) {
-    debug(CodeGen) writefln("CallExpr");
-    expr.expr.accept(this);
+    debug(CodeGen) log("CallExpr");
+    accept(expr.expr);
     emit("(");
     //if (expr.arguments.length == 1)
     //  s = "call!" ~ s;
     foreach (i, arg ; expr.arguments) {
       if (i != 0) emit(",");
-      arg.accept(this);
+      accept(arg);
     }
     emit(")");
   }
-  void visit(DeclStmt stmt) {
-    debug(CodeGen) writefln("DeclStmt");
+  void visit(VarDeclStmt stmt) {
+    debug(CodeGen) log("VarDeclStmt");
     //import duck.compiler.visitors;
-    //writefln("DeclStmt %s %s", stmt.decl, stmt.decl.accept(ExprPrint()));
+    //writefln("VarDeclStmt %s %s", stmt.decl, stmt.decl.accept(ExprPrint()));
     switch (stmt.decl.declType.kind) {
       case StructType.Kind:
         emit((cast(StructType)stmt.decl.declType).name);
@@ -260,73 +302,94 @@ struct CodeGen {
         emit(" ");
         emit(stmt.identifier.value);
         emit(" = ");
-        stmt.expr.accept(this);;
+        accept(stmt.expr);;
         emit(";\n");
         return;
       case NumberType.Kind:
         emit("float ");
         emit(stmt.identifier.value);
         emit(" = ");
-        stmt.expr.accept(this);
+        accept(stmt.expr);
         emit(";\n");
         return;
         //return (cast(GeneratorType)stmt.decl.declType).name ~ " " ~ stmt.identifier.value ~ " = " ~ stmt.expr.accept(this) ~ ";\n";
       default: throw __ICE("Code generation not implemnted for " ~ stmt.decl.declType.mangled);
     }
   }
+  void visit(TypeDeclStmt stmt) {
+    accept(stmt.decl);
+  }
+
   void visit(ExprStmt stmt) {
-    debug(CodeGen) writefln("ExprStmt");
-    stmt.expr.accept(this);
+
+    debug(CodeGen) log("ExprStmt");
+    accept(stmt.expr);
     emit(";\n");
   }
+
+  void line(Node node) {
+
+    auto span = node.accept(LineNumber());
+    if (cast(FileBuffer)span.buffer) {
+      import std.conv : to;
+      emit("#line ");
+      emit(span.a.line.to!String);
+      emit(" \"");
+      emit(span.buffer.name);
+      emit("\" ");
+      emit("\n");
+    }
+  }
+
   void visit(Stmts expr) {
-    debug(CodeGen) writefln("Stmts");
+    debug(CodeGen) log("Stmts");
+    emit("\n");
     import duck.compiler.visitors;
-    import std.conv : to;
     foreach (i, stmt; expr.stmts) {
-      auto span = stmt.accept(LineNumber());
-      if (span.a.line > 0) {
-        emit("#line ");
-        emit(span.a.line.to!String);
-        emit(" \"\" ");
-        emit("\n");
-      }
-      stmt.accept(this);
+      if (!cast(Stmts)stmt) line(stmt);
+      accept(stmt);
     }
   }
   void visit(TypeExpr expr) {
-    expr.expr.accept(this);
+    accept(expr.expr);
   }
   void visit(RefExpr expr) {
-    debug(CodeGen) writefln("RefExpr");
+    debug(CodeGen) log("RefExpr");
     emit(expr.identifier.value);
   }
   void visit(ScopeStmt expr) {
-    debug(CodeGen) writefln("ScopeStmt");
-    emit("{");
-    expr.stmts.accept(this);
-    emit("}\n");
+    debug(CodeGen) log("ScopeStmt");
+    indent();
+    emit("{\n");
+    accept(expr.stmts);
+    outdent();
+    emit("\n}\n");
   }
   void visit(FieldDecl fieldDecl) {
+    line(fieldDecl.typeExpr);
+
+    emit("__ConnDg ");
+    emit(fieldDecl.name.value);
+    emit("__dg; ");
+
     emit("  ");
-    fieldDecl.typeExpr.accept(this);
+    accept(fieldDecl.typeExpr);
     emit(" ");
     emit(fieldDecl.name.value);
     if (fieldDecl.valueExpr) {
       emit(" = ");
-      fieldDecl.valueExpr.accept(this);
+      accept(fieldDecl.valueExpr);
     }
     emit(";\n");
   }
 
   void visit(MethodDecl methodDecl) {
-    emit("  void");
-    emit(" ");
+    emit("void ");
     emit(methodDecl.name.value);
     emit("(");
     emit(") ");
     //emit("{");
-    methodDecl.methodBody.accept(this);
+    accept(methodDecl.methodBody);
     //emit("  }");
   }
 
@@ -334,27 +397,26 @@ struct CodeGen {
   }
 
   void visit(StructDecl structDecl) {
-    debug(CodeGen) writefln("Struct %s", structDecl.name.value);
+    debug(CodeGen) log("Struct", structDecl.name.value);
     if (!structDecl.external) {
         emit("struct ");
         emit(structDecl.name.value);
-        emit(" {\n");
+        emit(" {");
+        indent();
+        emit("\n");
         foreach(field ; structDecl.symbolsInDefinitionOrder) {
-          field.accept(this);
-          if (auto fd = cast(FieldDecl)field) {
-            emit("__ConnDg ");
-            emit(fd.name.value);
-            emit("__dg;\n");
-          }
+          accept(field);
         }
         emit("ulong __sampleIndex = ulong.max;\n");
 
         emit("\n");
-        emit("void _tick() {\n");
-        emit(q{
-          if (__sampleIndex == __idx) return;
-          __sampleIndex = __idx;
-        });
+        emit("void _tick() {");
+        indent();
+        emit("\n");
+        emit(
+          "if (__sampleIndex == __idx) return;\n"
+          "__sampleIndex = __idx;\n\n"
+        );
 
         foreach(field ; structDecl.symbolsInDefinitionOrder) {
           if (auto fd = cast(FieldDecl)field) {
@@ -366,25 +428,28 @@ struct CodeGen {
           }
         }
         if (structDecl.defines("tick")) {
-          emit("tick();\n");
+          emit("tick();");
         }
-        emit("}\n");
-        emit("}\n");
+        outdent();
+        emit("\n}");
+        outdent();
+        emit("\n}\n\n");
     }
   }
 
   void visit(Program mod) {
-    debug(CodeGen) writefln("Program");
+    debug(CodeGen) log("Program");
+    indent();
     foreach (i, decl; mod.imported.symbolsInDefinitionOrder) {
-      decl.accept(this);
+      accept(decl);
     }
     foreach (i, decl; mod.decls) {
-      decl.accept(this);
+      accept(decl);
     }
     foreach (i, node; mod.nodes) {
-      node.accept(this);
+      accept(node);
     }
-    debug(CodeGen) writefln("Program2");
+    outdent();
     //writefln("%s", output.data);
     //return output.data;
   }

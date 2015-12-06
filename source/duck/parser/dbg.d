@@ -18,6 +18,22 @@ String className(Type type) {
   return mangled(type) ~ " : ";
 }*/
 
+mixin template TreeLogger() {
+  enum string PAD = "                                                                                         ";
+  static string logPadding(int __depth) { return PAD[0..__depth*4]; }
+  int logDepth;
+  void logIndent() { logDepth++; }
+  void logOutdent() { logDepth--; }
+  void log(T...)(string where, T t) {
+    import std.stdio : write, writeln, stderr;
+    stderr.write(logPadding(logDepth), where, "");
+    foreach(tt; t) {
+      stderr.write(" ", tt);
+    }
+    stderr.writeln();
+  }
+}
+
 struct ExprToString {
 
   String visit(ArrayLiteralExpr expr) {

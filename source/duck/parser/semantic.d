@@ -121,7 +121,7 @@ struct SemanticAnalysis {
 
   Expr makeGenerator(Type type, Expr ctor) {
     auto t = context.temporary();
-    return new InlineDeclExpr(t, new DeclStmt(t, new VarDecl(type, t), ctor));
+    return new InlineDeclExpr(t, new VarDeclStmt(t, new VarDecl(type, t), ctor));
   }
 
   void implicitConstruct(ref Expr expr) {
@@ -640,11 +640,11 @@ struct SemanticAnalysis {
     return structDecl;
   }
 
-  Node visit(DeclStmt stmt) {
+  Node visit(VarDeclStmt stmt) {
     accept(stmt.expr);
     accept(stmt.decl);
 
-    debug(Semantic) log("DeclStmt", stmt.expr, stmt.decl, mangled(stmt.decl.declType), stmt.identifier.value);
+    debug(Semantic) log("VarDeclStmt", stmt.expr, stmt.decl, mangled(stmt.decl.declType), stmt.identifier.value);
     debug(Semantic) log("Add to symbol table:", stmt.identifier.value, mangled(stmt.decl.declType));
     // Add identifier to symbol table
     if (symbolTable.defines(stmt.identifier.value)) {
@@ -654,6 +654,17 @@ struct SemanticAnalysis {
       symbolTable.define(stmt.identifier.value, stmt.decl);
     }
 
+    return stmt;
+  }
+
+  Node visit(TypeDeclStmt stmt) {
+    if (globalScope.defines(stmt.decl.name)) {
+      error(stmt.decl.name, "Cannot redefine " ~ stmt.decl.name.idup);
+    }
+    else {
+      globalScope.define(stmt.decl.name, stmt.decl);
+    }
+    accept(stmt.decl);
     return stmt;
   }
 
@@ -668,8 +679,8 @@ struct SemanticAnalysis {
     } else {
       auto AST = SourceBuffer(new FileBuffer(p)).parse();
       if (auto program = cast(Program)AST.program) {
-        foreach(Decl decl; program.decls) {
-          symbolTable.define(decl.name, decl);
+        foreach(node; program.nodes) {
+          accept(node);
         }
       }
     }
@@ -683,7 +694,7 @@ struct SemanticAnalysis {
     globalScope = symbolTable.scopes[1];
 
     __gshared static auto freq = new StructType("frequency");
-    __gshared static auto dur = new StructType("Duration");
+    __gshared static auto dur = new StructType("duration");
     __gshared static auto Time = new StructType("Time");
 
 
@@ -691,7 +702,7 @@ struct SemanticAnalysis {
 
     globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
     globalScope.define("now", new VarDecl(Time, context.token(Identifier, "now")));
-    globalScope.define("Duration", new TypeDecl(dur, context.token(Identifier, "Duration")));
+    globalScope.define("duration", new TypeDecl(dur, context.token(Identifier, "duration")));
     globalScope.define("mono", new TypeDecl(numberType, context.token(Identifier, "mono")));
     globalScope.define("float", new TypeDecl(numberType, context.token(Identifier, "float")));
     globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
@@ -712,12 +723,12 @@ struct SemanticAnalysis {
     typeMap.set(numberType, "/", numberType, numberType);
     typeMap.set(numberType, "%", numberType, numberType);
 
-    typeMap.set(type("Time"), "%", type("Duration"), type("Duration"));
-    typeMap.set(numberType, "*", type("Duration"), type("Duration"));
-    typeMap.set(type("Duration"), "+", type("Duration"), type("Duration"));
-    typeMap.set(type("Duration"), "-", type("Duration"), type("Duration"));
+    typeMap.set(type("Time"), "%", type("duration"), type("duration"));
+    typeMap.set(numberType, "*", type("duration"), type("duration"));
+    typeMap.set(type("duration"), "+", type("duration"), type("duration"));
+    typeMap.set(type("duration"), "-", type("duration"), type("duration"));
 
-    typeMap.set(type("Duration"), "*", numberType, type("Duration"));
+    typeMap.set(type("duration"), "*", numberType, type("duration"));
     typeMap.set(type("frequency"), "*", numberType, type("frequency"));
     typeMap.set(type("frequency"), "/", numberType, type("frequency"));
     typeMap.set(type("frequency"), "/", type("frequency"), numberType);
@@ -725,14 +736,9 @@ struct SemanticAnalysis {
     typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
     typeMap.set(numberType, "*", type("frequency"), type("frequency"));
 
-    foreach(ref decl; program.decls) {
-      if (globalScope.defines(decl.name)) {
-        error(decl.name, "Cannot redefine " ~ decl.name.idup);
-      }
-      else {
-        globalScope.define(decl.name, decl);
-      }
-    }
+    /*foreach(ref decl; program.decls) {
+
+    }*/
 
     foreach(ref decl; program.decls) {
       accept(decl);

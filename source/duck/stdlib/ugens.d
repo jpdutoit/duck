@@ -435,8 +435,8 @@ struct ADSR {
 struct AR {
   mixin UGEN!AR;
 
-  Duration attack = 1000.samples;
-  Duration release = 1000.samples;
+  duration attack = 1000.samples;
+  duration release = 1000.samples;
 
   mono input = 0;
   mono output = 0;
@@ -479,9 +479,9 @@ struct AR {
   }
 
 //private:
-  Duration att = 0.samples, rel = 0.samples;
+  duration att = 0.samples, rel = 0.samples;
   mono lastInput = 0;
-  Duration elapsed = 0.samples;
+  duration elapsed = 0.samples;
 }
 
 struct Delay {
