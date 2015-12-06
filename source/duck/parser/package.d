@@ -5,7 +5,7 @@ import duck.compiler.parser, duck.compiler.ast, duck.compiler.lexer, duck.compil
 public import duck.compiler.buffer;
 
 
-auto __ICE(string message, int line = __LINE__, string file = __FILE__) {
+auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import core.exception;
   import std.conv;
   import std.stdio;
@@ -28,11 +28,11 @@ struct SourceBuffer {
     this.context = new Context();
   }
   AST parse() {
-    auto phaseFlatten = new Flatten();
-    auto phaseSemantic = new SemanticAnalysis(context, buffer.path);
-    auto program = context.parseBuffer(buffer)
-      .accept(phaseFlatten)
-      .accept(phaseSemantic);
+    auto phaseFlatten = Flatten();
+    auto phaseSemantic = SemanticAnalysis(context, buffer.path);
+    auto program = context.parseBuffer(buffer).flatten();
+
+    program = program.accept(phaseSemantic);
 
     auto a = AST(context, program);
     return a;

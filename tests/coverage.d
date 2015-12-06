@@ -119,6 +119,9 @@ int main() {
 
   int totalCovered = 0, totalCoverable = 0;
   foreach(inputFilename; files) {
+    // Exclude debug file
+    if (inputFilename.indexOf("parser-dbg.lst") >= 0) continue;
+
     auto oFile = File(inputFilename.replace(".lst", ".html"), "w");
     auto output = oFile.lockingTextWriter();
     auto input = File(inputFilename).byLine(KeepTerminator.yes);

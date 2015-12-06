@@ -55,11 +55,9 @@ public:
   __ConnDg[] __connections;
 
   void _tick(/*ulong nextSampleIndex*/) {
-    //print("ttt ", __sampleIndex, "   ", __idx, " \n");
     // Only tick if we haven't previously
     if (__sampleIndex == __idx)
       return;
-
 
     __sampleIndex = __idx;
 
@@ -67,8 +65,6 @@ public:
     for (int c = 0; c < __connections.length; ++c) {
       __connections[c]();
     }
-
-
     static if (is(typeof(&this.tick))) {
       tick();
     }

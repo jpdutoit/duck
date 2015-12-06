@@ -1,12 +1,14 @@
 module duck.compiler.semantic;
 
-import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types, duck.compiler.transforms;
+import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;//, duck.compiler.transforms;
 import duck.compiler.visitors, duck.compiler.context;
 import duck.compiler.scopes;
 import duck.compiler;
+import duck.compiler.dbg;
+
+import std.stdio;
 
 alias String = const(char)[];
-
 //debug = Semantic;
 
 struct OperatorTypeMap
@@ -50,9 +52,10 @@ auto taint(Decl decl) {
 }
 
 
-class SemanticAnalysis  : TransformVisitor {
-  /*int depth = 0;
-  final void accept(Target)(ref Target target) {
+struct SemanticAnalysis {
+  int depth = 0;
+
+  void accept(Target)(ref Target target) {
     depth++;
     auto obj = target.accept(this);
     depth--;
@@ -61,19 +64,19 @@ class SemanticAnalysis  : TransformVisitor {
      throw __ICE("expected " ~ typeof(this).stringof ~ ".visit(" ~ Target.stringof ~ ") to return a " ~ Target.stringof);
     target = cast(Target)obj;
     //return obj;
-  }*/
+  }
 
   debug(Semantic) {
     enum string PAD = "                                                                                ";
     static string padding(int __depth) { return PAD[0..__depth*4]; }
 
     void log(T...)(string where, T t) {
-      import std.stdio : write, writeln;
-      write(padding(depth), where, " ");
+      import std.stdio : write, writeln, stderr;
+      stderr.write(padding(depth), where, " ");
       foreach(tt; t) {
-        write(" ", tt);
+        stderr.write(" ", tt);
       }
-      writeln();
+      stderr.writeln();
     }
   }
 
@@ -100,27 +103,6 @@ class SemanticAnalysis  : TransformVisitor {
     return decl.declType;
   }
 
-  void init() {
-    //typeMap.set(numberType, "+", numberType, numberType);
-    typeMap.set(numberType, "*", numberType, numberType);
-    typeMap.set(numberType, "+", numberType, numberType);
-    typeMap.set(numberType, "-", numberType, numberType);
-    typeMap.set(numberType, "/", numberType, numberType);
-    typeMap.set(numberType, "%", numberType, numberType);
-    typeMap.set(type("Time"), "%", type("Duration"), type("Duration"));
-    //typeMap.set(type("Duration"), "+", numberType, numberType);
-    typeMap.set(numberType, "*", type("Duration"), type("Duration"));
-    typeMap.set(type("Duration"), "+", type("Duration"), type("Duration"));
-    typeMap.set(type("Duration"), "-", type("Duration"), type("Duration"));
-
-    typeMap.set(type("Duration"), "*", numberType, type("Duration"));
-    typeMap.set(type("frequency"), "*", numberType, type("frequency"));
-    typeMap.set(type("frequency"), "/", numberType, type("frequency"));
-    typeMap.set(type("frequency"), "/", type("frequency"), numberType);
-    typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
-    typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
-    typeMap.set(numberType, "*", type("frequency"), type("frequency"));
-  }
 
   bool isLValue(Expr expr) {
     if (!!cast(RefExpr)expr) return true;
@@ -174,26 +156,27 @@ class SemanticAnalysis  : TransformVisitor {
     context.error(token.span, message);
   }
 
-  alias visit = TransformVisitor.visit;
 
+  Node visit(ErrorExpr expr) {
+    return expr;
+  }
 
-
-  override Node visit(InlineDeclExpr expr) {
-    debug(Semantic) log("InlineDeclExpr", expr.print);
+  Node visit(InlineDeclExpr expr) {
+    debug(Semantic) log("InlineDeclExpr", expr);
     accept(expr.declStmt);
 
     splitStatements ~= expr.declStmt;
     //debug(Semantic) writefln("InlineDeclExpr2 %s", expr.declStmt);
     Expr ident = new IdentifierExpr(expr.token);
     accept(ident);
-    debug(Semantic) log("=>", ident.print);
+    debug(Semantic) log("=>", ident);
     //debug(Semantic) writefln("InlineDeclExpr3 %s", ident);
 
     return ident;
   }
 
-  override Node visit(ExprStmt stmt) {
-    debug(Semantic) log("ExprStmt", stmt.expr.print);
+  Node visit(ExprStmt stmt) {
+    debug(Semantic) log("ExprStmt", stmt.expr);
     if (auto declExpr = cast(InlineDeclExpr) stmt.expr) {
       accept(declExpr.declStmt);
       return declExpr.declStmt;
@@ -201,19 +184,19 @@ class SemanticAnalysis  : TransformVisitor {
 
     splitStatements = [];
     accept(stmt.expr);
-    debug(Semantic) log("=>", stmt.expr.print);
+    debug(Semantic) log("=>", stmt.expr);
     if (splitStatements.length > 0) {
       return new Stmts(splitStatements ~ stmt);
     }
     return stmt;
   }
-  /*override Node visit(ExprStmt expr) {
+  /*Node visit(ExprStmt expr) {
     accept(expr.expr);
     return expr;
   }*/
 
-  override Node visit(ArrayLiteralExpr expr) {
-    debug(Semantic) log("ArrayLiteralExpr", expr.print);
+  Node visit(ArrayLiteralExpr expr) {
+    debug(Semantic) log("ArrayLiteralExpr", expr);
     Type elementType;
     foreach(ref e; expr.exprs) {
       accept(e);
@@ -224,24 +207,24 @@ class SemanticAnalysis  : TransformVisitor {
       }
     }
     expr.exprType = new ArrayType(expr.exprs[0].exprType);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     return expr;
   }
 
-  override Node visit(PipeExpr expr) {
+  Node visit(PipeExpr expr) {
     debug(Semantic) log("PipeExpr");
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     pipeDepth++;
     accept(expr.left);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     accept(expr.right);
     pipeDepth--;
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     implicitConstruct(expr.left);
     implicitConstruct(expr.right);
 
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     if (pipeDepth > 0) {
       auto pd = pipeDepth;
@@ -284,23 +267,23 @@ class SemanticAnalysis  : TransformVisitor {
         if (!expr.exprTypeSet)
            expr.exprType = expr.right.exprType;
 
-        debug(Semantic) log("=>", expr.print);
+        debug(Semantic) log("=>", expr);
         return expr;
       }
     }
   }
 
-  override Node visit(BinaryExpr expr) {
+  Node visit(BinaryExpr expr) {
     debug(Semantic) log("BinaryExpr");
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     accept(expr.left);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     accept(expr.right);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     implicitConstruct(expr.left);
     implicitConstruct(expr.right);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     while(true) {
       if (isGenerator(expr.left)) {
@@ -325,9 +308,9 @@ class SemanticAnalysis  : TransformVisitor {
   }
 
 
-  override Node visit(CallExpr expr) {
+  Node visit(CallExpr expr) {
     debug(Semantic) log("CallExpr");
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     accept(expr.expr);
     bool argsHasError = false;
     foreach (ref arg; expr.arguments) {
@@ -335,12 +318,12 @@ class SemanticAnalysis  : TransformVisitor {
       if (arg.hasError) argsHasError = true;
     }
 
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     foreach (ref arg; expr.arguments) {
       implicitConstruct(arg);
     }
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     if (expr.expr.hasError || argsHasError) {
       return expr.taint;
@@ -383,30 +366,30 @@ class SemanticAnalysis  : TransformVisitor {
         error(expr, "Cannot call something with type " ~ mangled(expr.expr.exprType));
       return expr.taint;
     }
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     return expr;
   }
 
-  override Node visit(AssignExpr expr) {
+  Node visit(AssignExpr expr) {
     //TODO: Type check
-    debug(Semantic) log("AssignExpr", expr.print);
+    debug(Semantic) log("AssignExpr", expr);
     accept(expr.left);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     accept(expr.right);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     expr.exprType = expr.left.exprType;
     return expr;
   }
 
-  override Node visit(UnaryExpr expr) {
-    debug(Semantic) log("UnaryExpr", expr.print);
+  Node visit(UnaryExpr expr) {
+    debug(Semantic) log("UnaryExpr", expr);
     accept(expr.operand);
     expr.exprType = expr.operand.exprType;
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     return expr;
   }
 
-  override Node visit(IdentifierExpr expr) {
+  Node visit(IdentifierExpr expr) {
     if (expr.hasType) return expr;
     debug(Semantic) log("IdentifierExpr", expr.token.value);
 
@@ -425,29 +408,29 @@ class SemanticAnalysis  : TransformVisitor {
       if (auto fieldDecl = cast(FieldDecl)decl) {
         Expr memberExpr = new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.token);
         accept(memberExpr);
-        debug(Semantic) log("=>", memberExpr.print);
+        debug(Semantic) log("=>", memberExpr);
         return memberExpr;
       }
       else if (auto macroDecl = cast(MacroDecl)decl) {
         Expr memberExpr = new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.token);
         accept(memberExpr);
-        debug(Semantic) log("=>", memberExpr.print);
+        debug(Semantic) log("=>", memberExpr);
         return memberExpr;
       }
       else {
         Expr refExpr = new RefExpr(expr.token, decl);
         accept(refExpr);
-        debug(Semantic) log("=>", refExpr.print);
+        debug(Semantic) log("=>", refExpr);
         return refExpr;
       }
     }
   }
-  override Node visit(TypeExpr expr) {
-      debug(Semantic) log("TypeExpr", expr.expr.print);
+  Node visit(TypeExpr expr) {
+      debug(Semantic) log("TypeExpr", expr.expr);
       accept(expr.expr);
 
 
-      debug(Semantic) log("=>", expr.expr.print);
+      debug(Semantic) log("=>", expr.expr);
 
       if (auto re = cast(RefExpr)expr.expr) {
         if (expr.expr.exprType == typeType && cast(TypeDecl)re.decl) {
@@ -462,44 +445,41 @@ class SemanticAnalysis  : TransformVisitor {
       return expr.taint();
   }
 
-  override Node visit(RefExpr expr) {
+  Node visit(RefExpr expr) {
     //Decl decl = currentScope.lookup(expr.identifier.value);
     Decl decl = expr.decl;
     debug(Semantic) log("RefExpr", expr.identifier.value, decl);
     if (cast(TypeDecl)decl) {
       expr.exprType = typeType;
-      debug(Semantic) log("=>", expr.print);
+      debug(Semantic) log("=>", expr);
       return expr;
     }
     else if (cast(VarDecl)decl) {
       expr.exprType = decl.declType;
-      debug(Semantic) log("=>", expr.print);
+      debug(Semantic) log("=>", expr);
       return expr;
     }
     else if (cast(MethodDecl)decl) {
       expr.exprType = decl.declType;
-      debug(Semantic) log("=>", expr.print);
+      debug(Semantic) log("=>", expr);
       return expr;
     }
     else if (auto aliasDecl = cast(AliasDecl)decl) {
       //debug(Semantic) writefln("RefExpr %s %s %s", expr.identifier.value, decl, aliasDecl.targetExpr);
-      debug(Semantic) log("=>", aliasDecl.targetExpr.print);
+      debug(Semantic) log("=>", aliasDecl.targetExpr);
       return aliasDecl.targetExpr;
     }
 
-    //log("", decl, expr.accept(LineNumber()));
-    throw __ICE("");
-    //expr.exprType = typeType;//decl.declType;
-    return expr;
+    throw __ICE();
   }
 
-  override Node visit(MemberExpr expr) {
-    debug(Semantic) log("MemberExpr", expr.print);
+  Node visit(MemberExpr expr) {
+    debug(Semantic) log("MemberExpr", expr);
     if (!expr.expr.hasType)
       accept(expr.expr);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
     implicitConstruct(expr.expr);
-    debug(Semantic) log("=>", expr.print);
+    debug(Semantic) log("=>", expr);
 
     if (expr.expr.hasError) return expr.taint;
 
@@ -507,11 +487,7 @@ class SemanticAnalysis  : TransformVisitor {
     if (expr.expr.exprType) {
       decl = expr.expr.exprType.decl;
     }
-    /*if (!decl) {
-      if (auto refExpr = cast(RefExpr)(expr.expr)) {
-        decl = refExpr.decl;
-      }
-    }*/
+
     if (decl) {
       if (decl.declType.kind == GeneratorType.Kind && !isLValue(expr.expr)) {
         error(expr.expr, "Generators can not be temporaries.");
@@ -522,15 +498,9 @@ class SemanticAnalysis  : TransformVisitor {
         auto fieldDecl = structDecl.lookup(ident);
 
         if (fieldDecl) {
-          //fieldDecl.accept(this);
-          //debug(Semantic) writefln("field %s", fieldDecl.declType);
           expr.exprType = fieldDecl.declType;
 
-
           if (auto macroDecl = cast(MacroDecl)fieldDecl) {
-            //this(Expr typeExpr, Token identifier, Expr targetExpr, Decl parentDecl) {
-            //log("zzz %s %s", expr.print, macroDecl.expansion.print);
-
             Scope macroScope = new DeclTable();
             symbolTable.pushScope(macroScope);
             macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.expr));
@@ -538,13 +508,10 @@ class SemanticAnalysis  : TransformVisitor {
             accept(expansion);
             symbolTable.popScope();
 
-            //log("zzz %s %s", expansion.print, macroDecl.expansion.print);
-            //symbolTable.popScope();
-            debug(Semantic) log("=>", expansion.print);
+            debug(Semantic) log("=>", expansion);
             return expansion;
           }
-          debug(Semantic) log("=>", expr.print);
-          //debug(Semantic) writefln("aaaaa %s %s %s", fieldDecl, expr.identifier.value, expr.exprType);
+          debug(Semantic) log("=>", expr);
           return expr;
         }
         error(expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
@@ -554,31 +521,25 @@ class SemanticAnalysis  : TransformVisitor {
 
     error(expr.expr, "Cannot access members of " ~ mangled(expr.expr.exprType));
     return expr.taint;
-    //assert(0);
-
-    //expr.exprType = expr.expr.exprType;
   }
 
-  override Node visit(ScopeStmt stmt) {
+  Node visit(ScopeStmt stmt) {
     symbolTable.pushScope(new DeclTable);
     accept(stmt.stmts);
-    //currentScope.print();
     symbolTable.popScope();
     return stmt;
   }
 
-  override Node visit(Stmts stmts) {
-    //debug(Semantic) writefln("stmts %d [", stmts.stmts.length);
+  Node visit(Stmts stmts) {
     foreach(ref stmt ; stmts.stmts) {
       debug(Semantic) log("");
       debug(Semantic) log("Stmt");
       accept(stmt);
     }
-    //debug(Semantic) writefln("]");
     return stmts;
   }
 
-  override Node visit(MacroDecl decl) {
+  Node visit(MacroDecl decl) {
     debug (Semantic) log("MacroDecl");
     accept(decl.typeExpr);
 
@@ -609,7 +570,7 @@ class SemanticAnalysis  : TransformVisitor {
     return decl;
   }
 
-  override Node visit(FieldDecl decl) {
+  Node visit(FieldDecl decl) {
     debug(Semantic) log("FieldDecl");
     accept(decl.typeExpr);
     if (decl.valueExpr)
@@ -630,7 +591,7 @@ class SemanticAnalysis  : TransformVisitor {
     return decl;
   }
 
-  override Node visit(MethodDecl decl) {
+  Node visit(MethodDecl decl) {
     debug(Semantic) log("MethodDecl");
     if (decl.methodBody) {
       DeclTable funcScope = new DeclTable();
@@ -645,7 +606,7 @@ class SemanticAnalysis  : TransformVisitor {
     return decl;
   }
 
-  override Node visit(VarDecl decl) {
+  Node visit(VarDecl decl) {
     debug(Semantic) log("VarDecl", decl.name, decl.typeExpr);
     if (decl.typeExpr) {
       accept(decl.typeExpr);
@@ -663,7 +624,7 @@ class SemanticAnalysis  : TransformVisitor {
     return decl;
   }
 
-  override Node visit(StructDecl structDecl) {
+  Node visit(StructDecl structDecl) {
     debug(Semantic) log("StructDecl", structDecl.name);
     symbolTable.pushScope(structDecl.decls);
     ///FIXME
@@ -679,12 +640,11 @@ class SemanticAnalysis  : TransformVisitor {
     return structDecl;
   }
 
-  override Node visit(DeclStmt stmt) {
+  Node visit(DeclStmt stmt) {
     accept(stmt.expr);
     accept(stmt.decl);
 
     debug(Semantic) log("DeclStmt", stmt.expr, stmt.decl, mangled(stmt.decl.declType), stmt.identifier.value);
-
     debug(Semantic) log("Add to symbol table:", stmt.identifier.value, mangled(stmt.decl.declType));
     // Add identifier to symbol table
     if (symbolTable.defines(stmt.identifier.value)) {
@@ -697,27 +657,26 @@ class SemanticAnalysis  : TransformVisitor {
     return stmt;
   }
 
-  override Node visit(ImportStmt stmt) {
-  		import std.path, std.file;
-      import duck.compiler;
+  Node visit(ImportStmt stmt) {
+    import std.path, std.file, duck.compiler;
 
-      debug(Semantic) log("Import", stmt.identifier.value);
+    debug(Semantic) log("Import", stmt.identifier.value);
 
-  		auto p = buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck");
-  		if (!p.exists) {
-  			context.error(stmt.identifier.span, "Cannot find library at '%s'", p);
-  		} else {
-  	    auto AST = SourceBuffer(new FileBuffer(p)).parse();
-  	    if (auto program = cast(Program)AST.program) {
-  	      foreach(Decl decl; program.decls) {
-            symbolTable.define(decl.name, decl);
-          }
-  	    }
-  		}
-      return new Stmts([]);
+    auto p = buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck");
+    if (!p.exists) {
+      context.error(stmt.identifier.span, "Cannot find library at '%s'", p);
+    } else {
+      auto AST = SourceBuffer(new FileBuffer(p)).parse();
+      if (auto program = cast(Program)AST.program) {
+        foreach(Decl decl; program.decls) {
+          symbolTable.define(decl.name, decl);
+        }
+      }
+    }
+    return new Stmts([]);
   }
 
-  override Node visit(Program program) {
+  Node visit(Program program) {
     debug(Semantic) log("Program");
     symbolTable.pushScope(program.imported);
     symbolTable.pushScope(new DeclTable());
@@ -728,7 +687,8 @@ class SemanticAnalysis  : TransformVisitor {
     __gshared static auto Time = new StructType("Time");
 
 
-    //globalScope.define("Time", new NamedType("Time", new StructType()));
+    // TODO: These should loaded from extern definitions in the standard library.
+
     globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
     globalScope.define("now", new VarDecl(Time, context.token(Identifier, "now")));
     globalScope.define("Duration", new TypeDecl(dur, context.token(Identifier, "Duration")));
@@ -736,7 +696,7 @@ class SemanticAnalysis  : TransformVisitor {
     globalScope.define("float", new TypeDecl(numberType, context.token(Identifier, "float")));
     globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
     globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
-    //globalScope.define("Float", new TypeDecl(new NamedType("Float", new StructType())));
+
 
     globalScope.define("sin", new VarDecl(new FunctionType(numberType, [numberType]), context.token(Identifier, "sin")));
     globalScope.define("abs", new VarDecl(new FunctionType(numberType, [numberType]), context.token(Identifier, "abs")));
@@ -746,7 +706,24 @@ class SemanticAnalysis  : TransformVisitor {
     globalScope.define("seconds", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "seconds")));
     globalScope.define("samples", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "samples")));
 
-    init();
+    typeMap.set(numberType, "*", numberType, numberType);
+    typeMap.set(numberType, "+", numberType, numberType);
+    typeMap.set(numberType, "-", numberType, numberType);
+    typeMap.set(numberType, "/", numberType, numberType);
+    typeMap.set(numberType, "%", numberType, numberType);
+
+    typeMap.set(type("Time"), "%", type("Duration"), type("Duration"));
+    typeMap.set(numberType, "*", type("Duration"), type("Duration"));
+    typeMap.set(type("Duration"), "+", type("Duration"), type("Duration"));
+    typeMap.set(type("Duration"), "-", type("Duration"), type("Duration"));
+
+    typeMap.set(type("Duration"), "*", numberType, type("Duration"));
+    typeMap.set(type("frequency"), "*", numberType, type("frequency"));
+    typeMap.set(type("frequency"), "/", numberType, type("frequency"));
+    typeMap.set(type("frequency"), "/", type("frequency"), numberType);
+    typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
+    typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
+    typeMap.set(numberType, "*", type("frequency"), type("frequency"));
 
     foreach(ref decl; program.decls) {
       if (globalScope.defines(decl.name)) {
@@ -761,9 +738,7 @@ class SemanticAnalysis  : TransformVisitor {
       accept(decl);
     }
 
-
-    //currentScope.print();
-
+    //currentScope();
 
     foreach (ref node ; program.nodes)
       accept(node);
@@ -772,8 +747,10 @@ class SemanticAnalysis  : TransformVisitor {
     debug(Semantic) log("Done");
     return program;
   }
-}
 
-debug auto print(Expr e) {
-  return e.accept(ExprToString());
+
+  // Nothing to do for these
+  Node visit(LiteralExpr expr) {
+    return expr;
+  }
 }

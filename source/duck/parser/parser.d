@@ -57,7 +57,6 @@ struct Parser {
       case Tok!"+": return Precedence.Additive;
       case Tok!"-": return Precedence.Additive;
       case Tok!">>": return Precedence.Pipe;
-      case Tok!"=<": return Precedence.Pipe;
       case Tok!"=": return Precedence.Assignment;
       case Tok!"+=": return Precedence.Assignment;
       default:
@@ -78,12 +77,19 @@ struct Parser {
     return token;
   }
 
+  Expr expect(Expr expr, string message) {
+      if (!expr) {
+        context.error(lexer.front.span, message);
+        return new ErrorExpr(lexer.front.span);
+      }
+      return expr;
+  }
+
   T expect(T)(T node, string message) if (is(T: Node)) {
     if (!node) {
-      import std.conv : to;
       context.error(lexer.front.span, message);
-      import core.stdc.stdlib : exit;
-      exit(2);
+      //import core.stdc.stdlib : exit;
+      //exit(2);
     }
     return node;
   }
@@ -243,11 +249,11 @@ struct Parser {
     if (!type && !name) return null;
     if (!structDecl.external && lexer.consume(Tok!"=")) {
       // Handle init values
-      Expr value = expect(parseExpression(), "Expression expected.");
+      Expr value = expect(parseExpression(), "Expression expected");
       return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, value, structDecl);
     }
     else if (lexer.consume(Tok!":")) {
-      Expr target = expect(parseExpression(), "Expression expected.");
+      Expr target = expect(parseExpression(), "Expression expected");
       Token thisToken = context.token(Identifier, "this");
       return new MacroDecl(new IdentifierExpr(type), name, [new RefExpr(thisToken, structDecl)], [thisToken], target);
       //return new AliasDecl(new IdentifierExpr(type), name, target, structDecl);

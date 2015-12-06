@@ -5,7 +5,7 @@ import duck.compiler.transforms;
 import duck.compilers.visitors.expr_to_string;
 
 struct ExprPrint {
-  alias VisitResultType = Node;
+
   int depth = 0;
   enum string PAD = "                                                                              ";
 

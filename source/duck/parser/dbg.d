@@ -1,28 +1,24 @@
-module duck.compilers.visitors.expr_to_string;
+module duck.compiler.dbg;
 
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 import duck.compiler.transforms;
 
-String annot(String whatever, Type type) {
-  //return "";
-  //if (!type) return "τ";
-  if (!type) return whatever;
-    //return whatever ~ " : ?";
-  return whatever ~ " : " ~  mangled(type);
-  //return "τ-"~mangled(type);
+string describe(const Type type) {
+  return type ? type.mangled() : "?";
 }
 
+String annot(String whatever, Type type) {
+  if (!type) return whatever;
+  return whatever ~ " : " ~ type.describe();
+}
+/*
 String className(Type type) {
-  //return "";
-  //if (!type) return "τ";
   if (!type)
     return "? : ";
   return mangled(type) ~ " : ";
-  //return "τ-"~mangled(type);
-}
+}*/
 
 struct ExprToString {
-  alias VisitResultType = String;
 
   String visit(ArrayLiteralExpr expr) {
     String s = "[";

@@ -11,7 +11,6 @@ String className(Type type) {
 }
 
 struct TreePrint {
-  alias VisitResultType = Node;
   int depth = 0;
   enum string PAD = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 

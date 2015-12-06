@@ -68,13 +68,25 @@ mixin template DepthFirstRecurse() {
       accept(expr.expr);
     }
 
+    void recurse(ImportStmt stmt) {
+    }
+
+    void recurse(ScopeStmt stmt) {
+      accept(stmt.stmts);
+    }
+    void recurse(ExprStmt stmt) {
+      accept(stmt.expr);
+    }
+    void recurse(Program program) {
+      foreach (ref node ; program.nodes) {
+        accept(node);
+      }
+    }
     void recurse(Node node) {
     }
 }
 
 struct Dup {
-  alias VisitResultType = Node;
-
   Node visit(MemberExpr expr) {
     return new MemberExpr(dup(expr.expr), expr.identifier);
   }
@@ -86,7 +98,9 @@ struct Dup {
 
 
 struct LineNumber {
-  alias VisitResultType = Span;
+  Span visit(ErrorExpr expr) {
+      return expr.span;
+  }
   Span visit(TypeExpr expr) {
     return expr.expr.accept(this);
   }

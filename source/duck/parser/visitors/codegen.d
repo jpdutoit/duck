@@ -6,18 +6,12 @@ import std.stdio;
 
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 import duck.compiler.transforms;
-debug import duck.compilers.visitors.expr_to_string;
 import duck.compiler;
 import duck.compiler.context;
 import duck.compiler.visitors;
 
-import duck.compilers.visitors.expr_to_string;
+import duck.compiler.dbg;
 
-
-
-auto print(Expr e) {
-  return e.accept(ExprToString());
-}
 //  This code generator is a bit of hack at the moment
 
 String generateCode(Node node, Context context) {
@@ -29,22 +23,19 @@ String generateCode(Node node, Context context) {
 
 struct LValueToString {
   String prefix;
-  this(String prefix = "_") {
-    this.prefix = prefix;
-  }
   String visit(RefExpr re) {
     return re.identifier.value;
   }
   String visit(MemberExpr me) {
-    return me.expr.accept(this) ~ "." ~ prefix ~ me.identifier.value;
+    return me.expr.accept(this) ~ "." ~ me.identifier.value;
   }
   String visit(Node node) {
     throw __ICE("Internal compiler error (LValueToString)");
   }
 }
 
-auto lvalueToString(Node node, String prefix) {
-  return node.accept(LValueToString(prefix));
+auto lvalueToString(Node node) {
+  return node.accept(LValueToString());
 }
 
 struct FindTarget {
@@ -108,7 +99,7 @@ auto findGenerators(Node node) {
 }
 
 struct CodeGen {
-  alias VisitResultType = void;
+
   import std.array;
   Appender!String output;
 
@@ -133,7 +124,7 @@ struct CodeGen {
 
       //emit("(");
       expr.expr.accept(this);
-      emit("._");
+      emit(".");
       emit(expr.identifier.value);
       //emit(")");
       //writefln("FF");
@@ -178,7 +169,7 @@ struct CodeGen {
     }
 
     if (!owner.external) {
-      emit(expr.right.lvalueToString("_"));
+      emit(expr.right.lvalueToString());
       emit("__dg = ");
       emit("() { ");
 
@@ -195,7 +186,6 @@ struct CodeGen {
       emit(";}");
     }
     else {
-      //StructDecl sd = cast(StructDecl)(cast(GeneratorType)expr.right.exprType).decl;
       emit(target);
       emit(".__add(() { ");
 
@@ -214,16 +204,11 @@ struct CodeGen {
   }
   void visit(AssignExpr expr) {
     StructDecl owner = findOwnerDecl(expr.left);
-
     String target = expr.left.findTarget();
     generators = findGenerators(expr.right);
 
-/*    String target = expr.left.accept(FindTarget());
-    generators = [];
-    expr.right.accept(this);*/
-
     if (owner) {
-      emit(expr.left.lvalueToString("_"));
+      emit(expr.left.lvalueToString());
       emit("__dg = ");
       emit("null;\n");
     }
@@ -315,10 +300,6 @@ struct CodeGen {
   void visit(RefExpr expr) {
     debug(CodeGen) writefln("RefExpr");
     emit(expr.identifier.value);
-    //return expr.identifier.value;
-    //import duck.compiler.visitors;
-    //writefln("%s %s", expr.decl, expr.decl.accept(ExprPrint()));
-    //return expr.decl.accept(this);
   }
   void visit(ScopeStmt expr) {
     debug(CodeGen) writefln("ScopeStmt");
@@ -329,7 +310,7 @@ struct CodeGen {
   void visit(FieldDecl fieldDecl) {
     emit("  ");
     fieldDecl.typeExpr.accept(this);
-    emit(" _");
+    emit(" ");
     emit(fieldDecl.name.value);
     if (fieldDecl.valueExpr) {
       emit(" = ");
@@ -361,31 +342,25 @@ struct CodeGen {
         foreach(field ; structDecl.symbolsInDefinitionOrder) {
           field.accept(this);
           if (auto fd = cast(FieldDecl)field) {
-            emit("__ConnDg _");
+            emit("__ConnDg ");
             emit(fd.name.value);
             emit("__dg;\n");
           }
         }
         emit("ulong __sampleIndex = ulong.max;\n");
-        emit("__ConnDg[] __connections;\n");
 
         emit("\n");
         emit("void _tick() {\n");
         emit(q{
-          if (__sampleIndex == __idx)
-            return;
-
+          if (__sampleIndex == __idx) return;
           __sampleIndex = __idx;
-          // Process connections
-          /*for (int c = 0; c < __connections.length; ++c) {
-            __connections[c]();
-          }*/
         });
+
         foreach(field ; structDecl.symbolsInDefinitionOrder) {
           if (auto fd = cast(FieldDecl)field) {
-            emit("if (_");
+            emit("if (");
             emit(fd.name.value);
-            emit("__dg) _");
+            emit("__dg) ");
             emit(fd.name.value);
             emit("__dg();\n");
           }
@@ -394,11 +369,6 @@ struct CodeGen {
           emit("tick();\n");
         }
         emit("}\n");
-        /*emit(q{
-          void __add(scope void delegate() @system dg) {
-            __connections ~= dg;
-          }
-        });*/
         emit("}\n");
     }
   }

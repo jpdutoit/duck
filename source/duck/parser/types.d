@@ -107,20 +107,6 @@ final class GeneratorType : Type {
     this.name = name;
   }
 }
-/*
-final class NamedType : Type {
-  mixin TypeMixin;
-  string name;
-  Type realType;
-  this(string name, Type type) {
-    this.name = name;
-    this.realType = type;
-  }
-  override string mangled() const {
-    return name;
-    //return "(" ~ name ~ ":" ~ this.realType.mangled ~ ")";
-  }
-}*/
 
 class FunctionType : Type {
   mixin TypeMixin;

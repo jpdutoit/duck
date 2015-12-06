@@ -18,13 +18,14 @@ alias NodeTypes = AliasSeq!(
   MethodDecl,
   StructDecl,
   AliasDecl,
-  TypeExpr,
   ExprStmt,
   DeclStmt,
   ScopeStmt,
   ImportStmt,
   Stmts,
+  ErrorExpr,
   RefExpr,
+  TypeExpr,
   InlineDeclExpr,
   ArrayLiteralExpr,
   LiteralExpr,
@@ -284,7 +285,21 @@ abstract class Expr : Node {
     _exprType = type;
   }
 
+  override string toString() {
+    import duck.compiler.dbg;
+    return cast(string)this.accept(ExprToString());
+  }
 }
+
+class ErrorExpr : Expr {
+    mixin NodeMixin;
+    Span span;
+    this(Span span) {
+      this.span = span;
+      this.exprType = errorType;
+    }
+}
+
 class ExprStmt : Stmt {
   mixin NodeMixin;
 
@@ -435,76 +450,9 @@ class CallExpr : Expr {
   }
 }
 
-interface IVisitor(T) {
-  alias VisitResultType = T;
-
-  T visit(BinaryExpr expr);
-  T visit(PipeExpr expr);
-  T visit(AssignExpr expr);
-  T visit(UnaryExpr expr);
-  T visit(CallExpr expr);
-
-  T visit(MemberExpr expr);
-  T visit(ImportStmt stmt);
-  T visit(InlineDeclExpr expr);
-  T visit(RefExpr expr);
-  T visit(TypeExpr expr);
-  T visit(DeclStmt stmt);
-  T visit(Decl decl);
-  T visit(MacroDecl decl);
-  T visit(StructDecl decl);
-  T visit(FieldDecl decl);
-  T visit(AliasDecl decl);
-  T visit(MethodDecl decl);
-  T visit(VarDecl decl);
-  T visit(IdentifierExpr expr);
-  T visit(LiteralExpr expr);
-  T visit(ArrayLiteralExpr expr);
-  T visit(Stmts stmt);
-  T visit(ScopeStmt stmt);
-  T visit(ExprStmt stmt);
-  T visit(Program Program);
-}
-
-abstract class Visitor(T) : IVisitor!T {
-  T visit(Node node) {
-    import core.exception;
-    throw __ICE("Visitor " ~ typeof(this).stringof ~ " can not visit node of type " ~ node.classinfo.name);
-  };
-}
-/*
-class NullVisitor(T) : Visitor!T {
-  alias visit = Visitor!T.visit;
-
-  T visit(BinaryExpr expr) { return T.init; }
-  T visit(PipeExpr expr) { return T.init; }
-  T visit(AssignExpr expr) { return T.init; }
-  T visit(UnaryExpr expr) { return T.init; }
-  T visit(CallExpr expr) { return T.init; }
-  T visit(MemberExpr expr) { return T.init; }
-  T visit(InlineDeclExpr expr) { return T.init; }
-  T visit(RefExpr expr) { return T.init; }
-  T visit(TypeExpr expr) { return T.init; }
-  T visit(DeclStmt stmt) { return T.init; }
-  T visit(Decl decl) { return T.init; }
-  T visit(MacroDecl decl) { return T.init; }
-  T visit(StructDecl decl) { return T.init; }
-  T visit(FieldDecl decl) { return T.init; }
-  T visit(AliasDecl decl) { return T.init; }
-  T visit(MethodDecl decl) { return T.init; }
-  T visit(VarDecl decl) { return T.init; }
-  T visit(IdentifierExpr expr) { return T.init; }
-  T visit(ArrayLiteralExpr expr) { return T.init; }
-  T visit(LiteralExpr expr) { return T.init; }
-  T visit(Stmts stmt) { return T.init; }
-  T visit(ScopeStmt stmt) { return T.init; }
-  T visit(ImportStmt stmt) { return T.init; }
-  T visit(ExprStmt stmt) { return T.init; }
-  T visit(Program Program) { return T.init; }
-}*/
-
 auto accept(Visitor)(Node node, auto ref Visitor visitor) {
-  //writefln("Visit %s %s", node.nodeType, node);
+///writefln("Visit %s %s", node.nodeType, node);
+
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
       static if (is(typeof(visitor.visit(cast(NodeType)node))))
@@ -514,10 +462,11 @@ auto accept(Visitor)(Node node, auto ref Visitor visitor) {
       throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
   }
 }
-
+/*
 import std.stdio: writefln;
 import std.typetuple, std.traits;
-/*
+
+
 auto accept(Visitor...)(Node node, auto ref Visitor visitors) if (Visitor.length > 1) {
   template getVisitorResultType(T) {
     alias getVisitorResultType = ReturnType!(&accept!T);//T.VisitResultType;
