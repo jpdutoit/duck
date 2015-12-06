@@ -1,0 +1,23 @@
+generator Phasor {
+  frequency freq = 440 hz;
+  mono phase = 0;
+  mono output = 0;
+  frequency input : this.freq;
+
+  function tick() {
+    output = phase;
+    phase = (phase + (input / SAMPLE_RATE)) % 1.0;
+  }
+
+  function reset() {
+    phase = 0;
+  }
+}
+
+
+Phasor p1();
+// This should actually print an error:
+p1.freq >> Phasor(1);
+p1.freq >> Phasor;
+
+p1.reset();

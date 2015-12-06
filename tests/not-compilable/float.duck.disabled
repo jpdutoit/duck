@@ -1,0 +1,7 @@
+float a = "hello";
+/*
+OUTPUT:
+---
+not-compilable/float.duck(1:11-17): Error: Cannot assign a string to a float
+---
+*/

@@ -1,0 +1,13 @@
+generator AA {
+  frequency output;
+}
+
+hz(10, 20);
+hz(AA.output);
+/**
+OUTPUT:
+---
+not-compilable/functions.duck(5:1-9): Error: Wrong number of arguments
+not-compilable/functions.duck(6:4-12): Error: Cannot implicity convert argument of type frequency to number
+---
+*/

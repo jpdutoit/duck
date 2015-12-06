@@ -1,0 +1,11 @@
+/*
+OUTPUT:
+---
+not-compilable/undefined-identifier.duck(9:1): Error: Undefined identifier a
+not-compilable/undefined-identifier.duck(10:1-3): Error: Undefined identifier foo
+not-compilable/undefined-identifier.duck(11:1-5): Error: Undefined identifier bar12
+---
+*/
+a;
+foo;
+bar12;

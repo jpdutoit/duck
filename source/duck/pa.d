@@ -1,12 +1,10 @@
 module duck.pa;
 version(USE_PORT_AUDIO):
 
-import duck.scheduler;
+import duck.runtime, duck.stdlib;
 
 import deimos.portaudio;
-import std.stdio;
 import duck.global;
-import std.conv;
 
 struct Audio
 {
@@ -17,21 +15,21 @@ struct Audio
   }
 
   void write(void* buffer) {
-    import std.string : fromStringz;
     //writefln("%s", framesToWriteWithoutBlocking());
     PaError err = Pa_WriteStream( stream, buffer, 64);
     if (err != paNoError) {
-      stderr.write("write.error ");
-      stderr.writeln(Pa_GetErrorText(err).fromStringz);
+      print("write.error ");
+      print(Pa_GetErrorText(err));
+      print("\n");
     }
   }
 
   void read(void *buffer) {
-    import std.string : fromStringz;
     PaError err = Pa_ReadStream( stream, buffer, 64 );
     if (err != paNoError) {
-      stderr.write("read.error ");
-      stderr.writeln(Pa_GetErrorText(err).fromStringz);
+      print("read.error ");
+      print(Pa_GetErrorText(err));
+      print("\n");
 
     }
   }
@@ -49,9 +47,10 @@ struct Audio
     return;
 
    Lerror:
-      import std.string : fromStringz;
-      stderr.write("done.error ");
-      stderr.writeln(Pa_GetErrorText(err).fromStringz);
+
+      print("done.error ");
+      print(Pa_GetErrorText(err));
+      print("\n");
   }
 
   void init() {
@@ -67,18 +66,25 @@ struct Audio
                                     null)) != paNoError
       || (err = Pa_StartStream(stream)) != paNoError)
     {
-      import std.string : fromStringz;
-      halt("Error opening audio stream: "~ Pa_GetErrorText(err).fromStringz.idup);
-      stderr.write("init.error ");
-      stderr.writeln(Pa_GetErrorText(err).fromStringz);
+      print("Error opening audio stream: ");
+      print(Pa_GetErrorText(err));
+      print("\n");
+      halt();
       return;
     }
 
     const PaStreamInfo* info = Pa_GetStreamInfo(stream);
-    log("Audiosample rate " ~ info.sampleRate.to!string);
-
+    /*
+    print("Audio sample rate ");
+    print(info.sampleRate);
+    print("\n");
+    */
     if (SAMPLE_RATE.value != info.sampleRate) {
-      halt("Requested sample rate (" ~ SAMPLE_RATE.value.to!string ~ ") not available for audio output.");
+      print("Requested sample rate (");
+      print(SAMPLE_RATE.value);
+      print("not available for audio output.");
+      print("\n");
+      halt();
     }
     //
     now.samples = Pa_GetStreamTime(stream) * SAMPLE_RATE.value;

@@ -1,0 +1,13 @@
+extern generator A {
+  float input;
+  float output;
+}
+
+
+A >> A;
+A.output >> A.input;
+A >> A.input;
+A.output >> A;
+
+A >> A >> A >> A;
+A + A >> A;

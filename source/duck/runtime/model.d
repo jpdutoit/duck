@@ -1,6 +1,43 @@
 module duck.runtime.model;
 
-public import duck.runtime.registry;
+
+alias TickDg = void delegate();
+
+struct UGenRegistry {
+  static void*[void*] all;
+  static TickDg[void*]endPoints;
+
+  static void register(T)(T* obj) {
+    if (obj !in all) {
+      //writefln("Register UGEN: %s %s %s", T.stringof, obj, T.isEndPoint); stdout.flush();
+      static if (is(typeof(&obj._tick))) {
+        if (T.isEndPoint)
+          endPoints[obj] = &obj._tick;
+      }
+      all[obj] = cast(void*)obj;
+    }
+  }
+
+  static void register(void* obj, TickDg dg) {
+    if (obj !in all) {
+      import duck.runtime;
+      //print("Register UGEN:");
+      endPoints[obj] = dg;
+      all[obj] = obj;
+    }
+  }
+
+  static void deregister(void* obj) {
+    if (obj in all) {
+      all.remove(obj);
+      endPoints.remove(obj);
+    }
+
+  }
+};
+
+__gshared ulong __idx = 0;
+
 
 mixin template UGEN(Impl) {
 public:
@@ -12,30 +49,35 @@ public:
     static enum opDispatch = false;
   }
 
-  alias void delegate(ulong) __ConnDg;
+  alias scope void delegate() @system __ConnDg;
 
   ulong __sampleIndex = ulong.max;
   __ConnDg[] __connections;
 
-  void __tick(ulong nextSampleIndex) {
-    //writefln("sampleIndex=%s, nextSampleIndex=%s, connections.length=%s", __sampleIndex, nextSampleIndex,  __connections.length);
-    if (__sampleIndex == nextSampleIndex)
+  void _tick(/*ulong nextSampleIndex*/) {
+    //print("ttt ", __sampleIndex, "   ", __idx, " \n");
+    // Only tick if we haven't previously
+    if (__sampleIndex == __idx)
       return;
 
-    __sampleIndex = nextSampleIndex;
+
+    __sampleIndex = __idx;
+
     // Process connections
     for (int c = 0; c < __connections.length; ++c) {
-      __connections[c](nextSampleIndex);
-      //__connections[c].execute(nextSampleIndex);
+      __connections[c]();
     }
-    //writefln("%s", s);
+
     static if (is(typeof(&this.tick))) {
       tick();
     }
   }
 
-  void __add(__ConnDg dg) {
-    UGenRegistry.register(&this);
+  void __add(scope void delegate() @system dg) {
+    //UGenRegistry.register(&this);
+    if (this.isEndPoint)
+      UGenRegistry.register(cast(void*)&this, &this._tick);
     __connections ~= dg;
   }
 }
+alias scope void delegate() @system __ConnDg;

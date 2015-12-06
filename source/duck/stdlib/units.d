@@ -2,12 +2,9 @@ module duck.stdlib.units;
 
 import duck.stdlib;
 
-import std.string : format;
-import std.math;
 import core.time;
-import std.traits: isNumeric;
 
-import duck.runtime.model, duck.global;
+import duck.runtime, duck.runtime.model, duck.global;
 
 alias mono = float;
 alias stereo = float[2];
@@ -19,6 +16,7 @@ auto scale(double min, double max, T)(T t, range r)
   return (t - min) / (max-min) * (r[1]-r[0]) + r[0];
 }
 
+nothrow:
 /*struct Range(T) {
   T min;
   T max;
@@ -66,9 +64,6 @@ struct Time {
   int opCmp(Time other) {
     return samples < other.samples ? -1 : samples > other.samples ? 1 : 0;
   }
-  string toString() {
-    return format("%fs (%f samples)", samples / SAMPLE_RATE, samples);
-  }
 }
 
 struct Duration {
@@ -91,9 +86,6 @@ struct Duration {
   }*/
   int opCmp(Duration other) {
     return samples < other.samples ? -1 : samples > other.samples ? 1 : 0;
-  }
-  string toString() {
-    return format("%fs (%s samples)", samples / SAMPLE_RATE, samples);
   }
   mixin UnitOperators mix;
 };
@@ -132,6 +124,12 @@ Note note(float n) {
   return Note(n);
 }
 
+enum isNumber(T) = false;
+enum isNumber(T : float) = true;
+enum isNumber(T : double) = true;
+enum isNumber(T : int) = true;
+enum isNumber(T : long) = true;
+
 mixin template UnitOperators() {
   auto opBinary(string op)(auto ref typeof(this) rhs) if (op=="+" || op=="-"){
     pragma(inline, true);
@@ -144,21 +142,21 @@ mixin template UnitOperators() {
   }
 
   auto opBinary(string op, T)(auto ref T rhs)
-    if (isNumeric!T)
+    if (isNumber!T)
   {
     pragma(inline, true);
     return typeof(this)(mixin("this.value"~op~"rhs"));
   }
 
   auto opBinaryRight(string op, T)(auto ref T lhs)
-    if (isNumeric!T)
+    if (isNumber!T)
   {
     pragma(inline, true);
     return typeof(this)(mixin("lhs"~op~"this.value"));
   }
 
   auto opCast(T)()
-    if (isNumeric!T)
+    if (isNumber!T)
   {
     pragma(inline, true);
     return cast(T)value;
@@ -179,15 +177,15 @@ struct frequency {
   static opCall(Note n) {
     pragma(inline, true);
     frequency freq;
-    freq.value = 440 * pow(2, n.index - 49);;
+    freq.value = 440 * powf(2, n.index - 49);;
     return freq;
   }
 
   /*this(float f) {
-  	value = f;
+    value = f;
   }
   this(Note n) {
-  	value = 440 * pow(2, n.index - 49);
+    value = 440 * pow(2, n.index - 49);
   }*/
 
   /*void opAssign(Note n) {
@@ -201,8 +199,8 @@ struct frequency {
 }
 
 unittest {
-	assert(note(49).index == 49);
-	assert(frequency(note(49)) == 440.hz);
+  assert(note(49).index == 49);
+  assert(frequency(note(49)) == 440.hz);
 }
 
 frequency hz(float f) {

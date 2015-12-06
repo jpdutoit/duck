@@ -7,45 +7,45 @@ import std.stdio : writeln, writefln;
 import core.time: dur;
 
 struct Server {
-	TcpSocket listener;
-	Socket client;
-	SocketSet socketSet;
+  TcpSocket listener;
+  Socket client;
+  SocketSet socketSet;
 
-	void stop() {
-		if (listener) {
-			writefln("Stop listening.");
-			listener.shutdown(SocketShutdown.BOTH);
-	        listener.close();
-	        assert(!listener.isAlive);
-	        listener = null;
-	    }
-	}
+  void stop() {
+    if (listener) {
+      writefln("Stop listening.");
+      listener.shutdown(SocketShutdown.BOTH);
+          listener.close();
+          assert(!listener.isAlive);
+          listener = null;
+      }
+  }
 
-	void start(ushort port)
-	{   
-	    listener = new TcpSocket();
-	    assert(listener.isAlive);
-	    listener.blocking = false;
-	    listener.bind(new InternetAddress(port));
-	    listener.setOption(SocketOptionLevel.IP, SocketOption.REUSEADDR, true);
-	    listener.listen(1);
+  void start(ushort port)
+  {   
+      listener = new TcpSocket();
+      assert(listener.isAlive);
+      listener.blocking = false;
+      listener.bind(new InternetAddress(port));
+      listener.setOption(SocketOptionLevel.IP, SocketOption.REUSEADDR, true);
+      listener.listen(1);
 
-	   	socketSet = new SocketSet(1);
+       socketSet = new SocketSet(1);
 
-	    writefln("Listening on port %d.", port);
-	}
+      writefln("Listening on port %d.", port);
+  }
 
-	void update() {
-		if (client) {
-			char[1024*16] buf;
-			auto length = client.receive(buf[]);
-			if (length == Socket.ERROR) {
-				//writefln("Connection Error.");
-			} 
-			else if (length != 0) {
-				writefln("Received %d bytes from %s: \"%s\"", length, client.remoteAddress().toString(), buf[0..length]);	
-			}
-			else {
+  void update() {
+    if (client) {
+      char[1024*16] buf;
+      auto length = client.receive(buf[]);
+      if (length == Socket.ERROR) {
+        //writefln("Connection Error.");
+      } 
+      else if (length != 0) {
+        writefln("Received %d bytes from %s: \"%s\"", length, client.remoteAddress().toString(), buf[0..length]);  
+      }
+      else {
                 try
                 {
                     // if the connection closed due to an error, remoteAddress() could fail
@@ -62,24 +62,24 @@ struct Server {
         }
 
         if (!client) {
-        	socketSet.reset();
-        	socketSet.add(listener);
-        	if (Socket.select(socketSet, null, null, dur!"seconds"(0)) > 0) {
-	        	client = listener.accept();
-	        	scope (failure) {
-	        		writefln("Error accepting");
-	        		if (client) {
-	        			client.close();
-	        			client = null;
-	        		}
-	        	}
+          socketSet.reset();
+          socketSet.add(listener);
+          if (Socket.select(socketSet, null, null, dur!"seconds"(0)) > 0) {
+            client = listener.accept();
+            scope (failure) {
+              writefln("Error accepting");
+              if (client) {
+                client.close();
+                client = null;
+              }
+            }
 
-	        	client.blocking = false;
-	       
-	            assert(client.isAlive);
-	            assert(listener.isAlive);
-	        }
+            client.blocking = false;
+         
+              assert(client.isAlive);
+              assert(listener.isAlive);
+          }
         }
-	}
+  }
 }
 

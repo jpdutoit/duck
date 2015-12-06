@@ -1,0 +1,8 @@
+extern generator Assert {
+  mono input;
+  mono output;
+}
+
+/**
+OPTIONS: --no-port-audio
+*/

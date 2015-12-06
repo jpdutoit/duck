@@ -1,0 +1,31 @@
+import "assert";
+
+generator A {
+  mono output = 10;
+}
+
+A >> Assert(10);
+A >> Assert(20);
+
+
+generator B {
+  mono output = 0;
+  function tick() {
+    output = output + 1;
+  }
+}
+
+B >> Assert([1,2,3,4,5]);
+B >> Assert([1,2,3,4,0]);
+
+now += 10 samples;
+
+/*
+OPTIONS: --no-port-audio
+OUTPUT:
+---
+(8) Expected [20.000000], got [10.000000] at index 0
+(19) Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
+(18) Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
+---
+*/

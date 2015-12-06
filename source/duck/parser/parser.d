@@ -1,293 +1,357 @@
 module duck.compiler.parser;
 
-import duck.compiler.token;
 import duck.compiler.lexer;
 import duck.compiler.ast;
 import duck.compiler.types;
+import duck.compiler.context;
+import duck.compiler.buffer;
 
 
 struct Parser {
-	enum Precedence {
-		Call = 140,
-		MemberAccess = 140,
-		Unary = 120,
-		Multiplicative = 110,
-		Additive = 100,
-		Assignment = 30,
-		Pipe  = 20
-	};
+/*
+  this(Context context, String input) {
+      this.context = context;
+      lexer = Lexer(context, input);
+  }
+*/
 
-	int rightAssociative(Token t) {
-		switch (t.type) {
-			case Symbol!"+=":;
-			case Symbol!"=": return true;
-			default:
-				return false;
-		}
-	}
+  this(Context context, Buffer buffer) {
+      this.context = context;
+      lexer = Lexer(context, buffer);
+  }
 
-	int precedence(Token t) {
-		switch (t.type) {
-			case Identifier: return Precedence.Call;
-			case Symbol!"(": return Precedence.Call;
-			case Symbol!".": return Precedence.MemberAccess;
-			case Symbol!"*": return Precedence.Multiplicative;
-			case Symbol!"/": return Precedence.Multiplicative;
-			case Symbol!"%": return Precedence.Multiplicative;
-			case Symbol!"+": return Precedence.Additive;
-			case Symbol!"-": return Precedence.Additive;
-			case Symbol!"=>": return Precedence.Pipe;
-			case Symbol!"=<": return Precedence.Pipe;
-			case Symbol!"=": return Precedence.Assignment;
-			case Symbol!"+=": return Precedence.Assignment;
-			default:
-			return -1;
-		}
-	}
 
-	Lexer lexer;
-	ParseError[] errors;
 
-	this(String input) {
-		lexer = Lexer(input);
-	}
+  enum Precedence {
+    Call = 140,
+    MemberAccess = 140,
+    Unary = 120,
+    Multiplicative = 110,
+    Additive = 100,
+    Assignment = 30,
+    Pipe  = 20
+  };
 
-	Token expect(Token.Type tokenType, string message) {
-		writefln("Expected %s found %s", tokenType, lexer.front.type);
-		Token token = lexer.consume(tokenType);
-		if (!token) {
-			errors ~= new ParseError(lexer.front, message);
-			import std.conv : to;
-			throw new Exception("(" ~ lexer.input.lineNumber().to!string ~ ") " ~ message ~ " not '" ~ lexer.front.value.idup ~ "'");
-			return None;
-		}
-		return token;
-	}
+  Context context;
 
-	T expect(T)(T node, string message) if (is(T: Node)) {
-		if (!node) {
-			errors ~= new ParseError(lexer.front, message);
-			import std.conv : to;
-			throw new Exception("(" ~ lexer.input.lineNumber().to!string ~ ") " ~ message);
-		}
-		return node;
-	}
+  @disable this();
 
-	ArrayLiteralExpr parseArrayLiteral() {
-		auto token = lexer.front;
-		if (lexer.consume(Symbol!"[")) {
-			Expr[] exprs;
-			if (lexer.front.type != Symbol!"]") {
-				exprs ~= expect(parseExpression(), "Expression expected");
-				while (lexer.consume(Symbol!",")) {
-					exprs ~= expect(parseExpression(), "Expression expected");
-				}
-			}
-			expect(Symbol!"]", "Expected ']'");
-			return new ArrayLiteralExpr(exprs);
-		}
-		return null;
-	}
-	Expr parsePrefix() {
-		switch (lexer.front.type) {
-				case Symbol!"[":
-					return expect(parseArrayLiteral(), "Expected array literal.");
-				default: break;
-		}
 
-		Token token = lexer.consume();
-		switch(token.type) {
-			case Number: {
-				Expr literal = new LiteralExpr(token);
-				// Unit parsing
-				if (lexer.front.type == Identifier) {
-					return new CallExpr(new IdentifierExpr(lexer.consume), [literal]);
-				}
-				return literal;
-			}
-			case StringLiteral:
-				return new LiteralExpr(token);
-			case Identifier:
-				return new IdentifierExpr(token);
-			case Symbol!"(": {
-				// Grouping parentheses
-				Expr expr = parseExpression();
-				expect(Symbol!")", "Expected ')'");
-				return expr;
-				break;
-			}
-			case Symbol!"+":
-			case Symbol!"-":
-				return new UnaryExpr(token, parseExpression(Precedence.Unary - 1));
-			default: break;
-		}
-		return null;
-	}
+  int rightAssociative(Token t) {
+    switch (t.type) {
+      case Tok!"+=":;
+      case Tok!"=": return true;
+      default:
+        return false;
+    }
+  }
 
-	CallExpr parseCall(Expr target) {
-		Expr[] arguments;
-		if (lexer.front.type != Symbol!")") {
-			arguments ~= parseExpression();
-			while (lexer.consume(Symbol!",")) {
-				arguments ~= parseExpression();
-			}
-		}
-		expect(Symbol!")", "Expected ')'");
-		return new CallExpr(target, arguments);
-	}
+  int precedence(Token t) {
+    switch (t.type) {
+      case Identifier: return Precedence.Call;
+      case Tok!"(": return Precedence.Call;
+      case Tok!".": return Precedence.MemberAccess;
+      case Tok!"*": return Precedence.Multiplicative;
+      case Tok!"/": return Precedence.Multiplicative;
+      case Tok!"%": return Precedence.Multiplicative;
+      case Tok!"+": return Precedence.Additive;
+      case Tok!"-": return Precedence.Additive;
+      case Tok!">>": return Precedence.Pipe;
+      case Tok!"=<": return Precedence.Pipe;
+      case Tok!"=": return Precedence.Assignment;
+      case Tok!"+=": return Precedence.Assignment;
+      default:
+      return -1;
+    }
+  }
 
-	Expr parsePostfix(Expr left) {
-		Token token = lexer.consume();
-		//writefln("parseInfix: %s", token.value);
-		int prec = precedence(token) + (rightAssociative(token) ? -1 : 0);
-		switch (token.type) {
-			case Identifier: {
-				// Inline declaration
-				CallExpr ctor;
-				if (lexer.consume(Symbol!"(")) {
-					ctor = parseCall(left);
-				} else {
-					ctor = new CallExpr(left, []);
-				}
-				return new InlineDeclExpr(token, new DeclStmt(token, new VarDecl(left, token), ctor));
-				//return new InlineDeclExpr(token, new DeclStmt(token, new VarDecl(new NamedType(token, null)), ctor));
-				break;
-			}
-			case Symbol!"(":
-				// Call parenthesis
-				return parseCall(left);
-			case Symbol!".": {
-				//writefln("%s %s", Identifier, Identifier);
-				Token identifier = expect(Identifier, "Expected identifier following '.'");
-				if (identifier) {
-					return new MemberExpr(left, identifier);
-				}
-				break;
-			}
-			case Symbol!"=":
-			case Symbol!"+=":
-				return new AssignExpr(token, left, parseExpression(prec));
-			case Symbol!"=>":
-				return new PipeExpr(token, left, parseExpression(prec));
-			case Symbol!"+":
-			case Symbol!"-":
-			case Symbol!"*":
-			case Symbol!"/":
-			case Symbol!"%":
-				return new BinaryExpr(token, left, parseExpression(prec));
-				//return factory.binaryOp(token, left, parseExpression(prec));
-			default: break;
-		}
+  Lexer lexer;
 
-		return null;
-	}
+  Token expect(Token.Type tokenType, string message) {
+    //writefln("Expected %s found %s", tokenType, lexer.front.type);
+    Token token = lexer.consume(tokenType);
+    if (!token) {
+      context.error(lexer.front.span, "%s not '%s'", message, lexer.front.value);
 
-	Expr parseExpression(int minPrecedence = 0) {
-		//writefln("parseExpression: %s %s", lexer.front, minPrecedence);
-		Expr left = parsePrefix();
-		if (!left) return left;
-		//writefln("Left: %s %s", left, lexer.front);
+      return None;
+    }
+    return token;
+  }
 
-		while (precedence(lexer.front) > minPrecedence) {
-			left = parsePostfix(left);
-			//writefln("Left: %s %s", left, lexer.front);
-		}
-		return left;
-	}
+  T expect(T)(T node, string message) if (is(T: Node)) {
+    if (!node) {
+      import std.conv : to;
+      context.error(lexer.front.span, message);
+      import core.stdc.stdlib : exit;
+      exit(2);
+    }
+    return node;
+  }
 
-	Stmt parseBlock() {
-		if (lexer.front.type == Symbol!"{") {
-			lexer.consume();
-			Stmt statements = parseStatements();
-			lexer.expect(Symbol!"}", "Expected '}'");
-			return statements;
-		}
-		return null;
-	}
+  ArrayLiteralExpr parseArrayLiteral() {
+    auto token = lexer.front;
+    if (lexer.consume(Tok!"[")) {
+      Expr[] exprs;
+      if (lexer.front.type != Tok!"]") {
+        exprs ~= expect(parseExpression(), "Expression expected");
+        while (lexer.consume(Tok!",")) {
+          exprs ~= expect(parseExpression(), "Expression expected");
+        }
+      }
+      expect(Tok!"]", "Expected ']'");
+      return new ArrayLiteralExpr(exprs);
+    }
+    return null;
+  }
+  Expr parsePrefix() {
+    switch (lexer.front.type) {
+        case Tok!"[":
+          return expect(parseArrayLiteral(), "Expected array literal.");
+        default: break;
+    }
 
-	FieldDecl parseField() {
-		Token type = expect(Identifier, "Identifier expected");
-		Token name = expect(Identifier, "Field name expected");
+    Token token = lexer.front;
+    switch(token.type) {
+      case Number: {
+        lexer.consume;
+        Expr literal = new LiteralExpr(token);
+        // Unit parsing
+        if (lexer.front.type == Identifier) {
+          return new CallExpr(new IdentifierExpr(lexer.consume), [literal]);
+        }
+        return literal;
+      }
+      case StringLiteral:
+        lexer.consume;
+        return new LiteralExpr(token);
+      case Identifier:
+        lexer.consume;
+        return new IdentifierExpr(token);
+      case Tok!"(": {
+        lexer.consume;
+        // Grouping parentheses
+        Expr expr = parseExpression();
+        expect(Tok!")", "Expected ')'");
+        return expr;
+      }
+      case Tok!"+":
+      case Tok!"-":
+        lexer.consume;
+        return new UnaryExpr(token, parseExpression(Precedence.Unary - 1));
+      default: break;
+    }
+    return null;
+  }
 
-		return new FieldDecl(new IdentifierExpr(type), name);
-		//return new FieldDecl(new NamedType(type.value.idup, new StructType(type)), name);
-	}
+  CallExpr parseCall(Expr target) {
+    Expr[] arguments;
+    if (lexer.front.type != Tok!")") {
+      arguments ~= parseExpression();
+      while (lexer.consume(Tok!",")) {
+        arguments ~= parseExpression();
+      }
+    }
+    expect(Tok!")", "Expected ')'");
+    return new CallExpr(target, arguments);
+  }
 
-	void parseGenerator() {
-		bool isExtern = lexer.consume(Reserved!"extern") != None;
-		lexer.expect(Reserved!"generator", "Expected generator");
-		Token ident = expect(Identifier, "Expected identifier");
-		expect(Symbol!"{", "Expected '}'");
-		FieldDecl fields[];
-		while (lexer.front.type != Symbol!"}") {
-			fields ~= parseField();
-			lexer.expect(Symbol!";", "Expected ';'");
-		}
-		expect(Symbol!"}", "Expected '}'");
-		//new NamedType(ident.value.idup, new GeneratorType())
-		auto generator = new GeneratorType(ident);
-		Decl decl = new StructDecl(generator, ident, fields);
-		generator.decl = decl;
-		decls ~= decl;
-	}
+  Expr parsePostfix(Expr left) {
+    if (cast(InlineDeclExpr)left && lexer.front.type == Identifier) {
+      return null;
+    }
+    Token token = lexer.front;
+    //writefln("parseInfix: %s", token.value);
+    int prec = precedence(token) + (rightAssociative(token) ? -1 : 0);
+    switch (token.type) {
+      case Identifier: {
+        lexer.consume;
+        // Inline declaration
+        CallExpr ctor;
+        if (lexer.consume(Tok!"(")) {
+          ctor = parseCall(left);
+        } else {
+          ctor = new CallExpr(left, []);
+        }
+        return new InlineDeclExpr(token, new DeclStmt(token, new VarDecl(left, token), ctor));
+      }
+      case Tok!"(":
+        lexer.consume;
+        // Call parenthesis
+        return parseCall(left);
+      case Tok!".": {
+        lexer.consume;
+        //writefln("%s %s", Identifier, Identifier);
+        Token identifier = expect(Identifier, "Expected identifier following '.'");
+        return new MemberExpr(left, identifier);
+      }
+      case Tok!"=":
+      case Tok!"+=":
+        lexer.consume;
+        return new AssignExpr(token, left, parseExpression(prec));
+      case Tok!">>":
+        lexer.consume;
+        return new PipeExpr(token, left, parseExpression(prec));
+      case Tok!"+":
+      case Tok!"-":
+      case Tok!"*":
+      case Tok!"/":
+      case Tok!"%":
+        lexer.consume;
+        return new BinaryExpr(token, left, parseExpression(prec));
+        //return factory.binaryOp(token, left, parseExpression(prec));
+      default: break;
+    }
 
-	ImportStmt parseImport() {
-		lexer.expect(Reserved!"import", "Expected import");
-		Token ident = expect(Identifier, "Expected identifier");
-		lexer.expect(Symbol!";", "Expected ';'");
-		return new ImportStmt(ident);
-	}
+    return null;
+  }
 
-	Stmt parseStatement() {
-		switch (lexer.front.type) {
-			case Reserved!"import":
-				return parseImport();
-			case Reserved!"extern":
-			case Reserved!"generator":
-				parseGenerator();
-				return parseStatement();
-			case Symbol!"{":
-			  // Block statement
-				return expect(parseBlock(), "Block expected");
-			default: {
-				// Expression statements
-				Expr expr = parseExpression();
-				if (expr) {
-					lexer.expect(Symbol!";", "Expected ';'");
-					return new ExprStmt(expr);
-				}
-				return null;
-			}
-		}
-	}
+  Expr parseExpression(int minPrecedence = 0) {
+    //writefln("parseExpression: %s %s", lexer.front, minPrecedence);
+    Expr left = parsePrefix();
+    if (!left) return left;
+    //writefln("Left: %s %s", left, lexer.front);
 
-	Stmt parseStatements(bool createScope = true) {
-		Stmt[] statements;
-		while (true) {
-			Stmt stmt = parseStatement();
-			if (!stmt)
-				break;
-			statements ~= stmt;
-		}
-		Stmts stmts = new Stmts(statements);
-		return createScope ? new ScopeStmt(stmts) : stmts;
-	}
+    while (precedence(lexer.front) > minPrecedence) {
+      auto newLeft = parsePostfix(left);
+      if (!newLeft) return left;
+      left = newLeft;
+      //writefln("Left: %s %s", left, lexer.front);
+    }
+    return left;
+  }
 
-	Program parseModule() {
-		auto prog = new Program([parseStatements()], decls);
-		lexer.expect(EOF, "Expected end of file");
-		return prog;
-	}
+  Stmt parseBlock() {
+    if (lexer.front.type == Tok!"{") {
+      lexer.consume();
+      Stmt statements = parseStatements();
+      lexer.expect(Tok!"}", "Expected '}'");
+      return statements;
+    }
+    return null;
+  }
 
-	Decl[] decls;
-}
+  /*Token token(Token.Type type, String s) {
 
-class ParseError {
-	Token token;
-	String message;
+    return Token(type, s, 0, cast(int)(s.length));
+  }*/
 
-	this(Token token, String message) {
-		this.token = token;
-		this.message = message;
-	}
+  Decl parseField(StructDecl structDecl)
+  {
+    Token type = expect(Identifier, "Identifier expected");
+    Token name = expect(Identifier, "Field name expected");
+
+    if (!type && !name) return null;
+    if (!structDecl.external && lexer.consume(Tok!"=")) {
+      // Handle init values
+      Expr value = expect(parseExpression(), "Expression expected.");
+      return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, value);
+    }
+    else if (lexer.consume(Tok!":")) {
+      Expr target = expect(parseExpression(), "Expression expected.");
+      Token thisToken = context.token(Identifier, "this");
+      return new MacroDecl(new IdentifierExpr(type), name, [new RefExpr(thisToken, structDecl)], [thisToken], target);
+      //return new AliasDecl(new IdentifierExpr(type), name, target, structDecl);
+    }
+
+    return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, null);
+    //return new FieldDecl(new NamedType(type.value.idup, new StructType(type)), name);
+  }
+
+  MethodDecl parseMethod(StructDecl structDecl)
+  {
+    if (!expect(Tok!"function", "Expected keyword function"))
+      return null;
+    Token name = expect(Identifier, "Expected identifier");
+    expect(Tok!"(", "Expected '('");
+    expect(Tok!")", "Expected ')'");
+    Stmt methodBody;
+    if (structDecl.external) {
+      expect(Tok!";", "Expected ';'");
+    } else {
+      methodBody = expect(parseBlock(), "Expected function body");
+    }
+    return new MethodDecl(new FunctionType(voidType, []), name, methodBody, structDecl);
+  }
+
+  void parseGenerator() {
+    bool isExtern = lexer.consume(Tok!"extern") != None;
+    lexer.expect(Tok!"generator", "Expected generator");
+    Token ident = expect(Identifier, "Expected identifier");
+    expect(Tok!"{", "Expected '}'");
+
+    auto generator = new GeneratorType(ident);
+    StructDecl structDecl = new StructDecl(generator, ident);
+    generator.decl = structDecl;
+    structDecl.external = isExtern;
+
+    while (lexer.front.type != Tok!"}") {
+      if (lexer.front.type == Tok!"function") {
+        MethodDecl method = parseMethod(structDecl);
+        structDecl.define(method.name, method);
+      } else {
+        Decl field = parseField(structDecl);
+        if (!field) break;
+        structDecl.define(field.name, field);
+        lexer.expect(Tok!";", "Expected ';'");
+      }
+    }
+    expect(Tok!"}", "Expected '}'");
+
+    //new NamedType(ident.value.idup, new GeneratorType())
+
+    decls ~= structDecl;
+  }
+
+  ImportStmt parseImport() {
+    lexer.expect(Tok!"import", "Expected import");
+    Token ident;
+    ident = expect(StringLiteral, "Expected library name");
+    if (!ident) return null;
+    lexer.expect(Tok!";", "Expected ';'");
+    return new ImportStmt(ident);
+  }
+
+  Stmt parseStatement() {
+    switch (lexer.front.type) {
+      case Tok!"import":
+        return parseImport();
+      case Tok!"extern":
+      case Tok!"generator":
+        parseGenerator();
+        return parseStatement();
+      case Tok!"{":
+        // Block statement
+        return expect(parseBlock(), "Block expected");
+      default: {
+        // Expression statements
+        Expr expr = parseExpression();
+        if (expr) {
+          lexer.expect(Tok!";", "Expected ';'");
+          while (lexer.consume(Tok!";")) {}
+          return new ExprStmt(expr);
+        }
+        return null;
+      }
+    }
+  }
+
+  Stmt parseStatements(bool createScope = true) {
+    Stmt[] statements;
+    while (true) {
+      Stmt stmt = parseStatement();
+      if (!stmt)
+        break;
+      statements ~= stmt;
+    }
+    Stmts stmts = new Stmts(statements);
+    return createScope ? new ScopeStmt(stmts) : stmts;
+  }
+
+  Program parseModule() {
+    auto prog = new Program([parseStatements()], decls);
+    lexer.expect(EOF, "Expected end of file");
+    return prog;
+  }
+
+  Decl[] decls;
 }

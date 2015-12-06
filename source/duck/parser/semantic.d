@@ -1,14 +1,13 @@
 module duck.compiler.semantic;
 
-import duck.compiler.ast, duck.compiler.token, duck.compiler.types, duck.compiler.transforms;
-import duck.compiler.visitors;
+import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types, duck.compiler.transforms;
+import duck.compiler.visitors, duck.compiler.context;
+import duck.compiler.scopes;
+import duck.compiler;
 
 alias String = const(char)[];
 
-
-Token token(Token.Type type, String s) {
-  return Token(type, s, 0, cast(int)(s.length));
-}
+//debug = Semantic;
 
 struct OperatorTypeMap
 {
@@ -33,72 +32,61 @@ struct OperatorTypeMap
   }
 }
 
-
-interface Scope {
-  Decl lookup(String identifier);
-  void define(String identifier, Decl decl);
+bool hasError(Expr expr) {
+  return expr.exprType == errorType;
 }
 
-class DeclTable : Scope {
-  Decl[String] symbols;
-
-  void define(String identifier, Decl decl) {
-    if (identifier in symbols) {
-      throw new Error("Cannot redefine " ~ identifier.idup);
-    }
-    symbols[identifier] = decl;
-  }
-
-  Decl lookup(String identifier) {
-    if (identifier in symbols) {
-      return symbols[identifier];
-    }
-    return null;
-  }
+bool hasType(Expr expr) {
+  return expr._exprType !is null;
 }
 
-class SymbolTable {
-		Decl[String] symbols;
-		SymbolTable parent;
-
-		this(SymbolTable parent) {
-			this.parent = parent;
-		}
-
-		void define(String identifier, Decl decl) {
-      if (identifier in symbols) {
-        throw new Error("Cannot redefine " ~ identifier.idup);
-      }
-			symbols[identifier] = decl;
-		}
-
-		Decl lookup(String identifier, bool recurse = true) {
-			if (identifier in symbols) {
-				return symbols[identifier];
-			}
-			if (recurse && parent) return parent.lookup(identifier);
-			return null;
-		}
-
-		void print() {
-			foreach (String name, Decl decl; symbols) {
-				if (cast(VarDecl)decl) {
-					writefln("var %s = %s ", name, mangled(decl.declType));
-				} else {
-					writefln("type %s = %s %s", name, mangled(decl.declType), decl);
-				}
-			}
-		}
+auto taint(Expr expr) {
+  expr.exprType = errorType;
+  return expr;
 }
+auto taint(Decl decl) {
+  decl.declType = errorType;
+  return decl;
+}
+
 
 class SemanticAnalysis : TransformVisitor {
 
+  debug(Semantic) {
+    enum string PAD = "                                                                                ";
+    static string padding(int __depth) { return PAD[0..__depth*4]; }
+
+    void log(T...)(string where, T t) {
+      import std.stdio : write, writeln;
+      write(padding(depth), where, " ");
+      foreach(tt; t) {
+        write(" ", tt);
+      }
+      writeln();
+    }
+  }
+
   OperatorTypeMap typeMap;
 
-	SymbolTable globalScope;
-	SymbolTable[] scopes;
+  SymbolTable symbolTable;
+  Scope globalScope;
+  string sourcePath;
+  //SymbolTable globalScope;
+  //SymbolTable[] scopes;
 
-  this() {
+  Context context;
+
+  int errors = 0;
+
+  this(Context context, string sourcePath) {
+    this.symbolTable = new SymbolTable();
+    this.context = context;
+    this.sourcePath = sourcePath;
+  }
+
+  Type type(string t) {
+    Decl decl = symbolTable.lookup(t);
+    return decl.declType;
   }
 
   void init() {
@@ -110,117 +98,241 @@ class SemanticAnalysis : TransformVisitor {
     typeMap.set(numberType, "%", numberType, numberType);
     typeMap.set(type("Time"), "%", type("Duration"), type("Duration"));
     //typeMap.set(type("Duration"), "+", numberType, numberType);
+    typeMap.set(numberType, "*", type("Duration"), type("Duration"));
     typeMap.set(type("Duration"), "+", type("Duration"), type("Duration"));
     typeMap.set(type("Duration"), "-", type("Duration"), type("Duration"));
 
     typeMap.set(type("Duration"), "*", numberType, type("Duration"));
     typeMap.set(type("frequency"), "*", numberType, type("frequency"));
+    typeMap.set(type("frequency"), "/", numberType, type("frequency"));
+    typeMap.set(type("frequency"), "/", type("frequency"), numberType);
+    typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
+    typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
     typeMap.set(numberType, "*", type("frequency"), type("frequency"));
   }
 
-  Type type(string t) {
-    Decl decl = currentScope.lookup(t);
-    writefln("a %s %s", t, decl);
-    while (decl && cast(NamedType)decl.declType) {
-      Decl old = decl;
-      NamedType namedType = cast(NamedType)(decl.declType);
-      decl = currentScope.lookup(namedType.name);
-      if (decl is old) break;
+  bool isLValue(Expr expr) {
+    if (!!cast(RefExpr)expr) return true;
+    if (auto memberExpr = cast(MemberExpr)expr) {
+      return isLValue(memberExpr.expr);
     }
-    return decl.declType;
+    return false;
   }
 
+  int pipeDepth = 0;
 
-	@property
-	SymbolTable currentScope() {
-		return scopes[$-1];
-	}
 
-	void pushScope() {
-		SymbolTable symbolTable = new SymbolTable(scopes.length > 0 ? scopes[$-1] : null);
-		scopes ~= symbolTable;
-	}
+  static bool isGenerator(Expr expr) {
+    return expr.exprType.kind == GeneratorType.Kind;
+  }
 
-	void popScope() {
-		scopes = scopes[0..$-1];
-	}
+  Expr makeGenerator(Type type, Expr ctor) {
+    auto t = context.temporary();
+    return new InlineDeclExpr(t, new DeclStmt(t, new VarDecl(type, t), ctor));
+  }
+
+  void implicitConstruct(ref Expr expr) {
+    //writefln("implicitConstruct %s", expr.accept(ExprToString()));
+    // Rewrite: Generator
+    // to:      Generator tmpVar = Generator();
+    if (expr.exprType == typeType) {
+      if (auto refExpr = cast(RefExpr)expr) {
+        if (refExpr.decl.declType.kind == GeneratorType.Kind) {
+          auto ctor = new CallExpr(refExpr, []);
+          expr = makeGenerator(refExpr.decl.declType, ctor);
+          accept(expr);
+          return;
+        }
+      }
+    }
+    // Rewrite: Expr that returns a Generator
+    // to:      Generator tmpVar = expr;
+    if (expr.exprType.isKindOf!GeneratorType && !isLValue(expr)) {
+      expr = makeGenerator(expr.exprType, expr);
+      accept(expr);
+    }
+  }
+
+  Stmt[] splitStatements;
 
   void error(Expr expr, string message) {
-    import std.conv : to;
-    import duck.compiler.visitors : LineNumber;
-    throw new Error("("~ expr.accept(LineNumber()).to!string ~") " ~ message);
+    context.error(expr.accept(LineNumber()), message);
   }
 
-	alias visit = TransformVisitor.visit;
+  void error(Token token, string message) {
+    context.error(token.span, message);
+  }
 
-	override Node visit(ExprStmt expr) {
-		accept(expr.expr);
-		return expr;
-	}
+  alias visit = TransformVisitor.visit;
 
 
+
+  override Node visit(InlineDeclExpr expr) {
+    debug(Semantic) log("InlineDeclExpr", expr.print);
+    accept(expr.declStmt);
+
+    splitStatements ~= expr.declStmt;
+    //debug(Semantic) writefln("InlineDeclExpr2 %s", expr.declStmt);
+    Expr ident = new IdentifierExpr(expr.token);
+    accept(ident);
+    debug(Semantic) log("=>", ident.print);
+    //debug(Semantic) writefln("InlineDeclExpr3 %s", ident);
+
+    return ident;
+  }
+
+  override Node visit(ExprStmt stmt) {
+    debug(Semantic) log("ExprStmt", stmt.expr.print);
+    if (auto declExpr = cast(InlineDeclExpr) stmt.expr) {
+      accept(declExpr.declStmt);
+      return declExpr.declStmt;
+    }
+
+    splitStatements = [];
+    accept(stmt.expr);
+    debug(Semantic) log("=>", stmt.expr.print);
+    if (splitStatements.length > 0) {
+      return new Stmts(splitStatements ~ stmt);
+    }
+    return stmt;
+  }
+  /*override Node visit(ExprStmt expr) {
+    accept(expr.expr);
+    return expr;
+  }*/
+
+  override Node visit(ArrayLiteralExpr expr) {
+    debug(Semantic) log("ArrayLiteralExpr", expr.print);
+    Type elementType;
+    foreach(ref e; expr.exprs) {
+      accept(e);
+      if (!elementType) {
+        elementType = e.exprType;
+      } else if (elementType != e.exprType) {
+        error(e, "Expected array element to have type " ~ elementType.mangled);
+      }
+    }
+    expr.exprType = new ArrayType(expr.exprs[0].exprType);
+    debug(Semantic) log("=>", expr.print);
+    return expr;
+  }
 
   override Node visit(PipeExpr expr) {
+    debug(Semantic) log("PipeExpr");
+    debug(Semantic) log("=>", expr.print);
+    pipeDepth++;
     accept(expr.left);
-		accept(expr.right);
-    writefln("pipeExpr %s", expr.accept(ExprToString()));
+    debug(Semantic) log("=>", expr.print);
+    accept(expr.right);
+    pipeDepth--;
+    debug(Semantic) log("=>", expr.print);
+
+    implicitConstruct(expr.left);
+    implicitConstruct(expr.right);
+
+    debug(Semantic) log("=>", expr.print);
+
+    if (pipeDepth > 0) {
+      auto pd = pipeDepth;
+      pipeDepth = 0;
+      Expr r = expr.right;
+      accept(expr);
+      Stmt stmt = new ExprStmt(expr);
+      splitStatements ~= stmt;
+      pipeDepth = pd;
+      return r;
+    }
 
     while (true) {
-      if (isGenerator(expr.right)) {
+      if (isGenerator(expr.right) && isLValue(expr.right)) {
         expr.exprType = expr.right.exprType;
-        expr.right = new MemberExpr(expr.right, token(Identifier, "input"));
-    		accept(expr.right);
+        expr.right = new MemberExpr(expr.right, context.token(Identifier, "input"));
+        accept(expr.right);
       }
-      else if (isGenerator(expr.left)) {
-        expr.left = new MemberExpr(expr.left, token(Identifier, "output"));
-    		accept(expr.left);
+      else if (isGenerator(expr.left) && isLValue(expr.left)) {
+        expr.left = new MemberExpr(expr.left, context.token(Identifier, "output"));
+        accept(expr.left);
       }
       else {
-        writefln("%s %s", expr.left.exprType, expr.right.exprType);
-        if (expr.left.exprType != expr.right.exprType)
-          error(expr.right, "Cannot pipe a " ~ mangled(expr.left.exprType) ~ " to a " ~ mangled(expr.right.exprType));
+        //debug(Semantic) writefln("%s %s", expr.left.exprType, expr.right.exprType);
+        if (!expr.left.hasError && !expr.right.hasError) {
+
+          if (expr.left.exprType == typeType) {
+            expr.taint;
+            error(expr.left, "expected a value expression");
+          }
+          if (expr.right.exprType == typeType || !isLValue(expr.right)) {
+            expr.taint;
+            error(expr.right, "not a valid connection target");
+          }
+
+          if (expr.left.exprType != expr.right.exprType && !expr.hasError) {
+            error(expr, "cannot connect a " ~ mangled(expr.left.exprType) ~ " to a " ~ mangled(expr.right.exprType) ~ " input");
+          }
+        }
         if (!expr.exprTypeSet)
            expr.exprType = expr.right.exprType;
+
+        debug(Semantic) log("=>", expr.print);
         return expr;
       }
-  }
+    }
   }
 
-	override Node visit(BinaryExpr expr) {
-		accept(expr.left);
-		accept(expr.right);
-    writefln("binaryExpr %s", expr.accept(ExprToString()));
+  override Node visit(BinaryExpr expr) {
+    debug(Semantic) log("BinaryExpr");
+    debug(Semantic) log("=>", expr.print);
+    accept(expr.left);
+    debug(Semantic) log("=>", expr.print);
+    accept(expr.right);
+    debug(Semantic) log("=>", expr.print);
+
+    implicitConstruct(expr.left);
+    implicitConstruct(expr.right);
+    debug(Semantic) log("=>", expr.print);
 
     while(true) {
       if (isGenerator(expr.left)) {
-        expr.left = new MemberExpr(expr.left, token(Identifier, "output"));
+        expr.left = new MemberExpr(expr.left, context.token(Identifier, "output"));
         accept(expr.left);
       }
       else if (isGenerator(expr.right)) {
-        expr.right = new MemberExpr(expr.right, token(Identifier, "output"));
+        expr.right = new MemberExpr(expr.right, context.token(Identifier, "output"));
         accept(expr.right);
       }
       else {
         Type targetType = typeMap.get(expr.left.exprType, expr.operator.value, expr.right.exprType);
         if (!targetType) {// || (expr.left.exprType != expr.right.exprType)) {
-          error(expr.left, "Cannot " ~ expr.operator.value.idup ~ " a " ~ mangled(expr.left.exprType) ~ " and a " ~ mangled(expr.right.exprType));
+          if (!expr.left.hasError && !expr.right.hasError)
+            error(expr.left, "Operation " ~ mangled(expr.left.exprType) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.exprType) ~ " is not defined.");
+          return expr.taint();
         }
         expr.exprType = targetType;
         return expr;
       }
     }
-	}
+  }
+
 
   override Node visit(CallExpr expr) {
+    debug(Semantic) log("CallExpr");
+    debug(Semantic) log("=>", expr.print);
     accept(expr.expr);
+    bool argsHasError = false;
     foreach (ref arg; expr.arguments) {
       accept(arg);
+      if (arg.hasError) argsHasError = true;
     }
-    writefln("callexp %s", expr.accept(ExprToString()));
+
+    debug(Semantic) log("=>", expr.print);
+
+    if (expr.expr.hasError || argsHasError) {
+      return expr.taint;
+    }
 
     if (auto type = cast(FunctionType)(expr.expr.exprType)) {
       if (type.parameterTypes.length != expr.arguments.length) {
-        throw new Error("Wrong number of arguments");
+        error(expr, "Wrong number of arguments");
       }
       outer: while (true) {
         for (int i = 0; i < type.parameterTypes.length; ++i) {
@@ -230,7 +342,7 @@ class SemanticAnalysis : TransformVisitor {
           {
             if (isGenerator(expr.arguments[i]))
             {
-              expr.arguments[i] = new MemberExpr(expr.arguments[i], token(Identifier, "output"));
+              expr.arguments[i] = new MemberExpr(expr.arguments[i], context.token(Identifier, "output"));
               accept(expr.arguments[i]);
               continue outer;
             }
@@ -246,240 +358,404 @@ class SemanticAnalysis : TransformVisitor {
     //else if (cast(GeneratorType)expr.expr.exprType || cast(StructType)expr.expr.exprType || expr.expr.exprType == numberType) {
     else if (expr.expr.exprType == typeType) {
       // Call constructor
-      if (auto declExpr = cast(DeclExpr)expr.expr) {
-        expr.exprType = declExpr.decl.declType;
+      if (auto refExpr = cast(RefExpr)expr.expr) {
+        expr.exprType = refExpr.decl.declType;
       }
     }
     else {
-      error(expr, "Cannot call something with type " ~ mangled(expr.expr.exprType));
+      if (!expr.expr.hasError)
+        error(expr, "Cannot call something with type " ~ mangled(expr.expr.exprType));
+      return expr.taint;
     }
+    debug(Semantic) log("=>", expr.print);
     return expr;
   }
 
-	override Node visit(AssignExpr expr) {
-		accept(expr.left);
-		accept(expr.right);
-		expr.exprType = expr.left.exprType;
-		return expr;
-	}
+  override Node visit(AssignExpr expr) {
+    //TODO: Type check
+    debug(Semantic) log("AssignExpr", expr.print);
+    accept(expr.left);
+    debug(Semantic) log("=>", expr.print);
+    accept(expr.right);
+    debug(Semantic) log("=>", expr.print);
+    expr.exprType = expr.left.exprType;
+    return expr;
+  }
 
-	override Node visit(UnaryExpr expr) {
-		accept(expr.operand);
-		expr.exprType = expr.operand.exprType;
-		return expr;
-	}
+  override Node visit(UnaryExpr expr) {
+    debug(Semantic) log("UnaryExpr", expr.print);
+    accept(expr.operand);
+    expr.exprType = expr.operand.exprType;
+    debug(Semantic) log("=>", expr.print);
+    return expr;
+  }
 
-	override Node visit(IdentifierExpr expr) {
-		// Look up identifier in symbol table
-		Decl decl = currentScope.lookup(expr.token.value);
-		if (!decl) {
-			throw new Error("Undefined identifier " ~ expr.token.value.idup);
-		} else {
+  override Node visit(IdentifierExpr expr) {
+    if (expr.hasType) return expr;
+    debug(Semantic) log("IdentifierExpr", expr.token.value);
 
-      DeclExpr declExpr = new DeclExpr(expr.token, decl);
-      accept(declExpr);
-      return declExpr;
+    // Look up identifier in symbol table
+    Decl decl = symbolTable.lookup(expr.token.value);
+    if (!decl) {
+      error(expr, "Undefined identifier " ~ expr.token.value.idup);
+      /*
+      RefExpr re = new RefExpr(expr.token, new VarDecl(errorType, expr.token));
+      accept(re);
+      re.exprType = errorType;
+      return re;
+      */
+      return expr.taint;
+    } else {
+      if (auto fieldDecl = cast(FieldDecl)decl) {
+        Expr memberExpr = new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.token);
+        accept(memberExpr);
+        debug(Semantic) log("=>", memberExpr.print);
+        return memberExpr;
+      }
+      else if (auto macroDecl = cast(MacroDecl)decl) {
+        Expr memberExpr = new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.token);
+        accept(memberExpr);
+        debug(Semantic) log("=>", memberExpr.print);
+        return memberExpr;
+      }
+      else {
+        Expr refExpr = new RefExpr(expr.token, decl);
+        accept(refExpr);
+        debug(Semantic) log("=>", refExpr.print);
+        return refExpr;
+      }
     }
-		return expr;
-	}
+  }
+  override Node visit(TypeExpr expr) {
+      debug(Semantic) log("TypeExpr", expr.expr.print);
+      accept(expr.expr);
 
-  override Node visit(DeclExpr expr) {
 
+      debug(Semantic) log("=>", expr.expr.print);
+
+      if (auto re = cast(RefExpr)expr.expr) {
+        if (expr.expr.exprType == typeType && cast(TypeDecl)re.decl) {
+          expr.exprType = typeType;
+          expr.decl = cast(TypeDecl)re.decl;
+          return expr;
+        }
+      }
+
+      if (!expr.expr.hasError)
+        error(expr, "Expected a type");
+      return expr.taint();
+  }
+
+  override Node visit(RefExpr expr) {
     //Decl decl = currentScope.lookup(expr.identifier.value);
     Decl decl = expr.decl;
-    writefln("DeclExpr %s %s", expr.identifier.value, decl);
+    debug(Semantic) log("RefExpr", expr.identifier.value, decl);
     if (cast(TypeDecl)decl) {
       expr.exprType = typeType;
+      debug(Semantic) log("=>", expr.print);
       return expr;
     }
     else if (cast(VarDecl)decl) {
       expr.exprType = decl.declType;
+      debug(Semantic) log("=>", expr.print);
       return expr;
     }
-    /*if (false &&cast(NamedType)(decl.declType)) {
+    else if (cast(MethodDecl)decl) {
+      expr.exprType = decl.declType;
+      debug(Semantic) log("=>", expr.print);
+      return expr;
+    }
+    else if (auto aliasDecl = cast(AliasDecl)decl) {
+      //debug(Semantic) writefln("RefExpr %s %s %s", expr.identifier.value, decl, aliasDecl.targetExpr);
+      debug(Semantic) log("=>", aliasDecl.targetExpr.print);
+      return aliasDecl.targetExpr;
+    }
 
-      while (cast(NamedType)(decl.declType)) {
-        Decl old = decl;
-        NamedType namedType = cast(NamedType)(decl.declType);
-        decl = currentScope.lookup(namedType.name);
-
-
-        //writefln("bbb %s %s", namedType.name, decl);
-        if (decl == old) break;
-      }
-      expr = new DeclExpr(expr.identifier, decl);
-    }*/
-    writefln("%s", decl);
-    throw new Error("e");
+    //log("", decl, expr.accept(LineNumber()));
+    throw __ICE("");
     //expr.exprType = typeType;//decl.declType;
     return expr;
   }
 
-  Decl resolve(Type type) {
-    if (type.decl) return type.decl;
-    Decl decl;
-    while (cast(NamedType)(type)) {
-      Decl old = decl;
-      NamedType namedType = cast(NamedType)(type);
-      decl = currentScope.lookup(namedType.name);
-      type = decl.declType;
-      if (decl is old) break;
-    }
-    return decl;
-  }
-
-  static bool isGenerator(Expr expr) {
-    return expr.exprType.kind == GeneratorType.Kind;
-  }
-
   override Node visit(MemberExpr expr) {
-    accept(expr.expr);
-    writefln("MemberExpr %s", expr.accept(ExprToString()));
-    Decl decl;
+    debug(Semantic) log("MemberExpr", expr.print);
+    if (!expr.expr.hasType)
+      accept(expr.expr);
+    debug(Semantic) log("=>", expr.print);
 
+    if (expr.expr.hasError) return expr.taint;
+
+    Decl decl;
     if (expr.expr.exprType) {
-      decl = resolve(expr.expr.exprType);
+      decl = expr.expr.exprType.decl;
     }
-    if (!decl && cast(DeclExpr)(expr.expr)) {
-      DeclExpr declExpr = cast(DeclExpr)(expr.expr);
-      decl = declExpr.decl;
+    if (!decl) {
+      if (auto refExpr = cast(RefExpr)(expr.expr)) {
+        decl = refExpr.decl;
+      }
     }
     if (decl) {
-      writefln("aaaa %s %s %s", decl, decl.declType, expr.identifier.value);
+      if (decl.declType.kind == GeneratorType.Kind && !isLValue(expr.expr)) {
+        error(expr.expr, "Generators can not be temporaries.");
+      }
       if (cast(StructDecl)decl) {
         auto structDecl = cast(StructDecl)decl;
         auto ident = expr.identifier.value;
-        foreach (field; structDecl.fields) {
-          if (field.identifier.value == ident) {
-            writefln("field %s", field.declType);
-            expr.exprType = field.declType;
-            //writefln("aaaaa %s %s %s", decl, expr.identifier.value, expr.exprType);
-            return expr;
+        auto fieldDecl = structDecl.lookup(ident);
+
+        if (fieldDecl) {
+          //fieldDecl.accept(this);
+          //debug(Semantic) writefln("field %s", fieldDecl.declType);
+          expr.exprType = fieldDecl.declType;
+
+
+          if (auto macroDecl = cast(MacroDecl)fieldDecl) {
+            //this(Expr typeExpr, Token identifier, Expr targetExpr, Decl parentDecl) {
+            //log("zzz %s %s", expr.print, macroDecl.expansion.print);
+
+            Scope macroScope = new DeclTable();
+            symbolTable.pushScope(macroScope);
+            macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.expr));
+            Expr expansion = macroDecl.expansion.dup();
+            accept(expansion);
+            symbolTable.popScope();
+
+            //log("zzz %s %s", expansion.print, macroDecl.expansion.print);
+            //symbolTable.popScope();
+            debug(Semantic) log("=>", expansion.print);
+            return expansion;
           }
+          debug(Semantic) log("=>", expr.print);
+          //debug(Semantic) writefln("aaaaa %s %s %s", fieldDecl, expr.identifier.value, expr.exprType);
+          return expr;
         }
-        error(expr.expr, "No field " ~ ident.idup ~ " in " ~ structDecl.identifier.value.idup);
-        //return expr;
+        error(expr.expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
+        return expr.taint;
       }
     }
 
-    error(expr.expr, "Cannot access members of " ~ typeid(expr.expr).toString());
-    assert(0);
+    error(expr.expr, "Cannot access members of " ~ mangled(expr.expr.exprType));
+    return expr.taint;
+    //assert(0);
 
     //expr.exprType = expr.expr.exprType;
-
-
   }
 
-	override Node visit(ScopeStmt stmt) {
-		pushScope();
-		accept(stmt.stmts);
-		currentScope.print();
-		popScope();
-		return stmt;
-	}
+  override Node visit(ScopeStmt stmt) {
+    symbolTable.pushScope(new DeclTable);
+    accept(stmt.stmts);
+    //currentScope.print();
+    symbolTable.popScope();
+    return stmt;
+  }
 
-	override Node visit(Stmts stmts) {
-		writefln("stmts %d [", stmts.stmts.length);
-		foreach(ref stmt ; stmts.stmts) {
-			accept(stmt);
-		}
-		writefln("]");
-		return stmts;
-	}
+  override Node visit(Stmts stmts) {
+    //debug(Semantic) writefln("stmts %d [", stmts.stmts.length);
+    foreach(ref stmt ; stmts.stmts) {
+      debug(Semantic) log("");
+      debug(Semantic) log("Stmt");
+      accept(stmt);
+    }
+    //debug(Semantic) writefln("]");
+    return stmts;
+  }
+
+  override Node visit(MacroDecl decl) {
+    debug (Semantic) log("MacroDecl");
+    accept(decl.typeExpr);
+
+    //fixme
+    //DeclTable aliasScope = new DeclTable();
+
+    /*VarDecl thisVar = new VarDecl(new RefExpr(token(Identifier, "this"), decl.parentDecl), token(Identifier, "this"));
+    thisVar.accept(this);
+    aliasScope.define("this", thisVar);
+    symbolTable.pushScope(aliasScope);
+    accept(decl.targetExpr);
+    symbolTable.popScope();*/
+
+    //if (auto typeExpr = cast(RefExpr)decl.typeExpr) {
+      //if (auto typeDecl = cast(TypeDecl)typeExpr.decl) {
+
+        //decl.declType = typeDecl.declType;
+  /*      if (decl.declType != decl.targetExpr.exprType) {
+          error(decl.targetExpr, "Expected alias expression to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.targetExpr.exprType) ~ ".");
+          decl.targetExpr.exprType = errorType;
+        }*/
+        //return decl;
+    //  }
+    //}
+
+    //decl.declType = errorType;
+    //error(decl.typeExpr, "Expected type");
+    return decl;
+  }
 
   override Node visit(FieldDecl decl) {
-    writefln("FieldDecl");
+    debug(Semantic) log("FieldDecl");
     accept(decl.typeExpr);
-    if (auto typeExpr = cast(DeclExpr)decl.typeExpr) {
-      if (auto typeDecl = cast(TypeDecl)typeExpr.decl) {
+    if (decl.valueExpr)
+      accept(decl.valueExpr);
+
+    if (decl.typeExpr.exprType == typeType) {
+      if (auto typeDecl = decl.typeExpr.decl) {
         decl.declType = typeDecl.declType;
+        if (decl.valueExpr && decl.declType != decl.valueExpr.exprType && !decl.valueExpr.hasError) {
+          error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.valueExpr.exprType) ~ ".");
+          decl.valueExpr.taint();
+        }
         return decl;
       }
     }
+    decl.taint();
     error(decl.typeExpr, "Expected type");
+    return decl;
+  }
+
+  override Node visit(MethodDecl decl) {
+    debug(Semantic) log("MethodDecl");
+    if (decl.methodBody) {
+      DeclTable funcScope = new DeclTable();
+      auto thisToken = context.token(Identifier, "this");
+      VarDecl thisVar = new VarDecl(new RefExpr(thisToken, decl.parentDecl), thisToken);
+      thisVar.accept(this);
+      funcScope.define("this", thisVar);
+      symbolTable.pushScope(funcScope);
+      accept(decl.methodBody);
+      symbolTable.popScope();
+    }
     return decl;
   }
 
   override Node visit(VarDecl decl) {
-    writefln("VarDecl %s", decl.name);
-    accept(decl.typeExpr);
-    if (auto typeExpr = cast(DeclExpr)decl.typeExpr) {
-      if (auto typeDecl = cast(TypeDecl)typeExpr.decl) {
-        decl.declType = typeDecl.declType;
-        return decl;
+    debug(Semantic) log("VarDecl", decl.name, decl.typeExpr);
+    if (decl.typeExpr) {
+      accept(decl.typeExpr);
+      if (auto typeExpr = cast(RefExpr)decl.typeExpr) {
+        if (auto typeDecl = cast(TypeDecl)typeExpr.decl) {
+          decl.declType = typeDecl.declType;
+          return decl;
+        }
       }
     }
-    error(decl.typeExpr, "Expected type");
+    if (!decl.declType) {
+      decl.taint();
+      error(decl.typeExpr, "Expected type");
+    }
     return decl;
   }
 
-  override Node visit(StructDecl decl) {
-    writefln("StrucDecl");
-    foreach(ref field; decl.fields)
-      accept(field);
-    return decl;
+  override Node visit(StructDecl structDecl) {
+    debug(Semantic) log("StructDecl", structDecl.name);
+    symbolTable.pushScope(structDecl.decls);
+    ///FIXME
+    foreach(name, ref decl; structDecl.symbolsInDefinitionOrder) {
+      if (cast(FieldDecl)decl)accept(decl);
+    }
+    foreach(name, ref decl; structDecl.symbolsInDefinitionOrder) {
+      if (cast(MacroDecl)decl)accept(decl);
+    }
+    foreach(name, ref decl; structDecl.symbolsInDefinitionOrder)
+      if (cast(MethodDecl)decl)accept(decl);
+    symbolTable.popScope();
+    return structDecl;
   }
 
-	override Node visit(DeclStmt stmt) {
-
-		accept(stmt.expr);
+  override Node visit(DeclStmt stmt) {
+    accept(stmt.expr);
     accept(stmt.decl);
 
-    //stmt.decl.declType = stmt.expr.exprType;
-    writefln("DeclStmt %s %s %s", stmt.expr, stmt.decl, mangled(stmt.decl.declType));
-		//if (!stmt.exprType) expr.exprType = expr.expr.exprType;
-		//writefln("Add to symbol table: %s %s", stmt.identifier.value, mangled(stmt.decl.declType));
-		// Add identifier to symbol table
-		currentScope.define(stmt.identifier.value, stmt.decl);
+    debug(Semantic) log("DeclStmt", stmt.expr, stmt.decl, mangled(stmt.decl.declType), stmt.identifier.value);
 
-		return stmt;
-	}
+    debug(Semantic) log("Add to symbol table:", stmt.identifier.value, mangled(stmt.decl.declType));
+    // Add identifier to symbol table
+    if (symbolTable.defines(stmt.identifier.value)) {
+      error(stmt.identifier, "Cannot redefine " ~ stmt.identifier.value.idup);
+    }
+    else {
+      symbolTable.define(stmt.identifier.value, stmt.decl);
+    }
 
-	override Node visit(Program program) {
-    writefln("program");
-		pushScope();
-		globalScope = currentScope;
+    return stmt;
+  }
 
-    writefln("program");
+  override Node visit(ImportStmt stmt) {
+  		import std.path, std.file;
+      import duck.compiler;
+
+      debug(Semantic) log("Import", stmt.identifier.value);
+      
+  		auto p = buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck");
+  		if (!p.exists) {
+  			context.error(stmt.identifier.span, "Cannot find library at '%s'", p);
+  		} else {
+  	    auto AST = SourceBuffer(new FileBuffer(p)).parse();
+  	    if (auto program = cast(Program)AST.program) {
+  	      foreach(Decl decl; program.decls) {
+            symbolTable.define(decl.name, decl);
+          }
+  	    }
+  		}
+      return new Stmts([]);
+  }
+
+  override Node visit(Program program) {
+    debug(Semantic) log("Program");
+    symbolTable.pushScope(program.imported);
+    symbolTable.pushScope(new DeclTable());
+    globalScope = symbolTable.scopes[1];
 
     __gshared static auto freq = new StructType("frequency");
     __gshared static auto dur = new StructType("Duration");
     __gshared static auto Time = new StructType("Time");
 
-    foreach(ref decl; program.decls) {
-//      accept(decl);
-      //NamedType type = cast(NamedType) decl.declType;
-      globalScope.define(decl.name, decl);
-    }
-		//globalScope.define("Time", new NamedType("Time", new StructType()));
-		globalScope.define("now", new VarDecl(Time, token(Identifier, "now")));
-    globalScope.define("Duration", new TypeDecl(dur, token(Identifier, "Duration")));
-    globalScope.define("mono", new TypeDecl(numberType, token(Identifier, "mono")));
-    globalScope.define("float", new TypeDecl(numberType, token(Identifier, "float")));
-		globalScope.define("frequency", new TypeDecl(freq, token(Identifier, "frequency")));
-    globalScope.define("Time", new TypeDecl(Time, token(Identifier, "Time")));
+
+    //globalScope.define("Time", new NamedType("Time", new StructType()));
+    globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
+    globalScope.define("now", new VarDecl(Time, context.token(Identifier, "now")));
+    globalScope.define("Duration", new TypeDecl(dur, context.token(Identifier, "Duration")));
+    globalScope.define("mono", new TypeDecl(numberType, context.token(Identifier, "mono")));
+    globalScope.define("float", new TypeDecl(numberType, context.token(Identifier, "float")));
+    globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
+    globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
     //globalScope.define("Float", new TypeDecl(new NamedType("Float", new StructType())));
 
-		globalScope.define("hz", new VarDecl(new FunctionType(freq, [numberType]), token(Identifier, "hz")));
-		globalScope.define("bpm", new VarDecl(new FunctionType(freq, [numberType]), token(Identifier, "bpm")));
-    globalScope.define("ms", new VarDecl(new FunctionType(dur, [numberType]), token(Identifier, "ms")));
-    globalScope.define("seconds", new VarDecl(new FunctionType(dur, [numberType]), token(Identifier, "seconds")));
-    globalScope.define("samples", new VarDecl(new FunctionType(dur, [numberType]), token(Identifier, "samples")));
+    globalScope.define("sin", new VarDecl(new FunctionType(numberType, [numberType]), context.token(Identifier, "sin")));
+    globalScope.define("abs", new VarDecl(new FunctionType(numberType, [numberType]), context.token(Identifier, "abs")));
+    globalScope.define("hz", new VarDecl(new FunctionType(freq, [numberType]), context.token(Identifier, "hz")));
+    globalScope.define("bpm", new VarDecl(new FunctionType(freq, [numberType]), context.token(Identifier, "bpm")));
+    globalScope.define("ms", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "ms")));
+    globalScope.define("seconds", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "seconds")));
+    globalScope.define("samples", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "samples")));
+
+    init();
+
+    foreach(ref decl; program.decls) {
+      if (globalScope.defines(decl.name)) {
+        error(decl.name, "Cannot redefine " ~ decl.name.idup);
+      }
+      else {
+        globalScope.define(decl.name, decl);
+      }
+    }
 
     foreach(ref decl; program.decls) {
       accept(decl);
-      //NamedType type = cast(NamedType) decl.declType;
-//      globalScope.define(decl.name, decl);
     }
 
 
-		currentScope.print();
+    //currentScope.print();
 
-    init();
-		writefln("pr");
-		foreach (ref node ; program.nodes)
-			accept(node);
-		popScope();
-		return program;
-	}
+
+    foreach (ref node ; program.nodes)
+      accept(node);
+    symbolTable.popScope();
+    symbolTable.popScope();
+    debug(Semantic) log("Done");
+    return program;
+  }
+}
+
+debug auto print(Expr e) {
+  return e.accept(ExprToString());
 }

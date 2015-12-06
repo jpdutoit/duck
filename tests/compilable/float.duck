@@ -1,0 +1,6 @@
+float a = 1;
+float b = +2;
+float c = -3;
+float e = a + b * a / c % a;
+float f = ((1*2)+(3*4));
+a += 2;

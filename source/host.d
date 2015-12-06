@@ -1,7 +1,7 @@
 module host;
 
 import std.file, std.stdio, std.path, std.algorithm, std.array, core.thread, std.process, duck.parse, std.concurrency;
-
+import core.sys.posix.signal;
 string path;
 
 Proc[] procList;
@@ -19,11 +19,11 @@ TXT");
 }
 
 void log(T...)(T t) {
-  writefln(t);
-  stdout.flush();
+  stderr.writefln(t);
+  stderr.flush();
 }
 
-import core.sys.posix.signal;
+version(DUCK_TEST_SUITE) {} else {
 
 extern(C)
 static void signalHandler(int value) {
@@ -49,6 +49,8 @@ outerLoop:
     }
 }
 
+}
+
 int tmpIndex = 0;
 string tmpFolder = "/tmp/";
 
@@ -65,29 +67,46 @@ struct DuckFile {
         this.filename = filename;
     }
 
+    int check() {
+      int a = checkit(filename);
+      return a;
+      /*char buffer[1024*1024];
+
+     // Read input file
+     File src = File(this.filename, "r");
+     auto buf = src.rawRead(buffer);
+     src.close();
+
+     // Save converted intermediate file
+     debug log("Converting to D");
+     .check(buf);*/
+
+    }
+
     DFile convertToD() {
         return convertToD(tmpFolder ~ temporaryFileName() ~ ".d");
     }
 
     DFile convertToD(string output) {
-         char buffer[1024*1024];
+         /*char buffer[1024*1024];
 
         // Read input file
         File src = File(this.filename, "r");
         auto buf = src.rawRead(buffer);
         src.close();
-
+*/
         // Save converted intermediate file
-        log("Converting to D");
-        auto s = .compile(buf);
+        debug log("Converting to D");
+        auto s = .compile(filename);
+        if (!s || !s.length ) return DFile(null);
+
         File dst = File(output, "w");
         dst.rawWrite(s);
         dst.close();
-        log("Converted to D");
+        debug log("Converted to D");
         return DFile(output);
     }
 }
-
 
 struct DFile {
     string filename;
@@ -101,9 +120,9 @@ struct DFile {
     }
 
     Executable compile(string output) {
-        log("Compiling");
+        debug log("Compiling");
         stdout.flush();
-        auto command = "dmd " ~ this.filename ~ " -debug -of" ~ output ~ buildCommand(sourceFiles, libraries, frameworks);
+        auto command = "dmd " ~ this.filename ~ " -of" ~ output ~ buildCommand(sourceFiles, libraries, frameworks);
         log("%s", command);
         Pid compile = spawnShell(command, stdin, stdout, stdout, null, Config.none, null);
         auto result = .wait(compile);
@@ -111,33 +130,38 @@ struct DFile {
         return Executable(output);
     }
 
-    void check() {
+    int check() {
         auto command = "dmd -c -o- " ~ this.filename ~ buildCommand();
         //writefln("command: %s", command);
-        Pid compile = spawnShell(command, stdin, stdout, stdout, null, Config.none, null);
+        Pid compile = spawnShell(command, stdin, stdout, stderr, null, Config.none, null);
         auto result = .wait(compile);
+        return result;
     }
 
 
     static auto sourceFiles = [
       "duck/runtime/package", "duck/runtime/model",
-        "duck/runtime/registry", "duck/runtime/scheduler", "duck/runtime/types",
-
+        "duck/runtime/scheduler",
       "duck/stdlib/package", "duck/stdlib/scales",
         "duck/stdlib/units", "duck/stdlib/ugens",
-      "duck/package", "duck/entry", "duck/pa",
+      "duck/package", "duck/entry", "duck/pa", "duck/osc",
       "duck/global"];
     static auto libraries  = ["lib/libportaudio.a"];//, "source/duck.a"];
     static auto frameworks = ["CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"];
+    //static string[] versions = [];
+    static string[] versions   = ["USE_PORT_AUDIO"];
 
     static string buildCommand(string[] sourceFiles = null, string[] libraries = null, string[] frameworks = null) {
-        string command = " -I" ~ path ~ "source -inline -version=NO_PORT_AUDIO -release -I" ~ path;
+        string command = " -I" ~ path ~ "source -release -I" ~ path;
         foreach(string sourceFile; sourceFiles)
             command ~= " " ~ path ~ "source/" ~ sourceFile ~ ".d";
-        //foreach(string library; libraries)
-        //    command ~= " -L" ~ path ~ library;
-        //foreach(string framework; frameworks)
-        //    command ~= " -L-framework -L" ~ framework;
+
+        foreach (string v; versions)
+          command ~= " -version=" ~ v;
+        foreach(string library; libraries)
+            command ~= " -L" ~ path ~ library;
+        foreach(string framework; frameworks)
+            command ~= " -L-framework -L" ~ framework;
         return command;
     }
 }
@@ -162,7 +186,7 @@ struct Proc {
         this.filename = filename;
         this.pipes = pipeProcess(this.filename);
         this.pid = this.pipes.pid;
-        spawn(&streamReader, this.pid.processID(), this.pipes.stdout().getFP());
+        spawn(&streamReader, this.pid.processID(), this.pipes.stderr().getFP());
     }
 
     void stop() {
@@ -203,6 +227,8 @@ struct Proc {
     ProcessPipes pipes;
 }
 
+version(DUCK_TEST_SUITE) {} else {
+
 struct Command {
     string name;
     string[] args;
@@ -235,15 +261,22 @@ void interactiveMode() {
         }*/
         auto s = std.stdio.readln();
         auto cmd = parseCommand(s[0..$-1]);
+        //writefln("Command %s", cmd);
         if (cmd.name) {
             if (cmd.name == "start") {
                 foreach (filename; cmd.args) {
-                    auto process = DuckFile(filename).convertToD().compile().execute();
+                    auto dFile = DuckFile(filename).convertToD;
+                    if (dFile.filename) {
+                      auto process = dFile.compile().execute();
+                      procList ~= process;
+                      writefln("%s,%s", process.pid.processID(), process.filename);
+                      stdout.flush();
+                    } else {
+                      writefln("");
+                      stdout.flush();
+                    }
                     //auto process = Process(filename, false);
                     //process.start();
-                    procList ~= process;
-                    writefln("%s,%s", process.pid.processID(), process.filename);
-                    stdout.flush();
                 }
             }
             else if (cmd.name == "stop") {
@@ -278,7 +311,7 @@ void interactiveMode() {
                 int pid = cmd.args[0].to!int;
                 foreach(process; procList) {
                     if (process.pid.processID() == pid) {
-                        writefln("send to %s '%s'", pid, cmd.args[1..$].join(" "));
+                        //writefln("send to %s '%s'", pid, cmd.args[1..$].join(" "));
                         process.pipes.stdin().writefln(cmd.args[1..$].join(" "));
                         process.pipes.stdin().flush();
                     }
@@ -288,7 +321,20 @@ void interactiveMode() {
     }
 }
 
-void main(string[] args) {
+}
+version (D_Coverage) {
+  extern (C) void dmd_coverDestPath(string);
+  extern (C) void dmd_coverSourcePath(string);
+  extern (C) void dmd_coverSetMerge(bool);
+}
+int main(string[] args) {
+  version(DUCK_TEST_SUITE) {
+    version(D_Coverage) {
+      dmd_coverSourcePath("../");
+      dmd_coverDestPath("coverage");
+      dmd_coverSetMerge(true);
+    }
+  }
     version(unittest) {
         log("Unittests passed.");
         return;
@@ -303,30 +349,42 @@ void main(string[] args) {
         writeHelp();
         return;
     }*/
-    log("Start");
+    //log("Start");
     if (args.length > 1) {
         string command = args[1];
 
         if (command == "nothing") {
-          return;
+          return 0;
         }
         if (command == "check") {
             string target = args[2];
-            DuckFile(target).convertToD;
-            return;
+            auto result = DuckFile(target).check;
+            stderr.close();
+            return result;
         }
         else if (command == "build") {
             string target = args[2];
-            DuckFile(target).convertToD.compile(target.stripExtension());
+            auto dFile = DuckFile(target).convertToD;
+            if (dFile.filename)
+              dFile.compile(target.stripExtension());
         }
         else if (command == "run") {
+          version(DUCK_TEST_SUITE) {} else {
             string target = args[2];
-            procList ~= DuckFile(target).convertToD.compile.execute;
-            waitForProcesses();
-            return;
+            auto dFile = DuckFile(target).convertToD;
+            if (dFile.filename) {
+              auto executable = dFile.compile();
+              procList ~= executable.execute;
+              waitForProcesses();
+            }
+            return 0;
+          }
         }
         else writeHelp();
     } else {
+      version(DUCK_TEST_SUITE) {} else {
         interactiveMode();
+      }
     }
+    return 0;
 }

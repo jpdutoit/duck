@@ -1,0 +1,4 @@
+extern generator test {
+  float a : b;
+  function tick();
+}

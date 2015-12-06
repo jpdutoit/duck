@@ -1,0 +1,10 @@
+generator AA {
+  float output;
+}
+AA aa;
+hz(aa);
+//TODO: hz(AA) should work too
+
+frequency f1 = 10 hz;
+frequency f2 = hz(10);
+f1 = f2;

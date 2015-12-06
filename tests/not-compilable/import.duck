@@ -1,0 +1,10 @@
+import "notexist";
+import notexist;
+/*
+OUTPUT:
+---
+not-compilable/import.duck(2:8-15): Error: Expected library name not 'notexist'
+not-compilable/import.duck(2:8-15): Error: Expected end of file not 'notexist'
+not-compilable/import.duck(1:8-17): Error: Cannot find library at 'not-compilable/notexist.duck'
+---
+*/

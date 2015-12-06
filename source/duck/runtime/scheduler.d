@@ -1,12 +1,11 @@
 module duck.runtime.scheduler;
 
-//import std.concurrency : spawn, Tid, send;
 private import core.thread : Fiber;
-private import std.stdio : write, writeln, stdin, stdout, stderr;
-//private import duck.server;
-private import duck.runtime.registry;
+private import duck.runtime;
+private import duck.runtime.model;
 
 private import core.sys.posix.signal;
+import duck.osc;
 
 import duck.stdlib.units;
 
@@ -39,9 +38,9 @@ struct Scheduler {
 
   extern(C)
   static void signalHandler(int value){
-    stderr.writeln("Stopping nicely, ctrl-c again to force.");
+    print("Stopping nicely, ctrl-c again to force.");
     finished = true;
-    stdin.close();
+    //stdin.close();
     sigset(SIGINT, SIG_DFL);
   }
 
@@ -80,12 +79,11 @@ struct Scheduler {
 
   /*static void lineReader(Tid owner)
   {
-      import std.string;
       while (!finished && !stdin.eof()) {
           string line = stdin.readln().chomp();
           owner.send(line);
       }
-      writefln("Stop listening to input");
+      //writefln("Stop listening to input");
       stdout.flush();
   }*/
 
@@ -107,6 +105,17 @@ struct Scheduler {
     }
   }
 
+  static void tick(ref ulong sampleIndex) {
+    now.time = now.time + 1.samples;
+    sampleIndex++;
+
+    __idx = sampleIndex;
+    //print("__idx ", __idx, "\n");
+    foreach(ugenTick; UGenRegistry.endPoints.byValue()) {
+      ugenTick();
+    }
+  }
+
   static void run() {
     //spawn(&lineReader, thisTid);
     sigset(SIGINT, &signalHandler);
@@ -124,24 +133,38 @@ struct Scheduler {
           fibers[i].call();
           if (fibers[i].state == Fiber.State.TERM) {
             activeFibers--;
-            stderr.write("Fiber ");
-            stderr.write(fibers[i].uuid);
-            stderr.writeln(" done");
+            debug print("Fiber ", fibers[i].uuid, " done");
+            //stderr.write("Fiber ");
+            //stderr.write(fibers[i].uuid);
+            //stderr.writeln(" done");
             fibers[i] = null;
           }
         }
       }
       if (activeFibers == 0) return;
-      //writefln("nex");
-      foreach(UGenInfo *info; UGenRegistry.endPoints.byValue()) {
-        /*/writefln("%s", info.connections);*/
-        info.tick(sampleIndex);
-      }
 
-      //writefln("nex");
-      sampleIndex++;
 
-      now.time = now.time + 1.samples;
+      /*
+      // Test for unrolling:
+      auto count = 44100;
+      auto n = (count + 7) / 8;
+      final switch (count % 8) {
+        case 0: do { tick(sampleIndex);
+        case 7:      tick(sampleIndex);
+        case 6:      tick(sampleIndex);
+        case 5:      tick(sampleIndex);
+        case 4:      tick(sampleIndex);
+        case 3:      tick(sampleIndex);
+        case 2:      tick(sampleIndex);
+        case 1:      tick(sampleIndex);
+      } while (--n > 0); }*/
+
+      tick(sampleIndex);
+      //tickEndPoints(sampleIndex);
+      //writefln("nex");
+
+
+      //now.time = now.time + 1.samples;
       //writefln("nex");
 
 /*      auto received =
@@ -153,9 +176,12 @@ struct Scheduler {
       //if (sampleIndex % 16 == 0)
       //  server.update();
       //writefln("sampleIndex %s", sampleIndex);
+      if (sampleIndex % 32 == 0)
+        oscServer.receiveAll();
+
       if (sampleIndex % 44100 == 0) {
-        stderr.writeln(sampleIndex);
-        //std.flush();
+        print(sampleIndex);
+        print("\n");
         //return;
       }
     }
@@ -186,8 +212,9 @@ struct Now {
   }
 
   void opOpAssign(string op: "+")(auto ref Duration other) {
-    stderr.write("sleep ");
-    stderr.writeln(other.value);
+    /*print("sleep ");
+    print(other.value);
+    print("\n");*/
     sleep(other);
   }
 

@@ -1,0 +1,4 @@
+float a = 1;
+float b = 2;
+float c = 3;
+float d = a + b * a / c % a;

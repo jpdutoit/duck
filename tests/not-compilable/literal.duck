@@ -1,0 +1,12 @@
+"aaa"2";
+;
+[1, "2"];
+/*
+OUTPUT:
+---
+not-compilable/literal.duck(1:6): Error: Expected ';' not '2'
+not-compilable/literal.duck(1:7-8): Error: Unterminated string
+not-compilable/literal.duck(1:7-8): Error: Expected ';' not '";'
+not-compilable/literal.duck(3:5-7): Error: Expected array element to have type number
+---
+*/

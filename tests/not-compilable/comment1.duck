@@ -1,0 +1,3 @@
+/*
+OUTPUT: not-compilable/comment1.duck(1:1-4:0): Error: Unterminated comment
+Unclosed

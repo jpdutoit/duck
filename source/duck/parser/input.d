@@ -1,70 +1,58 @@
 module duck.compiler.input;
 
-import duck.compiler.token;
+import duck.compiler.lexer, duck.compiler.buffer;
 
 struct Input {
-	String text;
-	int index = 0;
-	dchar front;
+  Buffer buffer;
+  String text;
+  int index = 0;
+  char front;
 
-	void popFront() {
-		consume(1);
-	}
+  this(Buffer buffer) {
+    import std.stdio;
+    this.buffer = buffer;
+    this.text = this.buffer.contents;
+    consume(0);
+  }
 
-	@property bool empty() {
-		return index >= text.length;
-	}
+  void consume() {
+    if (front < 128) {
+      consume(1);
+    }
+    else {
+      import std.uni;
+      consume(cast(int)graphemeStride(text[index..$], 0));
+    }
+  }
 
-	this(String text) {
-		this.text = text;
-		this.text = this.text ~ '\0';
-		consume(0);
-	}
+  String consume(int howMuch) {
+    String a = text[index..index+howMuch];
+    index += howMuch;
+    front = text[index];
+    return a;
+  }
 
-	int lineNumber() {
-		int line = 1;
-		for (int i = 0; i < index; ++i) {
-			if (text[i] == '\n') {
-				line++;
-			}
-		}
-		return line;
-	}
+  bool consume(char character) {
+    if (front == character) {
+      consume(1);
+      return true;
+    }
 
+    return false;
+  }
 
-	String consume(int howMuch = 1) {
-		String a = text[index..index+howMuch];
-		index += howMuch;
-		front = text[index];
-		return a;
-	}
+  Token tokenSince(Token.Type type, ref Input input) {
+    auto t = Token(type, this.buffer, input.index, index);
+    import std.stdio;
+    return t;
+  }
 
-	void expect(char character) {
-		if (!consume(character)) {
-			throw new Exception("Expected " ~ character);
-		}
-	}
-
-	bool consume(char character) {
-		return consume(cast(dchar)character);
-	}
-	bool consume(dchar character) {
-		if (front == character) {
-			consume(1);
-			return true;
-		}
-		else return false;
-	}
-
-	Token tokenSince(Token.Type type, ref Input input) {
-		return Token(type, this.text, input.index, index);
-	}
-
-	auto save() {
-		Input input;
-		input.text = text;
-		input.index = index;
-		input.front = front;
-		return input;
-	}
+  auto save() {
+    Input input;
+    input.buffer = buffer;
+    input.text = text;
+    input.index = index;
+    input.front = front;
+    return input;
+  }
 };

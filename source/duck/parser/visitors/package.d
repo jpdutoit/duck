@@ -1,58 +1,102 @@
 module duck.compiler.visitors;
 
-import duck.compiler.ast, duck.compiler.token, duck.compiler.types;
+import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 public import duck.compiler.transforms;
 
-public import duck.compilers.visitors.expr_to_string;
-public import duck.compilers.visitors.expr_print;
-public import duck.compilers.visitors.tree_print;
+debug public import duck.compilers.visitors.expr_to_string;
+debug public import duck.compilers.visitors.expr_print;
+debug public import duck.compilers.visitors.tree_print;
 public import duck.compilers.visitors.codegen;
 
 alias String = const(char)[];
 
 String className(Type type) {
-	//return "";
-	if (!type) return "τ";
-	return "τ-"~mangled(type);
+  //return "";
+  if (!type) return "τ";
+  return "τ-"~mangled(type);
+}
+
+auto or(T...)(T t) {
+  Span a = t[0];
+  for (int i = 1; i < t.length; ++i) {
+    a = a + t[i];
+  }
+}
+
+T dup(T)(T t) {
+  auto e = t.accept(Dup());
+  return cast(T)e;
+}
+
+struct Dup {
+  alias VisitResultType = Node;
+
+  Node visit(MemberExpr expr) {
+    return new MemberExpr(dup(expr.expr), expr.identifier);
+  }
+
+  Node visit(IdentifierExpr expr) {
+    return new IdentifierExpr(expr.token);
+  }
 }
 
 struct LineNumber {
-	alias VisitResultType = int;
-	int visit(ArrayLiteralExpr expr) {
-		foreach (i, arg ; expr.exprs) {
-			int l = arg.accept(this);
-			if (l) return l;
-		}
-		return 0;
-	}
-	int visit(DeclExpr expr) {
-		return expr.identifier.lineNumber;
-	}
-	int visit(MemberExpr expr) {
-		return expr.expr.accept(this) || expr.identifier.lineNumber();
-	}
-	int visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
-		return expr.token.lineNumber();
-	}
-	int visit(BinaryExpr expr) {
-		return expr.left.accept(this) || expr.operator.lineNumber() || expr.right.accept(this);
-	}
-	int visit(AssignExpr expr) {
-		return expr.left.accept(this) || expr.operator.lineNumber() || expr.right.accept(this);
-	}
-	int visit(UnaryExpr expr) {
-		return expr.operator.lineNumber() ||expr.operand.accept(this);
-	}
-	int visit(CallExpr expr) {
-		int l = expr.expr.accept(this);
-		if (l) return l;
-		foreach (i, arg ; expr.arguments) {
-			l = arg.accept(this);
-			if (l) return l;
-		}
-		return 0;
-	}
-	int visit(Node node) {
-		return 0;
-	}
+  alias VisitResultType = Span;
+  Span visit(TypeExpr expr) {
+    return expr.expr.accept(this);
+  }
+  Span visit(ArrayLiteralExpr expr) {
+    Span s;
+    foreach (i, arg ; expr.exprs) {
+      s = s + arg.accept(this);
+    }
+    return Span();
+  }
+  Span visit(InlineDeclExpr expr) {
+    return expr.declStmt.accept(this);
+  }
+  Span visit(RefExpr expr) {
+    return expr.identifier.span;
+  }
+  Span visit(MemberExpr expr) {
+    return expr.expr.accept(this) + expr.identifier.span();
+  }
+  Span visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
+    return expr.token.span();
+  }
+  Span visit(PipeExpr expr) {
+    return expr.left.accept(this) + expr.operator.span() +expr.right.accept(this);
+  }
+  Span visit(BinaryExpr expr) {
+    return expr.left.accept(this) + expr.operator.span() + expr.right.accept(this);
+  }
+  Span visit(AssignExpr expr) {
+    return expr.left.accept(this) + expr.operator.span() + expr.right.accept(this);
+  }
+  Span visit(UnaryExpr expr) {
+    return expr.operator.span() + expr.operand.accept(this);
+  }
+  Span visit(CallExpr expr) {
+    Span s = expr.expr.accept(this);
+    foreach (i, arg ; expr.arguments) {
+      s = s + arg.accept(this);
+    }
+    return s;
+  }
+  Span visit(ExprStmt stmt) {
+    return stmt.expr.accept(this);
+  }
+  Span visit(Stmts stmt) {
+    Span s;
+    foreach (i, sm; stmt.stmts) {
+      s = s + sm.accept(this);
+    }
+    return s;
+  }
+  Span visit(DeclStmt s) {
+    return s.expr.accept(this);
+  }
+  /*int visit(Node node) {
+    return 0;
+  }*/
 }
