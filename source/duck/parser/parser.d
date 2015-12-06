@@ -244,7 +244,7 @@ struct Parser {
     if (!structDecl.external && lexer.consume(Tok!"=")) {
       // Handle init values
       Expr value = expect(parseExpression(), "Expression expected.");
-      return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, value);
+      return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, value, structDecl);
     }
     else if (lexer.consume(Tok!":")) {
       Expr target = expect(parseExpression(), "Expression expected.");
@@ -253,7 +253,7 @@ struct Parser {
       //return new AliasDecl(new IdentifierExpr(type), name, target, structDecl);
     }
 
-    return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, null);
+    return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, null, structDecl);
     //return new FieldDecl(new NamedType(type.value.idup, new StructType(type)), name);
   }
 

@@ -53,6 +53,7 @@ int main(string[] args) {
       }
       else if (command == "run") {
         auto ast = SourceBuffer(new FileBuffer(target)).parse();
+        if (ast.context.errors > 0) return ast.context.errors;
         auto dfile = ast.codeGen().saveToTemporary;
 
         if (usePortAudio)

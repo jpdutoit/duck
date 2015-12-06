@@ -30,10 +30,10 @@ struct SourceBuffer {
   AST parse() {
     auto phaseFlatten = new Flatten();
     auto phaseSemantic = new SemanticAnalysis(context, buffer.path);
-    auto program = context.parseBuffer(buffer).accept(
-      phaseFlatten,
-      phaseSemantic
-    );
+    auto program = context.parseBuffer(buffer)
+      .accept(phaseFlatten)
+      .accept(phaseSemantic);
+
     auto a = AST(context, program);
     return a;
   }
@@ -50,7 +50,7 @@ struct AST {
   DCode codeGen() {
     if (context.errors > 0) return DCode(null);
     //program.accept(ExprPrint());
-    auto code = program.accept(CodeGen());
+    auto code = program.generateCode(context);
 
     //writefln("%s", code);
 

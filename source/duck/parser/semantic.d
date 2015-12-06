@@ -50,7 +50,18 @@ auto taint(Decl decl) {
 }
 
 
-class SemanticAnalysis : TransformVisitor {
+class SemanticAnalysis  : TransformVisitor {
+  /*int depth = 0;
+  final void accept(Target)(ref Target target) {
+    depth++;
+    auto obj = target.accept(this);
+    depth--;
+
+    if (!cast(Target)obj)
+     throw __ICE("expected " ~ typeof(this).stringof ~ ".visit(" ~ Target.stringof ~ ") to return a " ~ Target.stringof);
+    target = cast(Target)obj;
+    //return obj;
+  }*/
 
   debug(Semantic) {
     enum string PAD = "                                                                                ";
@@ -326,6 +337,11 @@ class SemanticAnalysis : TransformVisitor {
 
     debug(Semantic) log("=>", expr.print);
 
+    foreach (ref arg; expr.arguments) {
+      implicitConstruct(arg);
+    }
+    debug(Semantic) log("=>", expr.print);
+
     if (expr.expr.hasError || argsHasError) {
       return expr.taint;
     }
@@ -482,6 +498,8 @@ class SemanticAnalysis : TransformVisitor {
     if (!expr.expr.hasType)
       accept(expr.expr);
     debug(Semantic) log("=>", expr.print);
+    implicitConstruct(expr.expr);
+    debug(Semantic) log("=>", expr.print);
 
     if (expr.expr.hasError) return expr.taint;
 
@@ -489,11 +507,11 @@ class SemanticAnalysis : TransformVisitor {
     if (expr.expr.exprType) {
       decl = expr.expr.exprType.decl;
     }
-    if (!decl) {
+    /*if (!decl) {
       if (auto refExpr = cast(RefExpr)(expr.expr)) {
         decl = refExpr.decl;
       }
-    }
+    }*/
     if (decl) {
       if (decl.declType.kind == GeneratorType.Kind && !isLValue(expr.expr)) {
         error(expr.expr, "Generators can not be temporaries.");
@@ -529,7 +547,7 @@ class SemanticAnalysis : TransformVisitor {
           //debug(Semantic) writefln("aaaaa %s %s %s", fieldDecl, expr.identifier.value, expr.exprType);
           return expr;
         }
-        error(expr.expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
+        error(expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
         return expr.taint;
       }
     }
@@ -684,7 +702,7 @@ class SemanticAnalysis : TransformVisitor {
       import duck.compiler;
 
       debug(Semantic) log("Import", stmt.identifier.value);
-      
+
   		auto p = buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck");
   		if (!p.exists) {
   			context.error(stmt.identifier.span, "Cannot find library at '%s'", p);

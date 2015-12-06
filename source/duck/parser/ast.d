@@ -126,11 +126,13 @@ class FieldDecl : Decl{
   TypeExpr typeExpr;
   alias identifier = name;
   Expr valueExpr;
+  StructDecl parentDecl;
 
-  this(TypeExpr typeExpr, Token identifier, Expr valueExpr) {
+  this(TypeExpr typeExpr, Token identifier, Expr valueExpr, StructDecl parent) {
     super(null, identifier);
     this.typeExpr = typeExpr;
     this.valueExpr = valueExpr;
+    this.parentDecl = parent;
   }
 }
 
@@ -501,7 +503,7 @@ class NullVisitor(T) : Visitor!T {
   T visit(Program Program) { return T.init; }
 }*/
 
-Visitor.VisitResultType accept(Visitor)(Node node, auto ref Visitor visitor) {
+auto accept(Visitor)(Node node, auto ref Visitor visitor) {
   //writefln("Visit %s %s", node.nodeType, node);
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
@@ -509,19 +511,16 @@ Visitor.VisitResultType accept(Visitor)(Node node, auto ref Visitor visitor) {
         case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
     }
     default:
-      import core.exception;
       throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
-      //assert(0);//, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
-      //assert(0, "NodeTypes does not contain all node types");
   }
 }
 
 import std.stdio: writefln;
 import std.typetuple, std.traits;
-
-Visitor[Visitor.length-1].VisitResultType accept(Visitor...)(Node node, auto ref Visitor visitors) if (Visitor.length > 1) {
+/*
+auto accept(Visitor...)(Node node, auto ref Visitor visitors) if (Visitor.length > 1) {
   template getVisitorResultType(T) {
-    alias getVisitorResultType = T.VisitResultType;
+    alias getVisitorResultType = ReturnType!(&accept!T);//T.VisitResultType;
   }
   //alias ReturnTypes = staticMap!(ReturnType, staticMap!(getVisitor, Visitor));
   alias ReturnTypes = staticMap!(getVisitorResultType, Visitor);
@@ -538,4 +537,4 @@ Visitor[Visitor.length-1].VisitResultType accept(Visitor...)(Node node, auto ref
     }
   }
   return R[R.length-1];
-}
+}*/

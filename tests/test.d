@@ -168,18 +168,19 @@ void compare(string output, string expected) {
 }
 
 void compareOutput(string output, string expected) {
+  /*
   if (output != expected) {
     writeln("Output not as expected: (blue missing, red unexpected)");
   compare(output, expected);
   }
-  return;
+  return;*/
   if (expected) {
     writeln("Expected output:");
     write("\033[0;33m");
     write(expected);
     write("\033[0m");
     if (output != expected && output) {
-      writeln("Actual output:");
+      writeln("\nActual output:");
     }
   } else {
     if (output != expected && output) {

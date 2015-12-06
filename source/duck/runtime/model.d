@@ -68,6 +68,7 @@ public:
       __connections[c]();
     }
 
+
     static if (is(typeof(&this.tick))) {
       tick();
     }

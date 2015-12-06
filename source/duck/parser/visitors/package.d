@@ -28,6 +28,50 @@ T dup(T)(T t) {
   return cast(T)e;
 }
 
+
+mixin template DepthFirstRecurse() {
+    void recurse(BinaryExpr expr) {
+      accept(expr.left);
+      accept(expr.right);
+    }
+
+    void recurse(PipeExpr expr) {
+      accept(expr.left);
+      accept(expr.right);
+    }
+
+    void recurse(AssignExpr expr) {
+      accept(expr.left);
+      accept(expr.right);
+    }
+
+    void recurse(UnaryExpr expr) {
+      accept(expr.operand);
+    }
+
+    void recurse(CallExpr expr) {
+      foreach (i, ref arg ; expr.arguments) {
+        accept(arg);
+      }
+      accept(expr.expr);
+    }
+
+    void recurse(MemberExpr expr) {
+      accept(expr.expr);
+    }
+
+    void recurse(RefExpr expr) {
+      accept(expr.decl);
+    }
+
+    void recurse(TypeExpr expr) {
+      accept(expr.expr);
+    }
+
+    void recurse(Node node) {
+    }
+}
+
 struct Dup {
   alias VisitResultType = Node;
 
@@ -39,6 +83,7 @@ struct Dup {
     return new IdentifierExpr(expr.token);
   }
 }
+
 
 struct LineNumber {
   alias VisitResultType = Span;

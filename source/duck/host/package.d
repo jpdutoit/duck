@@ -50,12 +50,15 @@ struct DCompilerOptions {
 
   static immutable DCompilerOptions
     PortAudio = {
+      sourceFiles: [
+        "../deimos/portaudio.di"
+      ],
       libraries: ["lib/libportaudio.a"],
       frameworks: ["CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"],
       versions: ["USE_PORT_AUDIO"]
     },
     DuckRuntime = {
-      flags: ["-release"],
+      flags: ["-release", "-map"],
       sourceFiles: [
         "duck/runtime/package",
         "duck/runtime/model",
@@ -122,7 +125,7 @@ struct DFile {
     foreach (string v; options.flags)
       command ~= " " ~ v;
     foreach(string sourceFile; options.sourceFiles)
-        command ~= " " ~ path ~ "source/" ~ sourceFile ~ ".d";
+        command ~= " " ~ path ~ "source/" ~ sourceFile;
     foreach (string v; options.versions)
       command ~= " -version=" ~ v;
     foreach(string library; options.libraries)
