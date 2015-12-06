@@ -3,7 +3,7 @@ module duck.compiler.ast;
 import duck.compiler.lexer, duck.compiler.types, duck.compiler.semantic;
 import duck.compiler.scopes;
 import duck.compiler;
-import core.exception;
+import duck.compiler.dbg;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
@@ -463,8 +463,6 @@ class CallExpr : Expr {
 }
 
 auto accept(Visitor)(Node node, auto ref Visitor visitor) {
-///writefln("Visit %s %s", node.nodeType, node);
-
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
       static if (is(typeof(visitor.visit(cast(NodeType)node))))
@@ -474,28 +472,3 @@ auto accept(Visitor)(Node node, auto ref Visitor visitor) {
       throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
   }
 }
-/*
-import std.stdio: writefln;
-import std.typetuple, std.traits;
-
-
-auto accept(Visitor...)(Node node, auto ref Visitor visitors) if (Visitor.length > 1) {
-  template getVisitorResultType(T) {
-    alias getVisitorResultType = ReturnType!(&accept!T);//T.VisitResultType;
-  }
-  //alias ReturnTypes = staticMap!(ReturnType, staticMap!(getVisitor, Visitor));
-  alias ReturnTypes = staticMap!(getVisitorResultType, Visitor);
-
-  ReturnTypes R;
-  foreach(i, visitor; visitors) {
-    {  ReturnTypes[i] result;
-      //writefln("Visit using %s", typeof(visitor).stringof);
-      static if (i == 0) {
-        R[i] = node.accept(visitor);
-      } else {
-        R[i] = R[i-1].accept(visitor);
-      }
-    }
-  }
-  return R[R.length-1];
-}*/

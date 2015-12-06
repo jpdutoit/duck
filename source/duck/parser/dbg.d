@@ -3,6 +3,16 @@ module duck.compiler.dbg;
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 import duck.compiler.transforms;
 
+auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
+  import core.exception;
+  import std.conv;
+  import std.stdio;
+  auto msg = "Internal compiler error: " ~ message ~ " at " ~ file ~ "(" ~ line.to!string ~ ") ";
+  stderr.writeln(msg);
+  return new AssertError(msg);
+}
+
+
 string describe(const Type type) {
   return type ? type.mangled() : "?";
 }
@@ -11,12 +21,6 @@ String annot(String whatever, Type type) {
   if (!type) return whatever;
   return whatever ~ " : " ~ type.describe();
 }
-/*
-String className(Type type) {
-  if (!type)
-    return "? : ";
-  return mangled(type) ~ " : ";
-}*/
 
 mixin template TreeLogger() {
   enum string PAD = "                                                                                         ";

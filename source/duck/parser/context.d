@@ -5,8 +5,6 @@ import duck.compiler.lexer;
 import duck.compiler.buffer;
 
 class Context {
-  TempBuffer temp;
-
   this () {
     temp = new TempBuffer("");
   }
@@ -18,12 +16,6 @@ class Context {
   Token temporary() {
     return token(Identifier, "__tmp" ~ (++temporaries).to!string);
   }
-
-  int errors;
-  int temporaries = 0;
-  /*const(char)[] temporary() {
-    return "__tmp" ~ (++temporaries).to!(const(char)[]);
-  }*/
 
   void error(Args...)(Slice slice, string format, Args args)
   {
@@ -40,4 +32,7 @@ class Context {
     stderr.writeln(str);
   }
 
+  TempBuffer temp;
+  int errors;
+  int temporaries;
 };

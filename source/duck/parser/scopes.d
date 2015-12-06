@@ -2,6 +2,7 @@ module duck.compiler.scopes;
 
 import duck.compiler.ast;
 import duck.compiler;
+import duck.compiler.dbg;
 
 alias String = const(char)[];
 

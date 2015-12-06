@@ -4,17 +4,6 @@ import std.stdio : writefln, writeln;
 import duck.compiler.parser, duck.compiler.ast, duck.compiler.lexer, duck.compiler.visitors, duck.compiler.semantic, duck.compiler.context;
 public import duck.compiler.buffer;
 
-
-auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
-  import core.exception;
-  import std.conv;
-  import std.stdio;
-  auto msg = "Internal compiler error: " ~ message ~ " at " ~ file ~ "(" ~ line.to!string ~ ") ";
-  stderr.writeln(msg);
-  return new AssertError(msg);
-}
-
-
 Program parseBuffer(Context context, Buffer buffer) {
   return Parser(context, buffer).parseModule();
 }
@@ -55,7 +44,7 @@ struct AST {
     //writefln("%s", code);
 
     auto s = q{import duck.runtime, duck.stdlib; }
-    ~ "\n\nvoid start() {\n" ~ code ~ "\n}\n\n" 
+    ~ "\n\nvoid start() {\n" ~ code ~ "\n}\n\n"
     "void main(string[] args) {\n"
     "  initialize(args);\n"
     "  Duck(&start);\n"

@@ -112,12 +112,16 @@ int main() {
   CSS""");
 
   auto files = findFiles("coverage");
+  files.multiSort!(
+    (string x, string y) => cast(int)x.count("-") < cast(int)y.count("-"),
+    (string x, string y) => x < y
+    );
   auto indexFile = File("coverage/index.html", "w");
   auto index = indexFile.lockingTextWriter;
   index.put("<html><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" type=\"text/css\" href=\"index.css\"></head><body><table class=\"index\">");
-  index.put(format("<tr><th>Filename</th><th>%s</th><th>%s</th><th>%s</th></tr>", "Covered Lines", "Total Lines", "%"));
+  index.put(format("<tr><th>Filename</th><th>%s</th><th>%s</th><th>%s</th><th>%s</th></tr>", "Covered Lines", "Coverable Lines", "Total Lines", "%"));
 
-  int totalCovered = 0, totalCoverable = 0;
+  int totalCovered = 0, totalCoverable = 0, totalLines = 0;
   foreach(inputFilename; files) {
     // Exclude debug file
     if (inputFilename.indexOf("parser-dbg.lst") >= 0) continue;
@@ -163,14 +167,15 @@ int main() {
       if (percentage > 95 || (coverable - covered) < 6) cls = "good";
       else if (percentage > 80 || (coverable - covered) < 20) cls = "ok";
       else cls = "bad";
-      index.put(format("<tr class=\"%s\"><td><a href=\"%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td></tr>", cls, "../" ~ inputFilename.replace(".lst", ".html"), name, covered, coverable, percentage));
+      index.put(format("<tr class=\"%s\"><td><a href=\"%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", cls, "../" ~ inputFilename.replace(".lst", ".html"), name, covered, coverable, line, percentage));
       output.put("</table></body><html>");
 
       totalCovered += covered;
       totalCoverable += coverable;
+      totalLines += line;
   }
   int percentage = cast(int)(totalCoverable ? cast(float)totalCovered / totalCoverable * 100 : 100);
-  index.put(format("<tr><td></td><td>%s</td><td>%s</td><td>%s</td></tr>", totalCovered, totalCoverable, percentage));
+  index.put(format("<tr><td></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", totalCovered, totalCoverable, totalLines, percentage));
   index.put("</table></body><html>");
 
   return 0;

@@ -6,9 +6,6 @@ import std.process;
 import std.algorithm;
 import std.array;
 
-//debug = duck_host;
-
-
 private {
   int tmpIndex = 0;
   string tmpFolder = "/tmp/";
@@ -100,16 +97,6 @@ struct DFile {
     return Executable(output);
   }
 
-
-
-  //static auto sourceFiles = [
-
-
-//  static auto libraries  = [];//"lib/libportaudio.a"];//, "source/duck.a"];
-//  static auto frameworks = [];//"CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"];
-  //static string[] versions = [];
-  //static string[] versions   = ["USE_PORT_AUDIO"];
-
   static string hostFolder() {
     import core.runtime;
     import std.path : dirName;
@@ -150,15 +137,12 @@ struct Executable {
 }
 
 struct Process {
-
     string filename;
     Pid pid;
 
     this(string filename) {
         this.filename = filename;
         this.pid = spawnProcess(this.filename);
-        //this.pid = this.pipes.pid;
-        //spawn(&streamReader, this.pid.processID(), this.pipes.stderr().getFP());
     }
 
     void stop() {
@@ -176,32 +160,7 @@ struct Process {
         return !tryWait(pid).terminated;
     }
 
-
     void wait() {
       .wait(this.pid);
     }
-
-/*
-    static void streamReader(int pid, FILE* osFile)
-    {
-        import std.string;
-        File input = File.wrapFile(osFile);
-        while (!input.eof()) {
-            string line = input.readln().chomp();
-            stderr.writefln("[%s] %s", pid, line);
-            //owner.send(pid, line);
-        }
-    }*/
-
-    /*void processStreams() {
-        writefln("ff");
-        //static ubyte[8192] buffer;
-        if (!pipes.stderr.eof()) {
-            foreach(s; pipes.stderr.byLine)
-                stderr.writefln("[%s] %s", this.pid.processID(), s);
-            //stdin.byLine.copy(stderr.lockingTextWriter());
-        }
-    }
-*/
-    //ProcessPipes pipes;
 }

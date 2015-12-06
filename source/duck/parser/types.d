@@ -7,10 +7,15 @@ private import std.typetuple: staticIndexOf;
 
 alias Types = AliasSeq!(NumberType, StringType, VoidType, FunctionType, StructType, GeneratorType, TypeType, ErrorType, ArrayType);
 
+
+template TypeKind(T) if (staticIndexOf!(T, Types) >= 0)
+{
+  enum TypeKind = staticIndexOf!(T, Types);
+}
+
 mixin template TypeMixin() {
-  static enum Kind = staticIndexOf!(typeof(this), Types);
+  static enum Kind = TypeKind!(typeof(this));
   static if (Kind < 0) {
-    //#TODO:0 Do it right
     static assert(false, "Expected type " ~ typeof(this).stringof ~ " to be in Types list.");
   }
   override _Kind kind() { return Kind; };
