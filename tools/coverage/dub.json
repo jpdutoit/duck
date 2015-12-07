@@ -1,0 +1,8 @@
+{
+  "name": "coverage-report",
+  "targetType": "executable",
+  "targetName": "create-cov-report",
+  "targetPath": "../../bin",
+  "mainSourceFile": "coverage.d",
+  "sourceFiles": []
+}

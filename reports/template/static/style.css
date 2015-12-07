@@ -1,0 +1,89 @@
+.lines * {
+  line-height: 80%;
+}
+.zero {
+  color: red;
+}
+.not-code {
+  color: gray;
+  font-size: 60%;
+}
+.non-zero {
+  font-size: 60%;
+}
+
+.good {
+  background-color: #77DD77;
+}
+
+.ok {
+  background-color: #FFB347;
+}
+
+.bad {
+  background-color: #FF6961;
+}
+
+table {
+  border-collapse: collapse;
+}
+body {
+  //width: 800px;
+
+}
+
+table.index {
+  margin:0 auto;
+  color: black;
+  line-height: 140%;
+}
+
+table.index a {
+  color: black;
+  text-decoration: none;
+}
+
+.index td, .index th {
+  padding: 0 10px;
+}
+
+.index td:nth-child(1) {
+  max-width: 100%;
+}
+
+.index td:not(:first-child), .index th:not(:first-child) {
+  border-left: 1px solid #000;
+  width: 60px;
+  text-align: center;
+}
+
+.index tr:last-child {
+  border-top: 1px solid #000;
+}
+
+.index td:first-child, .index th:first-child {
+  text-align: left;
+}
+
+.index th {
+  text-align: left;
+  font-size:70%;
+  text-transform: uppercase;
+  border-bottom: 1px solid #000;
+}
+
+.lines td:nth-child(1) {
+  padding-left: 4px;
+  width:60px;
+  text-align:left;
+  border-right: 1px solid #000;
+}
+.lines td:nth-child(2) {
+  border-right: 1px solid #000;
+  width:60px;
+  padding-right:10px;
+  text-align:right;
+}
+.lines td:nth-child(3) {
+  padding-left: 4px;
+}

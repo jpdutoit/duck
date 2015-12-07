@@ -1,5 +1,5 @@
 /*
-OUTPUT: not-compilable/comment2.duck(1:1-7:0): Error: Unterminated comment
+OUTPUT: tests/not-compilable/comment2.duck(1:1-7:0): Error: Unterminated comment
 Unclosed:
 /*
 Nested

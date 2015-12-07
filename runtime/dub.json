@@ -1,0 +1,33 @@
+{
+  "name": "runtime",
+  "description": "DuckAudio - Runtime",
+  "copyright": "Copyright © 2015, Jacques P. du Toit",
+  "authors": ["jpdutoit@gmail.com"],
+  "dependencies": {
+  },
+  "targetType": "staticLibrary",
+  "targetName": "duck",
+  "targetPath": "../lib",
+  "sourcePaths": [],
+  "sourceFiles": [
+      "source/duck/runtime/package",
+      "source/duck/runtime/model",
+      "source/duck/runtime/scheduler",
+      "source/duck/runtime/entry",
+      "source/duck/runtime/global",
+      "source/duck/stdlib/package",
+      "source/duck/stdlib/scales",
+      "source/duck/stdlib/units",
+      "source/duck/stdlib/ugens",
+      "source/duck/plugin/portaudio/package",
+      "source/duck/plugin/osc/ugen",
+      "source/duck/plugin/osc/server"
+    ],
+  "configurations": [{
+    "name": "default",
+  }, {
+    "targetName": "duck_pa",
+    "name": "port-audio",
+    "versions": ["USE_PORT_AUDIO"]
+  }]
+}

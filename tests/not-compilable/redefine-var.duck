@@ -5,7 +5,7 @@ float aa;
 /*
 OUTPUT:
 ---
-not-compilable/redefine-var.duck(2:11-12): Error: Cannot redefine AA
-not-compilable/redefine-var.duck(4:7-8): Error: Cannot redefine aa
+tests/not-compilable/redefine-var.duck(2:11-12): Error: Cannot redefine AA
+tests/not-compilable/redefine-var.duck(4:7-8): Error: Cannot redefine aa
 ---
 */

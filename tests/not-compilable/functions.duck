@@ -7,7 +7,7 @@ hz(AA.output);
 /**
 OUTPUT:
 ---
-not-compilable/functions.duck(5:1-9): Error: Wrong number of arguments
-not-compilable/functions.duck(6:7-12): Error: Cannot implicity convert argument of type frequency to number
+tests/not-compilable/functions.duck(5:1-9): Error: Wrong number of arguments
+tests/not-compilable/functions.duck(6:7-12): Error: Cannot implicity convert argument of type frequency to number
 ---
 */

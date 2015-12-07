@@ -1,0 +1,10 @@
+{
+  "name": "test-runner",
+  "targetType": "executable",
+  "targetName": "test-runner",
+  "targetPath": "../../bin",
+  "mainSourceFile": "test_runner.d",
+  "sourceFiles": [
+    "test_case.d"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "name": "duck",
+  "description": "DuckAudio - Compiler and host",
+  "copyright": "Copyright © 2015, Jacques P. du Toit",
+  "authors": ["jpdutoit@gmail.com"],
+  "targetPath": "../bin",
+  "targetType": "executable",
+  "sourcePaths": [],
+  "sourceFiles": [
+    "source/duck/compiler/package.d",
+    "source/duck/compiler/buffer/package.d",
+    "source/duck/compiler/buffer/slice.d",
+    "source/duck/compiler/parser.d",
+    "source/duck/compiler/semantic.d",
+    "source/duck/compiler/types.d",
+    "source/duck/compiler/context.d",
+    "source/duck/compiler/scopes.d",
+    "source/duck/compiler/visitors/package.d",
+    "source/duck/compiler/visitors/codegen.d",
+    "source/duck/compiler/transforms.d",
+    "source/duck/compiler/ast.d",
+    "source/duck/compiler/lexer/package.d",
+    "source/duck/compiler/lexer/token.d",
+    "source/duck/compiler/lexer/tokens.d",
+    "source/duck/compiler/lexer/lexer.d",
+    "source/duck/compiler/input.d",
+    "source/duck/compiler/dbg.d",
+    "source/duck/host/package.d"
+  ],
+  "configurations": [{
+    "name": "default",
+    "targetName": "duck",
+    "mainSourceFile": "source/host.d",
+  }, {
+    "name": "interactive",
+    "targetName": "iduck",
+    "mainSourceFile": "source/ihost.d",
+  }]
+}

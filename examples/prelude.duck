@@ -1,0 +1,146 @@
+
+generator Phasor {
+  frequency freq = 440 hz;
+  mono phase = 0;
+  mono output = 0;
+  frequency input : this.freq;
+
+  function tick() {
+    output = phase;
+    phase = (phase + (freq / SAMPLE_RATE)) % 1.0;
+  }
+}
+
+generator Clock {
+  frequency freq = 440 hz;
+  mono phase = 1.0;
+  mono output = 0;
+  frequency input : this.freq;
+
+  function tick() {
+    phase = (phase + (freq / SAMPLE_RATE));
+    //TODO: Implement if statements
+    /*
+    if (phase >= 1.0) {
+      phase = phase % 1.0;
+      output = 1;
+    } else {
+      output = 0;
+    }
+    */
+  }
+}
+
+generator SinOsc {
+  Phasor phasor;
+  frequency freq : this.phasor.freq;
+  frequency input : this.phasor.input;
+  mono output;
+
+  //TODO: Implement pipes in definition
+  //sin(phasor * 2 * 3.141592) >> mono output;
+
+  function tick() {
+    output = sin(phasor * 2 * 3.141592);
+  }
+}
+
+
+generator Triangle {
+  Phasor phasor;
+  frequency freq : this.phasor.freq;
+  frequency input : this.phasor.input;
+  mono output;
+
+  function tick() {
+    output = abs(phasor * 2 - 1.0) * 2 - 1;
+  }
+}
+
+generator SawTooth {
+  Phasor phasor;
+  frequency freq : this.phasor.freq;
+  frequency input : this.phasor.input;
+  mono output;
+
+  function tick() {
+    output = phasor * 2 - 1;
+  }
+}
+
+extern generator DAC {
+  mono input;
+  mono left;
+  mono right;
+}
+
+extern generator Mono {
+  mono output;
+  mono input;
+}
+
+extern generator Frequency {
+  frequency output;
+  frequency input;
+}
+
+extern generator Assert {
+  mono input;
+  mono output;
+}
+
+
+extern generator Pat {
+  mono input;
+  mono output;
+}
+
+extern generator ScaleQuant {
+  mono input;
+  mono key;
+  mono output;
+}
+
+extern generator SAH {
+  mono trigger;
+  mono input;
+  mono output;
+}
+
+extern generator Pitch {
+  mono input;
+  frequency output;
+}
+
+
+extern generator Square {
+  frequency freq;
+  frequency input;
+  mono output;
+}
+
+extern generator AR {
+  duration attack;
+  duration release;
+  mono input;
+  mono output;
+}
+
+extern generator Echo {
+  mono input;
+  mono output;
+  mono gain;
+}
+
+extern generator OSCValue {
+  mono output;
+}
+
+extern generator Delay {
+  mono input;
+  mono output;
+}
+
+extern generator WhiteNoise {
+  mono output;
+}

@@ -11,9 +11,9 @@ b >> b + 20;
 /*
 OUTPUT:
 ---
-not-compilable/pipe.duck(6:1-5): Error: expected a value expression
-not-compilable/pipe.duck(7:6-10): Error: not a valid connection target
-not-compilable/pipe.duck(9:6-11): Error: not a valid connection target
-not-compilable/pipe.duck(10:1-12): Error: cannot connect a string to a number input
+tests/not-compilable/pipe.duck(6:1-5): Error: expected a value expression
+tests/not-compilable/pipe.duck(7:6-10): Error: not a valid connection target
+tests/not-compilable/pipe.duck(9:6-11): Error: not a valid connection target
+tests/not-compilable/pipe.duck(10:1-12): Error: cannot connect a string to a number input
 ---
 */

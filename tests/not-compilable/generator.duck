@@ -10,10 +10,10 @@ AA.c;
 /**
 OUTPUT:
 ---
-not-compilable/generator.duck(6:13): Error: Expression expected
-not-compilable/generator.duck(2:13-19): Error: Expected default value to be of type number not of type string.
-not-compilable/generator.duck(3:3-9): Error: Undefined identifier unknown
-not-compilable/generator.duck(3:3-9): Error: Expected type
-not-compilable/generator.duck(9:4): Error: No field c in AA
+tests/not-compilable/generator.duck(6:13): Error: Expression expected
+tests/not-compilable/generator.duck(2:13-19): Error: Expected default value to be of type number not of type string.
+tests/not-compilable/generator.duck(3:3-9): Error: Undefined identifier unknown
+tests/not-compilable/generator.duck(3:3-9): Error: Expected type
+tests/not-compilable/generator.duck(9:4): Error: No field c in AA
 ---
 */

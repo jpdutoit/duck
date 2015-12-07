@@ -1,8 +1,14 @@
 {
-	"name": "Duck",
-	"description": "DuckAudio",
-	"copyright": "Copyright © 2015, Jacques P. du Toit",
-	"authors": ["jpdutoit@gmail.com "],
-	"dependencies": {
-	}
+  "name": "Duck",
+  "description": "DuckAudio",
+  "copyright": "Copyright © 2015, Jacques P. du Toit",
+  "authors": ["jpdutoit@gmail.com"],
+  "targetPath": "bin",
+  "sourcePaths": [],
+  "subPackages": [
+    "./duck/",
+    "./runtime/",
+    "./tools/coverage",
+    "./tools/test-runner"
+  ]
 }

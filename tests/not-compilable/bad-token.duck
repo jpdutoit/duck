@@ -2,7 +2,7 @@
 /*
 OUTPUT:
 ---
-not-compilable/bad-token.duck(1:1-2): Error: Unexpected character '£'
-not-compilable/bad-token.duck(1:3-5): Error: Unexpected character '™'
+tests/not-compilable/bad-token.duck(1:1-2): Error: Unexpected character '£'
+tests/not-compilable/bad-token.duck(1:3-5): Error: Unexpected character '™'
 ---
 */
