@@ -2,5 +2,6 @@
 .dub
 docs.json
 __dummy.html
+tests/coverage
 *.o
 *.obj

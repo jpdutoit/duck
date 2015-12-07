@@ -5,7 +5,32 @@ import std.string;
 import std.file;
 import std.array;
 import std.algorithm;
-import std.exception;
+import std.regex;
+import std.conv : to;
+
+auto TemplateRegex = regex("\\$\\{([a-zA-Z][a-zA-Z0-9]*)\\}");
+struct Template {
+  string contents;
+
+  this(string filename) {
+    char buffer[1024*1024];
+    // Read input file
+    File src = File(filename, "r");
+    auto buf = src.rawRead(buffer).idup;
+    src.close();
+    this.contents = buf;
+  }
+
+  string expand(string[string] data) {
+    data["$"] = "$";
+    string find(Captures!(string) m) {
+      return m[1] in data ? data[m[1]] : "";
+    }
+    auto result = replaceAll!(find)(contents, TemplateRegex);
+    //writeln(data, " ", contents, " ", result);
+    return result;
+  }
+}
 
 auto findFiles(string where) {
   string[] files;
@@ -17,166 +42,113 @@ auto findFiles(string where) {
 }
 
 int main() {
-  auto cssFile = File("coverage/index.css", "w");
-  auto css = cssFile.lockingTextWriter;
-  css.put("""CSS
-    .lines * {
-      line-height: 80%;
-    }
-    .zero {
-      color: red;
-    }
-    .not-code {
-      color: gray;
-      font-size: 60%;
-    }
-    .non-zero {
-      font-size: 60%;
-    }
+  // Load templates
+  Template indexFileTemplate = Template("template/index-file.html");
+  Template indexLineTemplate = Template("template/index-line.html");
+  Template sourceFileTemplate = Template("template/source-file.html");
+  Template sourceLineTemplate = Template("template/source-line.html");
 
-    .good {
-      background-color: #77DD77;
-    }
-
-    .ok {
-      background-color: #FFB347;
-    }
-
-    .bad {
-      background-color: #FF6961;
-    }
-
-    table {
-      border-collapse: collapse;
-    }
-    body {
-      //width: 800px;
-
-    }
-
-    table.index {
-      margin:0 auto;
-      color: black;
-      line-height: 140%;
-    }
-
-    table.index a {
-      color: black;
-      text-decoration: none;
-    }
-
-    .index td, .index th {
-      padding: 0 10px;
-    }
-
-    .index td:nth-child(1) {
-      max-width: 100%;
-    }
-
-    .index td:not(:first-child), .index th:not(:first-child) {
-      border-left: 1px solid #000;
-      width: 60px;
-      text-align: center;
-    }
-
-    .index tr:last-child {
-      border-top: 1px solid #000;
-    }
-
-    .index td:first-child, .index th:first-child {
-      text-align: left;
-    }
-
-    .index th {
-      text-align: left;
-      font-size:70%;
-      text-transform: uppercase;
-      border-bottom: 1px solid #000;
-    }
-
-    .lines td:nth-child(1) {
-      padding-left: 4px;
-      width:60px;
-      text-align:left;
-      border-right: 1px solid #000;
-    }
-    .lines td:nth-child(2) {
-      border-right: 1px solid #000;
-      width:60px;
-      padding-right:10px;
-      text-align:right;
-    }
-    .lines td:nth-child(3) {
-      padding-left: 4px;
-    }
-  CSS""");
-
+  //  Find all coverage files, and sort them
   auto files = findFiles("coverage");
   files.multiSort!(
-    (string x, string y) => cast(int)x.count("-") < cast(int)y.count("-"),
+    (string x, string y) => x.count("-") < y.count("-"),
     (string x, string y) => x < y
     );
-  auto indexFile = File("coverage/index.html", "w");
-  auto index = indexFile.lockingTextWriter;
-  index.put("<html><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" type=\"text/css\" href=\"index.css\"></head><body><table class=\"index\">");
-  index.put(format("<tr><th>Filename</th><th>%s</th><th>%s</th><th>%s</th><th>%s</th></tr>", "Covered Lines", "Coverable Lines", "Total Lines", "%"));
+
+  Appender!string indexLines;
 
   int totalCovered = 0, totalCoverable = 0, totalLines = 0;
   foreach(inputFilename; files) {
     // Exclude debug file
     if (inputFilename.indexOf("parser-dbg.lst") >= 0) continue;
 
-    auto oFile = File(inputFilename.replace(".lst", ".html"), "w");
-    auto output = oFile.lockingTextWriter();
-    auto input = File(inputFilename).byLine(KeepTerminator.yes);
-    output.put("<html><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" type=\"text/css\" href=\"index.css\"></head><body><table class=\"lines\">");
+    int line = 0, coverable = 0, covered = 0;
 
-    auto name = inputFilename.split("/")[1].replace("-", "/").replace(".lst", ".d");
-    output.put(format("<tr><th class=\"title\" colspan=\"3\">%s</th></tr>", name));
-    output.put("<tr><th>count</th><th>line</th><th></th></tr>\n");
-    int line = 0;
-    int coverable = 0;
-    int covered = 0;
-    input
+    auto inputLines = File(inputFilename).byLine(KeepTerminator.yes);
+    Appender!string coverageLines = Appender!string();
+    inputLines
       .map!((s) {
         line++;
         auto pipe = s.indexOf("|");
         if (pipe > 0) {
-          import std.conv : to;
-          auto cs = s[0..pipe].stripLeft;
-          if (s.indexOf("__ICE") >= 0) {
-            cs = null;
-          }
-          if (cs.length > 0) {
-            int count = s[0..pipe].stripLeft.to!int;
+          string cov = "";
+          int count = 0;
+
+          auto coveragePart = s[0..pipe].stripLeft;
+          if (coveragePart.length > 0) {
+            count = coveragePart.to!int;
             if (count > 0) covered++;
+            cov = count.to!string;
             coverable++;
-            return format("<tr class=\"%s\"><td>%s</td><td>%s</td><td><pre>%s</pre></td></tr>", count > 0 ? "non-zero":"zero", count, line, s[pipe+1..$]);
-          } else {
-            return format("<tr class=\"not-code\"><td>%s</td><td>%s</td><td><pre>%s</pre></td></tr>", "", line, s[pipe+1..$]);
           }
+          return sourceLineTemplate.expand([
+            "CLASS": cov.length ? (count > 0 ? "non-zero": "zero") : "not-code",
+            "COV": cov,
+            "LINE": s[pipe+1..$].to!string,
+            "LINENUMBER": line.to!string
+          ]);
         } else {
           return "";
-          //return format("<tr><td colspan=\"3\">%s</td></tr>", s);
         }
       })
-      .copy(output);
+      .copy(&coverageLines);
 
       int percentage = cast(int)(coverable ? cast(float)covered / coverable * 100 : 100);
-      string cls;
-      if (percentage > 95 || (coverable - covered) < 6) cls = "good";
-      else if (percentage > 80 || (coverable - covered) < 20) cls = "ok";
-      else cls = "bad";
-      index.put(format("<tr class=\"%s\"><td><a href=\"%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", cls, "../" ~ inputFilename.replace(".lst", ".html"), name, covered, coverable, line, percentage));
-      output.put("</table></body><html>");
+
+      auto name = inputFilename.split("/")[1].replace("-", "/").replace(".lst", ".d");
+
+      {
+        // Write source coverage file
+        auto coverageFile = File(inputFilename.replace(".lst", ".html"), "w");
+        auto coverage = coverageFile.lockingTextWriter();
+        coverage.put(sourceFileTemplate.expand([
+          "FILENAME": name,
+          "LINES": coverageLines.data
+        ]));
+      }
+
+      {
+        // Add coverage summary line to index
+        string cls;
+        if (percentage > 95 || (coverable - covered) < 6) cls = "good";
+        else if (percentage > 80 || (coverable - covered) < 20) cls = "ok";
+        else cls = "bad";
+
+        indexLines.put(indexLineTemplate.expand([
+          "CLASS": cls,
+          "LINK": "../" ~ inputFilename.replace(".lst", ".html"),
+          "LINKTITLE": name,
+          "COVERED": covered.to!string,
+          "COVERABLE": coverable.to!string,
+          "TOTAL": line.to!string,
+          "PERCENTAGE": percentage.to!string,
+        ]));
+      }
 
       totalCovered += covered;
       totalCoverable += coverable;
       totalLines += line;
   }
-  int percentage = cast(int)(totalCoverable ? cast(float)totalCovered / totalCoverable * 100 : 100);
-  index.put(format("<tr><td></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", totalCovered, totalCoverable, totalLines, percentage));
-  index.put("</table></body><html>");
+
+  {
+    // Add totals line to index
+    int percentage = cast(int)(totalCoverable ? cast(float)totalCovered / totalCoverable * 100 : 100);
+    indexLines.put(indexLineTemplate.expand([
+      "COVERED": totalCovered.to!string,
+      "COVERABLE": totalCoverable.to!string,
+      "TOTAL": totalLines.to!string,
+      "PERCENTAGE": percentage.to!string,
+    ]));
+  }
+
+  {
+    // Write the index files
+    auto indexFile = File("coverage/index.html", "w");
+    auto index = indexFile.lockingTextWriter;
+    index.put(indexFileTemplate.expand([
+      "LINES": indexLines.data
+    ]));
+  }
 
   return 0;
 }
