@@ -35,7 +35,7 @@ struct OperatorTypeMap
 }
 
 bool hasError(Expr expr) {
-  return expr.exprType == errorType;
+  return expr._exprType == errorType;
 }
 
 bool hasType(Expr expr) {
@@ -248,9 +248,7 @@ struct SemanticAnalysis {
         accept(expr.left);
       }
       else {
-        //debug(Semantic) writefln("%s %s", expr.left.exprType, expr.right.exprType);
         if (!expr.left.hasError && !expr.right.hasError) {
-
           if (expr.left.exprType == typeType) {
             expr.taint;
             error(expr.left, "expected a value expression");
@@ -259,7 +257,6 @@ struct SemanticAnalysis {
             expr.taint;
             error(expr.right, "not a valid connection target");
           }
-
           if (expr.left.exprType != expr.right.exprType && !expr.hasError) {
             error(expr, "cannot connect a " ~ mangled(expr.left.exprType) ~ " to a " ~ mangled(expr.right.exprType) ~ " input");
           }

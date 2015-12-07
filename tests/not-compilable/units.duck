@@ -1,0 +1,13 @@
+generator AA {
+  frequency input;
+}
+
+10 >> AA.input;
+10 >> AA;
+/*
+OUTPUT:
+---
+tests/not-compilable/units.duck(5:1-14): Error: cannot connect a number to a frequency input
+tests/not-compilable/units.duck(6:1-5): Error: cannot connect a number to a frequency input
+---
+*/
