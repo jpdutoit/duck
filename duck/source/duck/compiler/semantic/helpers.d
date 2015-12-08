@@ -25,7 +25,7 @@ auto taint(Decl decl) {
 bool isLValue(Expr expr) {
   if (!!cast(RefExpr)expr) return true;
   if (auto memberExpr = cast(MemberExpr)expr) {
-    return isLValue(memberExpr.expr);
+    return isLValue(memberExpr.left);
   }
   return false;
 }

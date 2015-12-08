@@ -23,32 +23,32 @@ string generateCode(Node node, Context context) {
 }
 
 string lvalueToString(Expr expr){
-  return expr.accept!(
+  return expr.visit!(
     (RefExpr re) => re.identifier.value,
-    (MemberExpr me) => lvalueToString(me.expr) ~ "." ~ me.identifier.value);
+    (MemberExpr me) => lvalueToString(me.left) ~ "." ~ me.identifier.value);
 }
 
 string findTarget(Expr expr) {
-  return expr.accept!(
+  return expr.visit!(
     (Expr expr) => cast(string)null,
-    (MemberExpr expr) => lvalueToString(expr.expr));
+    (MemberExpr expr) => lvalueToString(expr.left));
 }
 
 StructDecl findOwnerDecl(Expr expr) {
-    return expr.accept!(
+    return expr.visit!(
       (Expr expr) => cast(StructDecl)null,
       delegate StructDecl(MemberExpr expr) {
-        if (auto ge = cast(ModuleType)expr.expr.exprType) {
+        if (auto ge = cast(ModuleType)expr.left.exprType) {
           return ge.decl;
         }
-        return expr.expr.findOwnerDecl();
+        return expr.left.findOwnerDecl();
       });
 }
 
 auto findModules(Expr expr) {
   string[] modules;
   expr.traverse((MemberExpr memberExpr) {
-    if (memberExpr.expr.exprType.kind == ModuleType.Kind) {
+    if (memberExpr.left.exprType.kind == ModuleType.Kind) {
       modules ~= memberExpr.findTarget();
       return false;
     }
@@ -113,7 +113,7 @@ struct CodeGen {
 //      writefln("%s", expr.expr.exprType);
 
       //emit("(");
-      accept(expr.expr);
+      accept(expr.left);
       emit(".");
       emit(expr.identifier.value);
       //emit(")");
@@ -134,6 +134,7 @@ struct CodeGen {
     }
     emit("]");
   }
+
   void visit(BinaryExpr expr) {
     debug(CodeGen) log("BinaryExpr");
     emit("(");

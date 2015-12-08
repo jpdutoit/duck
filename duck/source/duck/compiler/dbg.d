@@ -54,7 +54,7 @@ struct ExprToString {
     return "(" ~ expr.identifier.value.annot(expr._exprType) ~ ")";
   }
   string visit(MemberExpr expr) {
-    return "(" ~ expr.expr.accept(this) ~ "." ~ expr.identifier.value.annot(expr._exprType) ~ ")";
+    return "(" ~ expr.left.accept(this) ~ "." ~ expr.identifier.value.annot(expr._exprType) ~ ")";
   }
   string visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
     return "("  ~ expr.token.value ~ "".annot(expr._exprType) ~ ")";

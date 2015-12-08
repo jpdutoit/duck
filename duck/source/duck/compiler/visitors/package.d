@@ -8,11 +8,11 @@ public import duck.compiler.visitors.codegen;
 import duck.compiler.buffer;
 import std.traits;
 
-auto accept(Node, Visitor)(Node node, auto ref Visitor visitor) {
+auto accept(N, Visitor)(N node, auto ref Visitor visitor) {
   import duck.compiler.dbg;
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
-      static if (is(NodeType : Node) && is(typeof(visitor.visit(cast(NodeType)node))))
+      static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
         case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
     }
     default:
@@ -20,22 +20,34 @@ auto accept(Node, Visitor)(Node node, auto ref Visitor visitor) {
   }
 }
 
-auto accept(alias T1, Node)(Node node)
-{
-  struct DelegateVisitor {
-    ReturnType!T1 visit(ParameterTypeTuple!T1[0] n) { return T1(n); }
+R acceptR(R, N, Visitor)(N node, auto ref Visitor visitor) {
+  import duck.compiler.dbg;
+  switch(node.nodeType) {
+    foreach(NodeType; NodeTypes) {
+      static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
+        case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
+    }
+    default:
+      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
   }
-  return node.accept(DelegateVisitor());
 }
 
+import std.typetuple;
 
-auto accept(alias T1, alias T2, Node)(Node node)
-{
-  struct DelegateVisitor {
-    ReturnType!T1 visit(ParameterTypeTuple!T1[0] n) { return T1(n); }
-    ReturnType!T2 visit(ParameterTypeTuple!T2[0] n) { return T2(n); }
+template visit(T...) if (T.length > 1) {
+  import std.conv;
+  string genCode() {
+    auto code = "struct DelegateVisitor {\n";
+    foreach(i, t; T) {
+      auto idx  = i.to!string;
+      code ~= "  ReturnType!(T["~ idx ~ "]) visit(ParameterTypeTuple!(T["~idx~"])[0] n) { return T["~idx~"](n); }\n";
+    }
+    return code ~ "\n}";
   }
-  return node.accept(DelegateVisitor());
+  auto visit(N)(N node) {
+    mixin(genCode());
+    return acceptR!(CommonType!(staticMap!(ReturnType, T)))(node, DelegateVisitor());
+  }
 }
 
 void traverse(T)(Node node, bool delegate(T) dg) {
@@ -61,18 +73,6 @@ string className(Type type) {
   //return "";
   if (!type) return "τ";
   return "τ-"~mangled(type);
-}
-
-auto or(T...)(T t) {
-  Span a = t[0];
-  for (int i = 1; i < t.length; ++i) {
-    a = a + t[i];
-  }
-}
-
-T dup(T)(T t) {
-  auto e = t.accept(Dup());
-  return cast(T)e;
 }
 
 mixin template RecursiveAccept() {
@@ -107,7 +107,7 @@ mixin template RecursiveAccept() {
     }
 
     void recurse(MemberExpr expr) {
-      accept(expr.expr);
+      accept(expr.left);
     }
 
     void recurse(RefExpr expr) {
@@ -137,16 +137,28 @@ mixin template RecursiveAccept() {
     }
 }
 
+T dup(T)(T t) {
+  auto e = t.accept(Dup());
+  return cast(T)e;
+}
+
+Expr dupl(Expr expr) {
+  return expr.visit!(
+    (MemberExpr expr) => new MemberExpr(dupl(expr.left), expr.identifier),
+    (IdentifierExpr expr) => expr
+  );
+}
+
+
 struct Dup {
   Node visit(MemberExpr expr) {
-    return new MemberExpr(dup(expr.expr), expr.identifier);
+    return new MemberExpr(dup(expr.left), expr.identifier);
   }
 
   Node visit(IdentifierExpr expr) {
     return new IdentifierExpr(expr.token);
   }
 }
-
 
 struct LineNumber {
   Slice visit(ErrorExpr expr) {
@@ -169,18 +181,12 @@ struct LineNumber {
     return expr.identifier;
   }
   Slice visit(MemberExpr expr) {
-    return expr.expr.accept(this) + expr.identifier;
+    return expr.left.accept(this) + expr.identifier;
   }
   Slice visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
     return expr.token.slice;
   }
-  Slice visit(PipeExpr expr) {
-    return expr.left.accept(this) + expr.operator + expr.right.accept(this);
-  }
   Slice visit(BinaryExpr expr) {
-    return expr.left.accept(this) + expr.operator + expr.right.accept(this);
-  }
-  Slice visit(AssignExpr expr) {
     return expr.left.accept(this) + expr.operator + expr.right.accept(this);
   }
   Slice visit(UnaryExpr expr) {

@@ -435,17 +435,17 @@ struct SemanticAnalysis {
 
   Node visit(MemberExpr expr) {
     debug(Semantic) log("MemberExpr", expr);
-    if (!expr.expr.hasType)
-      accept(expr.expr);
+    if (!expr.left.hasType)
+      accept(expr.left);
     debug(Semantic) log("=>", expr);
-    implicitConstruct(expr.expr);
+    implicitConstruct(expr.left);
     debug(Semantic) log("=>", expr);
 
-    if (expr.expr.hasError) return expr.taint;
+    if (expr.left.hasError) return expr.taint;
 
-    if (auto ge = cast(ModuleType)expr.expr.exprType) {
+    if (auto ge = cast(ModuleType)expr.left.exprType) {
       StructDecl decl = ge.decl;
-      if (!isLValue(expr.expr)) {
+      if (!isLValue(expr.left)) {
         __ICE("Modules can not be temporaries.");
       }
       auto structDecl = cast(StructDecl)decl;
@@ -458,7 +458,7 @@ struct SemanticAnalysis {
         if (auto macroDecl = cast(MacroDecl)fieldDecl) {
           Scope macroScope = new DeclTable();
           symbolTable.pushScope(macroScope);
-          macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.expr));
+          macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.left));
           Expr expansion = macroDecl.expansion.dup();
           accept(expansion);
           symbolTable.popScope();
@@ -473,7 +473,7 @@ struct SemanticAnalysis {
       return expr.taint;
     }
 
-    error(expr.expr, "Cannot access members of " ~ mangled(expr.expr.exprType));
+    error(expr.left, "Cannot access members of " ~ mangled(expr.left.exprType));
     return expr.taint;
   }
 

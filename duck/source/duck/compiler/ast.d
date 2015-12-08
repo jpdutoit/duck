@@ -9,21 +9,6 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.typecons: Rebindable;
 alias NodeTypes = AliasSeq!(
-  Library,
-  Decl,
-  VarDecl,
-  TypeDecl,
-  ConstDecl,
-  FieldDecl,
-  MethodDecl,
-  StructDecl,
-  AliasDecl,
-  ExprStmt,
-  VarDeclStmt,
-  TypeDeclStmt,
-  ScopeStmt,
-  ImportStmt,
-  Stmts,
   ErrorExpr,
   RefExpr,
   TypeExpr,
@@ -37,7 +22,25 @@ alias NodeTypes = AliasSeq!(
   PipeExpr,
   MemberExpr,
   CallExpr,
-  MacroDecl);
+
+  ExprStmt,
+  VarDeclStmt,
+  TypeDeclStmt,
+  ScopeStmt,
+  ImportStmt,
+  Stmts,
+
+  Decl,
+  VarDecl,
+  TypeDecl,
+  ConstDecl,
+  FieldDecl,
+  MethodDecl,
+  StructDecl,
+  AliasDecl,
+  MacroDecl,
+
+  Library);
 
 mixin template NodeMixin() {
   static enum _nodeTypeId = staticIndexOf!(typeof(this), NodeTypes);
@@ -86,11 +89,6 @@ abstract class Decl : Node {
     this.declType = type;
   }
 
-/*  this(Token identifier, Expr expr, immutable .Type type = null) {
-    this.varType = type;
-    this.expr = expr;
-    this.identifier = identifier;
-  }*/
 }
 
 class AliasDecl : Decl {
@@ -413,40 +411,31 @@ class BinaryExpr : Expr {
   }
 }
 
-class PipeExpr : Expr {
+class PipeExpr : BinaryExpr {
   mixin NodeMixin;
 
-  Token operator;
-  Expr left, right;
-
   this(Token op, Expr left, Expr right) {
-    this.operator = op;
-    this.left = left;
-    this.right = right;
+    super(op, left, right);
   }
 }
 
-class AssignExpr : Expr {
+class AssignExpr : BinaryExpr {
   mixin NodeMixin;
 
-  Token operator;
-  Expr left, right;
-
   this(Token op, Expr left, Expr right) {
-    this.operator = op;
-    this.left = left;
-    this.right = right;
+    super(op, left, right);
   }
 }
 
-class MemberExpr : Expr {
+class MemberExpr : BinaryExpr {
   mixin NodeMixin;
 
-  Expr expr;
+  //Expr expr;
   Token identifier;
 
   this(Expr expr, Token identifier) {
-    this.expr = expr;
+    super(None, expr, new IdentifierExpr(identifier));
+    //this.expr = expr;
     this.identifier = identifier;
   }
 }
@@ -462,4 +451,3 @@ class CallExpr : Expr {
     this.arguments = arguments;
   }
 }
-import std.traits;
