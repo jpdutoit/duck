@@ -6,10 +6,6 @@ import duck.compiler;
 import duck.compiler.visitors;
 
 struct Flatten {
-  void accept(Node node) {
-    node.accept(this);
-  }
-
   void merge(ref Stmt[] all, Stmt stmt) {
     if (auto stmts = cast(Stmts)stmt) {
       foreach(s; stmts.stmts) {
@@ -29,7 +25,7 @@ struct Flatten {
     recurse(node);
   }
 
-  mixin DepthFirstRecurse;
+  mixin RecursiveAccept;
 }
 
 auto flatten(Node node) {

@@ -4,7 +4,9 @@ import std.stdio;
 
 //debug = CodeGen;
 
-import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
+import duck.compiler.ast;
+import duck.compiler.lexer.tokens;
+import duck.compiler.types;
 import duck.compiler.transforms;
 import duck.compiler;
 import duck.compiler.context;
@@ -20,75 +22,39 @@ string generateCode(Node node, Context context) {
   return cg.output.data;
 }
 
-
-struct LValueToString {
-  string prefix;
-  string visit(RefExpr re) {
-    return re.identifier.value;
-  }
-  string visit(MemberExpr me) {
-    return me.expr.accept(this) ~ "." ~ me.identifier.value;
-  }
-  string visit(Node node) {
-    throw __ICE("Internal compiler error (LValueToString)");
-  }
+string lvalueToString(Expr expr){
+  return expr.accept!(
+    (RefExpr re) => re.identifier.value,
+    (MemberExpr me) => lvalueToString(me.expr) ~ "." ~ me.identifier.value);
 }
 
-auto lvalueToString(Node node) {
-  return node.accept(LValueToString());
+string findTarget(Expr expr) {
+  return expr.accept!(
+    (Expr expr) => cast(string)null,
+    (MemberExpr expr) => lvalueToString(expr.expr));
 }
 
-struct FindTarget {
-  string visit(Node node) {
-    return null;
-  }
-  string visit(MemberExpr expr) {
-    return expr.expr.accept(LValueToString());
-  }
-};
-auto findTarget(Node node) {
-  return node.accept(FindTarget());
+StructDecl findOwnerDecl(Expr expr) {
+    return expr.accept!(
+      (Expr expr) => cast(StructDecl)null,
+      delegate StructDecl(MemberExpr expr) {
+        if (auto ge = cast(ModuleType)expr.expr.exprType) {
+          return ge.decl;
+        }
+        return expr.expr.findOwnerDecl();
+      });
 }
 
-struct FindOwnerDecl {
-  StructDecl visit(Node node) {
-    return null;
-  }
-  StructDecl visit(MemberExpr expr) {
-    if (auto ge = cast(ModuleType)expr.expr.exprType) {
-      return ge.decl;
-    }
-    return expr.expr.accept(this);
-  }
-};
-
-auto findOwnerDecl(Node node) {
-  //stderr.writeln((cast(Expr)node).print);
-  return node.accept(FindOwnerDecl());
-}
-
-
-struct FindModules {
+auto findModules(Expr expr) {
   string[] modules;
-
-  void accept(Node node) {
-    node.accept(this);
-  }
-  void visit(MemberExpr expr) {
-    if (expr.expr.exprType.kind == ModuleType.Kind) {
-      modules ~= expr.findTarget();
+  expr.traverse((MemberExpr memberExpr) {
+    if (memberExpr.expr.exprType.kind == ModuleType.Kind) {
+      modules ~= memberExpr.findTarget();
+      return false;
     }
-  }
-  void visit(T)(T node) {
-    recurse(node);
-  }
-  mixin DepthFirstRecurse;
-};
-
-auto findModules(Node node) {
-  FindModules fg;
-  node.accept(fg);
-  return fg.modules;
+    return true;
+  });
+  return modules;
 }
 
 struct CodeAppender {
@@ -335,12 +301,13 @@ struct CodeGen {
   void visit(Stmts expr) {
     debug(CodeGen) log("Stmts");
     emit("\n");
-    import duck.compiler.visitors;
-    foreach (i, stmt; expr.stmts) {
+
+    foreach (i, Stmt stmt; expr.stmts) {
       if (!cast(Stmts)stmt) line(stmt);
       accept(stmt);
     }
   }
+
   void visit(TypeExpr expr) {
     accept(expr.expr);
   }

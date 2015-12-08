@@ -6,36 +6,24 @@ import duck.compiler.types;
 import duck.compiler.context;
 import duck.compiler.buffer;
 
+enum Precedence {
+  Call = 140,
+  MemberAccess = 140,
+  Unary = 120,
+  Multiplicative = 110,
+  Additive = 100,
+  Assignment = 30,
+  Pipe  = 20
+};
+
 
 struct Parser {
-/*
-  this(Context context, string input) {
-      this.context = context;
-      lexer = Lexer(context, input);
-  }
-*/
+  @disable this();
 
   this(Context context, Buffer buffer) {
       this.context = context;
       lexer = Lexer(context, buffer);
   }
-
-
-
-  enum Precedence {
-    Call = 140,
-    MemberAccess = 140,
-    Unary = 120,
-    Multiplicative = 110,
-    Additive = 100,
-    Assignment = 30,
-    Pipe  = 20
-  };
-
-  Context context;
-
-  @disable this();
-
 
   int rightAssociative(Token t) {
     switch (t.type) {
@@ -353,5 +341,5 @@ struct Parser {
     return prog;
   }
 
-  //Decl[] decls;
+  Context context;
 }

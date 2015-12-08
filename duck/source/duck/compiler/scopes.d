@@ -64,14 +64,4 @@ class SymbolTable : Scope {
     void popScope() {
       scopes.length--;
     }
-
-    /*void print() {
-      foreach (string name, Decl decl; symbols) {
-        if (cast(VarDecl)decl) {
-          //debug(Semantic) writefln("var %s = %s ", name, mangled(decl.declType));
-        } else {
-          //debug(Semantic) writefln("type %s = %s %s", name, mangled(decl.declType), decl);
-        }
-      }
-    }*/
 }

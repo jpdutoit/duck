@@ -152,6 +152,7 @@ class MethodDecl : Decl {
 class StructDecl : TypeDecl {
   mixin NodeMixin;
 
+  /// Testing
   DeclTable decls;
   alias decls this;
 
@@ -298,6 +299,7 @@ abstract class Expr : Node {
 
   override string toString() {
     import duck.compiler.dbg;
+    import duck.compiler.visitors;
     return cast(string)this.accept(ExprToString());
   }
 }
@@ -460,14 +462,4 @@ class CallExpr : Expr {
     this.arguments = arguments;
   }
 }
-
-auto accept(Visitor)(Node node, auto ref Visitor visitor) {
-  switch(node.nodeType) {
-    foreach(NodeType; NodeTypes) {
-      static if (is(typeof(visitor.visit(cast(NodeType)node))))
-        case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
-    }
-    default:
-      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
-  }
-}
+import std.traits;

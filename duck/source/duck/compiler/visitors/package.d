@@ -6,6 +6,56 @@ public import duck.compiler.transforms;
 public import duck.compiler.visitors.codegen;
 
 import duck.compiler.buffer;
+import std.traits;
+
+auto accept(Node, Visitor)(Node node, auto ref Visitor visitor) {
+  import duck.compiler.dbg;
+  switch(node.nodeType) {
+    foreach(NodeType; NodeTypes) {
+      static if (is(NodeType : Node) && is(typeof(visitor.visit(cast(NodeType)node))))
+        case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
+    }
+    default:
+      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+  }
+}
+
+auto accept(alias T1, Node)(Node node)
+{
+  struct DelegateVisitor {
+    ReturnType!T1 visit(ParameterTypeTuple!T1[0] n) { return T1(n); }
+  }
+  return node.accept(DelegateVisitor());
+}
+
+
+auto accept(alias T1, alias T2, Node)(Node node)
+{
+  struct DelegateVisitor {
+    ReturnType!T1 visit(ParameterTypeTuple!T1[0] n) { return T1(n); }
+    ReturnType!T2 visit(ParameterTypeTuple!T2[0] n) { return T2(n); }
+  }
+  return node.accept(DelegateVisitor());
+}
+
+void traverse(T)(Node node, bool delegate(T) dg) {
+  struct TraverseVisitor {
+    bool stopped = false;
+    void visit(T t) {
+      if (!stopped) {
+        if (dg(t))
+          recurse(t);
+        else stopped = true;
+      }
+    }
+    void visit(T)(T node) {
+      if (!stopped) recurse(node);
+    }
+    mixin RecursiveAccept;
+  }
+  return node.accept(TraverseVisitor());
+}
+
 
 string className(Type type) {
   //return "";
@@ -25,8 +75,11 @@ T dup(T)(T t) {
   return cast(T)e;
 }
 
+mixin template RecursiveAccept() {
+    void accept(Node node) {
+      node.accept(this);
+    }
 
-mixin template DepthFirstRecurse() {
     void recurse(BinaryExpr expr) {
       accept(expr.left);
       accept(expr.right);
@@ -80,6 +133,7 @@ mixin template DepthFirstRecurse() {
       }
     }
     void recurse(Node node) {
+
     }
 }
 
