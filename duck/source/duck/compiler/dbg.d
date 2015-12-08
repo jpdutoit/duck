@@ -2,6 +2,7 @@ module duck.compiler.dbg;
 
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 import duck.compiler.transforms;
+public import std.exception : enforce;
 
 auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import core.exception;

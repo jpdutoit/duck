@@ -9,7 +9,7 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.typecons: Rebindable;
 alias NodeTypes = AliasSeq!(
-  Program,
+  Library,
   Decl,
   VarDecl,
   TypeDecl,
@@ -59,17 +59,16 @@ abstract class Node {
 abstract class Stmt : Node {
 };
 
-class Program : Node {
+class Library : Node {
   mixin NodeMixin;
 
   Node[] nodes;
-  Decl[] decls;
-  DeclTable imported;
+  DeclTable imports;
+  Decl[] exports;
 
-  this(Node[] nodes, Decl[] decls = []) {
-    this.imported = new DeclTable();
+  this(Node[] nodes) {
+    this.imports = new DeclTable();
     this.nodes = nodes;
-    this.decls = decls;
   }
 }
 

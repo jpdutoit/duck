@@ -5,6 +5,7 @@ import duck.compiler.visitors, duck.compiler.context;
 import duck.compiler.scopes;
 import duck.compiler;
 import duck.compiler.dbg;
+import duck.compiler.semantic.helpers;
 
 import std.stdio;
 
@@ -32,24 +33,6 @@ struct OperatorTypeMap
     return null;
   }
 }
-
-bool hasError(Expr expr) {
-  return expr._exprType is ErrorType;
-}
-
-bool hasType(Expr expr) {
-  return expr._exprType !is null;
-}
-
-auto taint(Expr expr) {
-  expr.exprType = ErrorType;
-  return expr;
-}
-auto taint(Decl decl) {
-  decl.declType = ErrorType;
-  return decl;
-}
-
 
 struct SemanticAnalysis {
   int depth = 0;
@@ -84,12 +67,9 @@ struct SemanticAnalysis {
   SymbolTable symbolTable;
   Scope globalScope;
   string sourcePath;
-  //SymbolTable globalScope;
-  //SymbolTable[] scopes;
 
   Context context;
 
-  int errors = 0;
 
   this(Context context, string sourcePath) {
     this.symbolTable = new SymbolTable();
@@ -101,22 +81,7 @@ struct SemanticAnalysis {
     Decl decl = symbolTable.lookup(t);
     return decl.declType;
   }
-
-
-  bool isLValue(Expr expr) {
-    if (!!cast(RefExpr)expr) return true;
-    if (auto memberExpr = cast(MemberExpr)expr) {
-      return isLValue(memberExpr.expr);
-    }
-    return false;
-  }
-
   int pipeDepth = 0;
-
-
-  static bool isModule(Expr expr) {
-    return expr.exprType.kind == ModuleType.Kind;
-  }
 
   Expr makeModule(Type type, Expr ctor) {
     auto t = context.temporary();
@@ -659,8 +624,9 @@ struct SemanticAnalysis {
       globalScope.define(stmt.decl.name, stmt.decl);
     }
     accept(stmt.decl);
-    if (stmt.decl.declType != ErrorType)
-      program.decls ~= stmt.decl;
+    if (stmt.decl.declType != ErrorType) {
+      library.exports ~= stmt.decl;
+    }
     return stmt;
   }
 
@@ -674,12 +640,9 @@ struct SemanticAnalysis {
       context.error(stmt.identifier, "Cannot find library at '%s'", p);
     } else {
       auto AST = SourceBuffer(new FileBuffer(p)).parse();
-      if (auto program = cast(Program)AST.program) {
-        foreach(node; program.nodes) {
-          accept(node);
-        }
-        foreach(decl; program.decls) {
-          this.program.imported.define(decl.name, decl);
+      if (auto library = cast(Library)AST.library) {
+        foreach(decl; library.exports) {
+          this.library.imports.define(decl.name, decl);
         }
       }
 
@@ -688,11 +651,13 @@ struct SemanticAnalysis {
     return new Stmts([]);
   }
 
-  Program program;
-  Node visit(Program program) {
-    this.program = program;
-    debug(Semantic) log("Program");
-    symbolTable.pushScope(program.imported);
+  Library library;
+
+  Node visit(Library library) {
+    this.library = library;
+    debug(Semantic) log("Library");
+
+    symbolTable.pushScope(library.imports);
     symbolTable.pushScope(new DeclTable());
     globalScope = symbolTable.scopes[1];
 
@@ -739,22 +704,22 @@ struct SemanticAnalysis {
     typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
     typeMap.set(NumberType, "*", type("frequency"), type("frequency"));
 
-    /*foreach(ref decl; program.decls) {
+    /*foreach(ref decl; library.decls) {
 
     }*/
 
-    //foreach(ref decl; program.decls) {
+    //foreach(ref decl; library.decls) {
     //  accept(decl);
     //}
 
     //currentScope();
 
-    foreach (ref node ; program.nodes)
+    foreach (ref node ; library.nodes)
       accept(node);
     symbolTable.popScope();
     symbolTable.popScope();
     debug(Semantic) log("Done");
-    return program;
+    return library;
   }
 
 

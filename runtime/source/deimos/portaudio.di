@@ -134,7 +134,7 @@ PaError Pa_Initialize();
  to Pa_Terminate(). The final matching call to Pa_Terminate() will automatically
  close any PortAudio streams that are still open.
 
- Pa_Terminate() MUST be called before exiting a program which uses PortAudio.
+ Pa_Terminate() MUST be called before exiting a library which uses PortAudio.
  Failure to do so may result in serious resource leaks, such as audio devices
  not being available until the next reboot.
 

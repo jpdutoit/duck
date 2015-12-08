@@ -347,8 +347,8 @@ struct Parser {
     return createScope ? new ScopeStmt(stmts) : stmts;
   }
 
-  Program parseLibrary() {
-    auto prog = new Program([parseStatements()]);
+  Library parseLibrary() {
+    auto prog = new Library([parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }

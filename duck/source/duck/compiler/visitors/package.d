@@ -74,8 +74,8 @@ mixin template DepthFirstRecurse() {
     void recurse(ExprStmt stmt) {
       accept(stmt.expr);
     }
-    void recurse(Program program) {
-      foreach (ref node ; program.nodes) {
+    void recurse(Library library) {
+      foreach (ref node ; library.nodes) {
         accept(node);
       }
     }

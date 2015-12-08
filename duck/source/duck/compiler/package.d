@@ -2,9 +2,10 @@ module duck.compiler;
 import std.stdio : writefln, writeln;
 
 import duck.compiler.parser, duck.compiler.ast, duck.compiler.lexer, duck.compiler.visitors, duck.compiler.semantic, duck.compiler.context;
+import duck.compiler.dbg;
 public import duck.compiler.buffer;
 
-Program parseBuffer(Context context, Buffer buffer) {
+Library parseBuffer(Context context, Buffer buffer) {
   return Parser(context, buffer).parseLibrary();
 }
 
@@ -25,12 +26,12 @@ struct SourceBuffer {
 struct AST {
   Context context;
 
-  this(Context context, Node program) {
+  this(Context context, Library library) {
     this.context = context;
-    this.program = program;
+    this.library = library;
   }
 
-  Node program;
+  Library library;
 };
 
 struct DCode {
@@ -43,17 +44,20 @@ struct DCode {
 AST parse(SourceBuffer source) {
   auto phaseFlatten = Flatten();
   auto phaseSemantic = SemanticAnalysis(source.context, source.buffer.path);
-  auto program = source.context.parseBuffer(source.buffer).flatten();
+  Library library = cast(Library)source.context
+    .parseBuffer(source.buffer)
+    .flatten()
+    .accept(phaseSemantic);
 
-  program = program.accept(phaseSemantic);
+  enforce(library, __ICE("AST is null"));
 
-  return AST(source.context, program);
+  return AST(source.context, library);
 }
 
 DCode codeGen(AST ast) {
   if (ast.context.errors > 0) return DCode(null);
-  //program.accept(ExprPrint());
-  auto code = ast.program.generateCode(ast.context);
+  //library.accept(ExprPrint());
+  auto code = ast.library.generateCode(ast.context);
   //writeln(code);
   auto s =
   "import duck.runtime, duck.stdlib;\n\n"

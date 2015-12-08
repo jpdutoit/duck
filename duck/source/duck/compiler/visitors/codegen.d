@@ -428,20 +428,12 @@ struct CodeGen {
     }
   }
 
-  void visit(Program mod) {
-    debug(CodeGen) log("Program");
+  void visit(Library library) {
+    debug(CodeGen) log("Library");
     indent();
-    foreach (i, decl; mod.imported.symbolsInDefinitionOrder) {
-      accept(decl);
-    }
-    /*foreach (i, decl; mod.decls) {
-      accept(decl);
-    }*/
-    foreach (i, node; mod.nodes) {
+    foreach (i, node; library.nodes) {
       accept(node);
     }
     outdent();
-    //writefln("%s", output.data);
-    //return output.data;
   }
 };
