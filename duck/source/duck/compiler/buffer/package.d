@@ -15,7 +15,7 @@ abstract class Buffer {
   final auto opSlice(uint from, uint to) {
     return Slice(this, from, to);
   }
-  char[] contents;
+  string contents;
 }
 
 class FileBuffer : Buffer {
@@ -32,15 +32,15 @@ class FileBuffer : Buffer {
     auto buf = src.rawRead(buffer);
     src.close();
 
-    contents = buf ~ "\0";
+    contents = (buf ~ "\0").idup;
   }
 };
 
 class TempBuffer : Buffer {
   this(string name) {
     super(name, name);
-    contents = "".dup;
-    contents.assumeSafeAppend();
+    contents = "".idup;
+    assumeSafeAppend(cast(char[])this.contents);
   }
 
   Token token(Token.Type type, string name) {

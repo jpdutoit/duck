@@ -17,7 +17,7 @@ string describe(const Type type) {
   return type ? type.mangled() : "?";
 }
 
-String annot(String whatever, Type type) {
+string annot(string whatever, Type type) {
   if (!type) return whatever;
   return whatever ~ " : " ~ type.describe();
 }
@@ -40,37 +40,37 @@ mixin template TreeLogger() {
 
 struct ExprToString {
 
-  String visit(ArrayLiteralExpr expr) {
-    String s = "[";
+  string visit(ArrayLiteralExpr expr) {
+    string s = "[";
     foreach (i, e ; expr.exprs) {
       if (i != 0) s ~= ",";
       s ~= e.accept(this);
     }
     return s ~ "]";
   }
-  String visit(RefExpr expr) {
+  string visit(RefExpr expr) {
     return "(" ~ expr.identifier.value.annot(expr._exprType) ~ ")";
   }
-  String visit(MemberExpr expr) {
+  string visit(MemberExpr expr) {
     return "(" ~ expr.expr.accept(this) ~ "." ~ expr.identifier.value.annot(expr._exprType) ~ ")";
   }
-  String visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
+  string visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
     return "("  ~ expr.token.value ~ "".annot(expr._exprType) ~ ")";
   }
-  String visit(BinaryExpr expr) {
+  string visit(BinaryExpr expr) {
     return ("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")").annot(expr._exprType);
   }
-  String visit(PipeExpr expr) {
+  string visit(PipeExpr expr) {
     return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._exprType);
   }
-  String visit(AssignExpr expr) {
+  string visit(AssignExpr expr) {
     return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._exprType);
   }
-  String visit(UnaryExpr expr) {
+  string visit(UnaryExpr expr) {
     return "(" ~ expr.operator.value ~ expr.operand.accept(this) ~ ")".annot(expr._exprType);
   }
-  String visit(CallExpr expr) {
-    String s = "(" ~ expr.expr.accept(this) ~ "(";
+  string visit(CallExpr expr) {
+    string s = "(" ~ expr.expr.accept(this) ~ "(";
     foreach (i, arg ; expr.arguments) {
       if (i != 0) s ~= ",";
       s ~= arg.accept(this);

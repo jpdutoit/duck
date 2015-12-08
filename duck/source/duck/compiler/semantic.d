@@ -8,19 +8,18 @@ import duck.compiler.dbg;
 
 import std.stdio;
 
-alias String = const(char)[];
 //debug = Semantic;
 
 struct OperatorTypeMap
 {
   alias TypeType = Type[Type];
   alias TypeTypeType = TypeType[Type];
-  TypeTypeType[String] binary;
+  TypeTypeType[string] binary;
 
-  void set(Type a, String op, Type b, Type c) {
+  void set(Type a, string op, Type b, Type c) {
     binary[op][a][b]=c;
   }
-  Type get(Type a, String op, Type b) {
+  Type get(Type a, string op, Type b) {
     if (op in binary) {
       TypeTypeType t3 = binary[op];
       if (a in t3) {

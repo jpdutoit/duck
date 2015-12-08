@@ -7,9 +7,7 @@ public import duck.compiler.visitors.codegen;
 
 import duck.compiler.buffer;
 
-alias String = const(char)[];
-
-String className(Type type) {
+string className(Type type) {
   //return "";
   if (!type) return "τ";
   return "τ-"~mangled(type);

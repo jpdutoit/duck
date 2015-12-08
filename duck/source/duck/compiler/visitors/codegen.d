@@ -14,7 +14,7 @@ import duck.compiler.dbg;
 
 //  This code generator is a bit of hack at the moment
 
-String generateCode(Node node, Context context) {
+string generateCode(Node node, Context context) {
   CodeGen cg = CodeGen(context);
   node.accept(cg);
   return cg.output.data;
@@ -22,14 +22,14 @@ String generateCode(Node node, Context context) {
 
 
 struct LValueToString {
-  String prefix;
-  String visit(RefExpr re) {
+  string prefix;
+  string visit(RefExpr re) {
     return re.identifier.value;
   }
-  String visit(MemberExpr me) {
+  string visit(MemberExpr me) {
     return me.expr.accept(this) ~ "." ~ me.identifier.value;
   }
-  String visit(Node node) {
+  string visit(Node node) {
     throw __ICE("Internal compiler error (LValueToString)");
   }
 }
@@ -39,10 +39,10 @@ auto lvalueToString(Node node) {
 }
 
 struct FindTarget {
-  String visit(Node node) {
+  string visit(Node node) {
     return null;
   }
-  String visit(MemberExpr expr) {
+  string visit(MemberExpr expr) {
     return expr.expr.accept(LValueToString());
   }
 };
@@ -75,7 +75,7 @@ auto findOwnerDecl(Node node) {
 
 
 struct FindGenerators {
-  String[] generators;
+  string[] generators;
 
   void accept(Node node) {
     node.accept(this);
@@ -100,10 +100,10 @@ auto findGenerators(Node node) {
 struct CodeAppender {
   import std.array;
   int depth = 0;
-  Appender!String output;
+  Appender!string output;
 
   enum string PAD = "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-  void put(String s) {
+  void put(string s) {
     import std.string;
     output.put(s.replace("\n", PAD[0..depth+1]));
   }
@@ -126,7 +126,7 @@ struct CodeGen {
 
   CodeAppender output;
 
-  String[] generators;
+  string[] generators;
 
   Context context;
 
@@ -134,7 +134,7 @@ struct CodeGen {
     this.context = context;
   }
 
-  void emit(String s) {
+  void emit(string s) {
     output.put(s);
   }
 
@@ -149,7 +149,7 @@ struct CodeGen {
 
   void visit(MemberExpr expr) {
     debug(CodeGen) log("MemberExpr");
-    //String owner = accept(expr.expr);
+    //string owner = accept(expr.expr);
 
 
 //      writefln("%s", expr.expr.exprType);
@@ -188,7 +188,7 @@ struct CodeGen {
   void visit(PipeExpr expr) {
     debug(CodeGen) log("PipeExpr", expr);
 
-    String target = expr.right.findTarget();
+    string target = expr.right.findTarget();
     generators = findGenerators(expr.left);
 
     if (generators.length == 0) {
@@ -241,7 +241,7 @@ struct CodeGen {
     debug(CodeGen) log("AssignExpr", expr);
 
     StructDecl owner = findOwnerDecl(expr.left);
-    String target = expr.left.findTarget();
+    string target = expr.left.findTarget();
     generators = findGenerators(expr.right);
 
 
@@ -332,7 +332,7 @@ struct CodeGen {
     if (cast(FileBuffer)slice.buffer) {
       import std.conv : to;
       emit("#line ");
-      emit(slice.lineNumber.to!String);
+      emit(slice.lineNumber.to!string);
       emit(" \"");
       emit(slice.buffer.name);
       emit("\" ");

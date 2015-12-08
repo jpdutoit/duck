@@ -4,7 +4,7 @@ import duck.compiler.lexer, duck.compiler.buffer;
 
 struct Input {
   Buffer buffer;
-  String text;
+  string text;
   int index = 0;
   char front;
 
@@ -25,8 +25,8 @@ struct Input {
     }
   }
 
-  String consume(int howMuch) {
-    String a = text[index..index+howMuch];
+  string consume(int howMuch) {
+    string a = text[index..index+howMuch];
     index += howMuch;
     front = text[index];
     return a;

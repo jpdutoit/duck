@@ -9,7 +9,7 @@ import duck.compiler.buffer;
 
 struct Parser {
 /*
-  this(Context context, String input) {
+  this(Context context, string input) {
       this.context = context;
       lexer = Lexer(context, input);
   }

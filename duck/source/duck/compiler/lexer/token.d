@@ -4,9 +4,6 @@ import duck.compiler.buffer;
 
 private import std.typetuple: staticIndexOf;
 private import std.meta : AliasSeq;
-
-alias String = const(char)[];
-
 /*
   struct Type {
     this(string name) {
@@ -29,7 +26,7 @@ struct Token {
   alias slice this;
 
   @property
-  String value() const {
+  string value() const {
     if (!slice) return "";
     return slice.toString();
   }

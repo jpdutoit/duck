@@ -4,19 +4,17 @@ import duck.compiler.ast;
 import duck.compiler;
 import duck.compiler.dbg;
 
-alias String = const(char)[];
-
 interface Scope {
-  Decl lookup(String identifier);
-  void define(String identifier, Decl decl);
-  bool defines(String identifier);
+  Decl lookup(string identifier);
+  void define(string identifier, Decl decl);
+  bool defines(string identifier);
 }
 
 class DeclTable : Scope {
-  Decl[String] symbols;
+  Decl[string] symbols;
   Decl[] symbolsInDefinitionOrder;
 
-  void define(String identifier, Decl decl) {
+  void define(string identifier, Decl decl) {
     if (identifier in symbols) {
       throw __ICE("Cannot redefine " ~ identifier.idup);
     }
@@ -24,11 +22,11 @@ class DeclTable : Scope {
     symbolsInDefinitionOrder ~= decl;
   }
 
-  bool defines(String identifier) {
+  bool defines(string identifier) {
     return (identifier in symbols) != null;
   }
 
-  Decl lookup(String identifier) {
+  Decl lookup(string identifier) {
     if (Decl *decl = identifier in symbols) {
       return *decl;
     }
@@ -43,15 +41,15 @@ class SymbolTable : Scope {
       assumeSafeAppend(scopes);
     }
 
-    void define(String identifier, Decl decl) {
+    void define(string identifier, Decl decl) {
       return scopes[$-1].define(identifier, decl);
     }
 
-    bool defines(String identifier) {
+    bool defines(string identifier) {
       return scopes[$-1].defines(identifier);
     }
 
-    Decl lookup(String identifier) {
+    Decl lookup(string identifier) {
       for (int i = cast(int)scopes.length - 1; i >= 0; --i) {
         if (Decl decl = scopes[i].lookup(identifier))
           return decl;
@@ -68,7 +66,7 @@ class SymbolTable : Scope {
     }
 
     /*void print() {
-      foreach (String name, Decl decl; symbols) {
+      foreach (string name, Decl decl; symbols) {
         if (cast(VarDecl)decl) {
           //debug(Semantic) writefln("var %s = %s ", name, mangled(decl.declType));
         } else {

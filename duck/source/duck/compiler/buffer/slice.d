@@ -1,7 +1,6 @@
 module duck.compiler.buffer.slice;
 import duck.compiler.buffer;
-
-alias String = const(char)[];
+import std.exception;
 
 struct LineColumn {
   int line;
@@ -80,8 +79,8 @@ struct Slice {
     return buffer.name ~ "(" ~ a.line.to!string ~ ":" ~ a.col.to!string ~ "-" ~ b.line.to!string ~ ":" ~ (b.col-1).to!string ~ ")";
   }
 
-  String toString() const {
+  string toString() const {
     if (!buffer) return "";
-    return buffer.contents[start..end];
+    return buffer.contents[start..end].assumeUnique;
   }
 }

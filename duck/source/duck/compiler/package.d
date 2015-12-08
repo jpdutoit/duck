@@ -34,10 +34,10 @@ struct AST {
 };
 
 struct DCode {
-  this(String code) {
+  this(string code) {
     this.code = code;
   }
-  String code;
+  string code;
 }
 
 AST parse(SourceBuffer source) {
@@ -66,15 +66,15 @@ DCode codeGen(AST ast) {
   "  Scheduler.run();\n"
   "}\n";
 
-  return DCode(cast(String)s);
+  return DCode(cast(string)s);
 }
 
-int check(String filename) {
+int check(string filename) {
   auto ast = SourceBuffer(new FileBuffer(filename.idup)).parse();
   return ast.context.errors;
 //  SourceCode(expression).parse();
 }
 
-auto compile(String filename) {
+auto compile(string filename) {
   return SourceBuffer(new FileBuffer(filename.idup)).parse().codeGen().code;
 }

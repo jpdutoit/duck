@@ -73,13 +73,13 @@ class ErrorType : Type {
 final class StructType : Type {
   mixin TypeMixin;
 
-  String name;
+  string name;
 
   override string mangled() const {
     return cast(immutable)name;
   }
 
-  this(String name) {
+  this(string name) {
     this.name = name;
   }
 }
@@ -102,12 +102,12 @@ final class ArrayType : Type {
 final class GeneratorType : Type {
   mixin TypeMixin;
 
-  String name;
+  string name;
 
   override string mangled() const {
     return cast(immutable)name;
   }
-  this(String name) {
+  this(string name) {
     this.name = name;
   }
 }
