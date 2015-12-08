@@ -19,4 +19,4 @@ mv coverage reports
 
 # Restore release versions
 echo Restore release versions
-./build.sh
+#./build.sh

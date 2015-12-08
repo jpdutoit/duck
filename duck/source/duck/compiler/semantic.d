@@ -34,7 +34,7 @@ struct OperatorTypeMap
 }
 
 bool hasError(Expr expr) {
-  return expr._exprType == errorType;
+  return expr._exprType is ErrorType;
 }
 
 bool hasType(Expr expr) {
@@ -42,11 +42,11 @@ bool hasType(Expr expr) {
 }
 
 auto taint(Expr expr) {
-  expr.exprType = errorType;
+  expr.exprType = ErrorType;
   return expr;
 }
 auto taint(Decl decl) {
-  decl.declType = errorType;
+  decl.declType = ErrorType;
   return decl;
 }
 
@@ -127,7 +127,7 @@ struct SemanticAnalysis {
     //writefln("implicitConstruct %s", expr.accept(ExprToString()));
     // Rewrite: Generator
     // to:      Generator tmpVar = Generator();
-    if (expr.exprType == typeType) {
+    if (expr.exprType == TypeType) {
       if (auto refExpr = cast(RefExpr)expr) {
         if (refExpr.decl.declType.kind == GeneratorType.Kind) {
           auto ctor = new CallExpr(refExpr, []);
@@ -248,11 +248,11 @@ struct SemanticAnalysis {
       }
       else {
         if (!expr.left.hasError && !expr.right.hasError) {
-          if (expr.left.exprType == typeType) {
+          if (expr.left.exprType == TypeType) {
             expr.taint;
             error(expr.left, "expected a value expression");
           }
-          if (expr.right.exprType == typeType || !isLValue(expr.right)) {
+          if (expr.right.exprType == TypeType || !isLValue(expr.right)) {
             expr.taint;
             error(expr.right, "not a valid connection target");
           }
@@ -320,7 +320,6 @@ struct SemanticAnalysis {
       implicitConstruct(arg);
     }
     debug(Semantic) log("=>", expr);
-
     if (expr.expr.hasError || argsHasError) {
       return expr.taint;
     }
@@ -350,8 +349,8 @@ struct SemanticAnalysis {
       expr.exprType = type.returnType;
     }
     // TODO: exprType here does not disntinguish between a Generator and it's instance
-    //else if (cast(GeneratorType)expr.expr.exprType || cast(StructType)expr.expr.exprType || expr.expr.exprType == numberType) {
-    else if (expr.expr.exprType == typeType) {
+    //else if (cast(GeneratorType)expr.expr.exprType || cast(StructType)expr.expr.exprType || expr.expr.exprType == NumberType) {
+    else if (expr.expr.exprType == TypeType) {
       // Call constructor
       if (auto refExpr = cast(RefExpr)expr.expr) {
         expr.exprType = refExpr.decl.declType;
@@ -394,9 +393,9 @@ struct SemanticAnalysis {
     if (!decl) {
       error(expr, "Undefined identifier " ~ expr.token.value.idup);
       /*
-      RefExpr re = new RefExpr(expr.token, new VarDecl(errorType, expr.token));
+      RefExpr re = new RefExpr(expr.token, new VarDecl(ErrorType, expr.token));
       accept(re);
-      re.exprType = errorType;
+      re.exprType = ErrorType;
       return re;
       */
       return expr.taint;
@@ -429,8 +428,8 @@ struct SemanticAnalysis {
       debug(Semantic) log("=>", expr.expr);
 
       if (auto re = cast(RefExpr)expr.expr) {
-        if (expr.expr.exprType == typeType && cast(TypeDecl)re.decl) {
-          expr.exprType = typeType;
+        if (expr.expr.exprType == TypeType && cast(TypeDecl)re.decl) {
+          expr.exprType = TypeType;
           expr.decl = cast(TypeDecl)re.decl;
           return expr;
         }
@@ -446,7 +445,7 @@ struct SemanticAnalysis {
     Decl decl = expr.decl;
     debug(Semantic) log("RefExpr", expr.identifier.value, decl);
     if (cast(TypeDecl)decl) {
-      expr.exprType = typeType;
+      expr.exprType = TypeType;
       debug(Semantic) log("=>", expr);
       return expr;
     }
@@ -479,40 +478,34 @@ struct SemanticAnalysis {
 
     if (expr.expr.hasError) return expr.taint;
 
-    Decl decl;
-    if (expr.expr.exprType) {
-      decl = expr.expr.exprType.decl;
-    }
-
-    if (decl) {
-      if (decl.declType.kind == GeneratorType.Kind && !isLValue(expr.expr)) {
-        error(expr.expr, "Generators can not be temporaries.");
+    if (auto ge = cast(GeneratorType)expr.expr.exprType) {
+      StructDecl decl = ge.decl;
+      if (!isLValue(expr.expr)) {
+        __ICE("Generators can not be temporaries.");
       }
-      if (cast(StructDecl)decl) {
-        auto structDecl = cast(StructDecl)decl;
-        auto ident = expr.identifier.value;
-        auto fieldDecl = structDecl.lookup(ident);
+      auto structDecl = cast(StructDecl)decl;
+      auto ident = expr.identifier.value;
+      auto fieldDecl = structDecl.lookup(ident);
 
-        if (fieldDecl) {
-          expr.exprType = fieldDecl.declType;
+      if (fieldDecl) {
+        expr.exprType = fieldDecl.declType;
 
-          if (auto macroDecl = cast(MacroDecl)fieldDecl) {
-            Scope macroScope = new DeclTable();
-            symbolTable.pushScope(macroScope);
-            macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.expr));
-            Expr expansion = macroDecl.expansion.dup();
-            accept(expansion);
-            symbolTable.popScope();
+        if (auto macroDecl = cast(MacroDecl)fieldDecl) {
+          Scope macroScope = new DeclTable();
+          symbolTable.pushScope(macroScope);
+          macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.expr));
+          Expr expansion = macroDecl.expansion.dup();
+          accept(expansion);
+          symbolTable.popScope();
 
-            debug(Semantic) log("=>", expansion);
-            return expansion;
-          }
-          debug(Semantic) log("=>", expr);
-          return expr;
+          debug(Semantic) log("=>", expansion);
+          return expansion;
         }
-        error(expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
-        return expr.taint;
+        debug(Semantic) log("=>", expr);
+        return expr;
       }
+      error(expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
+      return expr.taint;
     }
 
     error(expr.expr, "Cannot access members of " ~ mangled(expr.expr.exprType));
@@ -555,13 +548,13 @@ struct SemanticAnalysis {
         //decl.declType = typeDecl.declType;
   /*      if (decl.declType != decl.targetExpr.exprType) {
           error(decl.targetExpr, "Expected alias expression to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.targetExpr.exprType) ~ ".");
-          decl.targetExpr.exprType = errorType;
+          decl.targetExpr.exprType = ErrorType;
         }*/
         //return decl;
     //  }
     //}
 
-    //decl.declType = errorType;
+    //decl.declType = ErrorType;
     //error(decl.typeExpr, "Expected type");
     return decl;
   }
@@ -572,7 +565,7 @@ struct SemanticAnalysis {
     if (decl.valueExpr)
       accept(decl.valueExpr);
 
-    if (decl.typeExpr.exprType == typeType) {
+    if (decl.typeExpr.exprType == TypeType) {
       if (auto typeDecl = decl.typeExpr.decl) {
         decl.declType = typeDecl.declType;
         if (decl.valueExpr && decl.declType != decl.valueExpr.exprType && !decl.valueExpr.hasError) {
@@ -637,10 +630,14 @@ struct SemanticAnalysis {
   }
 
   Node visit(VarDeclStmt stmt) {
+    debug(Semantic) log("VarDeclStmt", stmt.expr);
     accept(stmt.expr);
+    debug(Semantic) log("=>", stmt.expr);
+    /*/debug(Semantic) log("VarDeclStmt");*/
     accept(stmt.decl);
+    debug(Semantic) log("=>", stmt.decl);
 
-    debug(Semantic) log("VarDeclStmt", stmt.expr, stmt.decl, mangled(stmt.decl.declType), stmt.identifier.value);
+    debug(Semantic) log("VarDeclStmt", stmt.expr, stmt.decl);//, mangled(stmt.decl.declType), stmt.identifier.value);
     debug(Semantic) log("Add to symbol table:", stmt.identifier.value, mangled(stmt.decl.declType));
     // Add identifier to symbol table
     if (symbolTable.defines(stmt.identifier.value)) {
@@ -662,7 +659,7 @@ struct SemanticAnalysis {
       globalScope.define(stmt.decl.name, stmt.decl);
     }
     accept(stmt.decl);
-    if (stmt.decl.declType != errorType)
+    if (stmt.decl.declType != ErrorType)
       program.decls ~= stmt.decl;
     return stmt;
   }
@@ -709,38 +706,38 @@ struct SemanticAnalysis {
     globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
     globalScope.define("now", new VarDecl(Time, context.token(Identifier, "now")));
     globalScope.define("duration", new TypeDecl(dur, context.token(Identifier, "duration")));
-    globalScope.define("mono", new TypeDecl(numberType, context.token(Identifier, "mono")));
-    globalScope.define("float", new TypeDecl(numberType, context.token(Identifier, "float")));
+    globalScope.define("mono", new TypeDecl(NumberType, context.token(Identifier, "mono")));
+    globalScope.define("float", new TypeDecl(NumberType, context.token(Identifier, "float")));
     globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
     globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
 
 
-    globalScope.define("sin", new VarDecl(new FunctionType(numberType, [numberType]), context.token(Identifier, "sin")));
-    globalScope.define("abs", new VarDecl(new FunctionType(numberType, [numberType]), context.token(Identifier, "abs")));
-    globalScope.define("hz", new VarDecl(new FunctionType(freq, [numberType]), context.token(Identifier, "hz")));
-    globalScope.define("bpm", new VarDecl(new FunctionType(freq, [numberType]), context.token(Identifier, "bpm")));
-    globalScope.define("ms", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "ms")));
-    globalScope.define("seconds", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "seconds")));
-    globalScope.define("samples", new VarDecl(new FunctionType(dur, [numberType]), context.token(Identifier, "samples")));
+    globalScope.define("sin", new VarDecl(new FunctionType(NumberType, [NumberType]), context.token(Identifier, "sin")));
+    globalScope.define("abs", new VarDecl(new FunctionType(NumberType, [NumberType]), context.token(Identifier, "abs")));
+    globalScope.define("hz", new VarDecl(new FunctionType(freq, [NumberType]), context.token(Identifier, "hz")));
+    globalScope.define("bpm", new VarDecl(new FunctionType(freq, [NumberType]), context.token(Identifier, "bpm")));
+    globalScope.define("ms", new VarDecl(new FunctionType(dur, [NumberType]), context.token(Identifier, "ms")));
+    globalScope.define("seconds", new VarDecl(new FunctionType(dur, [NumberType]), context.token(Identifier, "seconds")));
+    globalScope.define("samples", new VarDecl(new FunctionType(dur, [NumberType]), context.token(Identifier, "samples")));
 
-    typeMap.set(numberType, "*", numberType, numberType);
-    typeMap.set(numberType, "+", numberType, numberType);
-    typeMap.set(numberType, "-", numberType, numberType);
-    typeMap.set(numberType, "/", numberType, numberType);
-    typeMap.set(numberType, "%", numberType, numberType);
+    typeMap.set(NumberType, "*", NumberType, NumberType);
+    typeMap.set(NumberType, "+", NumberType, NumberType);
+    typeMap.set(NumberType, "-", NumberType, NumberType);
+    typeMap.set(NumberType, "/", NumberType, NumberType);
+    typeMap.set(NumberType, "%", NumberType, NumberType);
 
     typeMap.set(type("Time"), "%", type("duration"), type("duration"));
-    typeMap.set(numberType, "*", type("duration"), type("duration"));
+    typeMap.set(NumberType, "*", type("duration"), type("duration"));
     typeMap.set(type("duration"), "+", type("duration"), type("duration"));
     typeMap.set(type("duration"), "-", type("duration"), type("duration"));
 
-    typeMap.set(type("duration"), "*", numberType, type("duration"));
-    typeMap.set(type("frequency"), "*", numberType, type("frequency"));
-    typeMap.set(type("frequency"), "/", numberType, type("frequency"));
-    typeMap.set(type("frequency"), "/", type("frequency"), numberType);
+    typeMap.set(type("duration"), "*", NumberType, type("duration"));
+    typeMap.set(type("frequency"), "*", NumberType, type("frequency"));
+    typeMap.set(type("frequency"), "/", NumberType, type("frequency"));
+    typeMap.set(type("frequency"), "/", type("frequency"), NumberType);
     typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
     typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
-    typeMap.set(numberType, "*", type("frequency"), type("frequency"));
+    typeMap.set(NumberType, "*", type("frequency"), type("frequency"));
 
     /*foreach(ref decl; program.decls) {
 

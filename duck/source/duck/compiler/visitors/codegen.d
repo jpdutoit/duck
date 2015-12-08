@@ -55,10 +55,10 @@ struct FindOwnerDecl {
     return null;
   }
   StructDecl visit(MemberExpr expr) {
-
-    if (expr.expr.exprType.kind != GeneratorType.Kind)
-      return expr.expr.accept(this);
-    return cast(StructDecl)expr.expr.exprType.decl;
+    if (auto ge = cast(GeneratorType)expr.expr.exprType) {
+      return ge.decl;
+    }
+    return expr.expr.accept(this);
     /*if (expr.expr.exprType.kind == GeneratorType.Kind)) return expr.expr;
     if (cast(MemberExpr)expr.expr) {
       return accept(expr.expr);

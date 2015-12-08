@@ -297,7 +297,7 @@ abstract class Expr : Node {
     _exprType = type;
   }
 
-  override string toString() {
+  final override string toString() {
     import duck.compiler.dbg;
     return cast(string)this.accept(ExprToString());
   }
@@ -308,7 +308,7 @@ class ErrorExpr : Expr {
     Slice slice;
     this(Slice span) {
       this.slice = slice;
-      this.exprType = errorType;
+      this.exprType = ErrorType;
     }
 }
 
@@ -362,9 +362,9 @@ class LiteralExpr : Expr {
   this(Token token) {
     this.token = token;
     if (token.type == Number)
-      this.exprType = numberType;
+      this.exprType = NumberType;
     else if (token.type == StringLiteral)
-      this.exprType = stringType;
+      this.exprType = StringType;
   }
 }
 

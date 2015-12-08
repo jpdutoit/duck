@@ -5,77 +5,67 @@ import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 
-alias Types = AliasSeq!(NumberType, StringType, VoidType, FunctionType, StructType, GeneratorType, TypeType, ErrorType, ArrayType);
+alias BasicTypes = AliasSeq!("number", "string", "type", "nothing", "error");
+alias ExtendedTypes = AliasSeq!(StructType, GeneratorType, FunctionType, ArrayType);
 
-
-template TypeKind(T) if (staticIndexOf!(T, Types) >= 0)
-{
-  enum TypeKind = staticIndexOf!(T, Types);
+template TypeId(T) {
+  static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
+    enum TypeId = staticIndexOf!(T, ExtendedTypes) + BasicTypes.length;
+  } else {
+    static assert(0, T.stringof ~ " is not in extended types list.");
+  }
 }
 
+template BasicType(string desc) {
+  final class BasicTypeT : Type {
+    static enum _Kind Kind = staticIndexOf!(desc, BasicTypes);
+    override _Kind kind() { return Kind; };
+    static assert(Kind >= 0, T.stringof ~ " is not in basic types list.");
+
+    override string describe() const {
+      return desc;
+    }
+    override bool opEquals(Object o) {
+      return this is o;
+    }
+  }
+  static __gshared BasicType = new BasicTypeT();
+}
+
+alias NumberType = BasicType!("number");
+alias StringType = BasicType!("string");
+alias TypeType = BasicType!("type");
+alias VoidType = BasicType!("nothing");
+alias ErrorType = BasicType!("error");
+
+
 mixin template TypeMixin() {
-  static enum Kind = TypeKind!(typeof(this));
+  static enum Kind = TypeId!(typeof(this));//;staticIndexOf!(typeof(this), Types);
   static if (Kind < 0) {
     static assert(false, "Expected type " ~ typeof(this).stringof ~ " to be in Types list.");
   }
   override _Kind kind() { return Kind; };
 };
 
-bool isKindOf(T)(Type type) {
-  return type.kind == T.Kind;
-}
-
 
 abstract class Type {
   alias _Kind = ubyte;
 
   _Kind kind();
-  string mangled() const ;
+  string describe() const ;
 
-  Decl decl;
+  final bool isKindOf(T)() {
+    return this.kind == T.Kind;
+  }
+
 };
-
-final class NumberType : Type {
-  mixin TypeMixin;
-  override string mangled() const {
-    return "number";
-  }
-}
-
-final class StringType : Type {
-  mixin TypeMixin;
-  override string mangled() const  {
-    return "string";
-  }
-}
-
-final class TypeType : Type {
-  mixin TypeMixin;
-  override string mangled() const  {
-    return "Type";
-  }
-}
-
-final class VoidType : Type {
-  mixin TypeMixin;
-  override string mangled() const  {
-    return "Void";
-  }
-}
-
-class ErrorType : Type {
-  mixin TypeMixin;
-  override string mangled() const  {
-    return "Error";
-  }
-}
 
 final class StructType : Type {
   mixin TypeMixin;
 
   string name;
 
-  override string mangled() const {
+  override string describe() const {
     return cast(immutable)name;
   }
 
@@ -89,8 +79,8 @@ final class ArrayType : Type {
 
   Type elementType;
 
-  override string mangled() const {
-    return "array with elements of type " ~ elementType.mangled;// ~ "[]";
+  override string describe() const {
+    return "array with elements of type " ~ elementType.describe;// ~ "[]";
   }
 
   this(Type elementType) {
@@ -103,8 +93,9 @@ final class GeneratorType : Type {
   mixin TypeMixin;
 
   string name;
+  StructDecl decl;
 
-  override string mangled() const {
+  override string describe() const {
     return cast(immutable)name;
   }
   this(string name) {
@@ -122,23 +113,16 @@ class FunctionType : Type {
 
   Type returnType;
   Type[] parameterTypes;
-  override string mangled() const {
+  override string describe() const {
     auto s = "ƒ(";
     foreach (i, param ; parameterTypes) {
       if (i != 0) s ~= ", ";
-      s ~= param.mangled();
+      s ~= param.describe();
     }
     return s ~ ")";// ~ ")->"~returnType.mangled;
   }
 };
 
-
 string mangled(const Type type) {
-  return type ? type.mangled() : "?";
+  return type ? type.describe() : "?";
 }
-
-__gshared errorType = new ErrorType();
-__gshared numberType = new NumberType();
-__gshared stringType = new StringType();
-__gshared typeType = new TypeType();
-__gshared voidType = new VoidType();

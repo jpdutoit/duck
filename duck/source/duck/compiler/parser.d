@@ -271,7 +271,7 @@ struct Parser {
     } else {
       methodBody = expect(parseBlock(), "Expected function body");
     }
-    return new MethodDecl(new FunctionType(voidType, []), name, methodBody, structDecl);
+    return new MethodDecl(new FunctionType(VoidType, []), name, methodBody, structDecl);
   }
 
   TypeDeclStmt parseGenerator() {

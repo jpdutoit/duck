@@ -194,8 +194,8 @@ auto test(string file, bool expectProcessSuccess, bool run = false)
   else {
     failed++;
     writeln("\033[0;31mFAIL  ", file, "\033[0m");
-    if (!expectProcessSuccess && proc.result == 0) {
-      writeln("Unexpected exit code 0, expected > 0.");
+    if (!expectProcessSuccess && proc.result <= 0) {
+      writeln("Unexpected exit code ", proc.result, ", expected > 0.");
     }
     else if (expectProcessSuccess && proc.result != 0) {
       writeln("Unexpected exit code ", proc.result, ", expected 0.");
