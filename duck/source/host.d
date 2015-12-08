@@ -47,12 +47,12 @@ int main(string[] args) {
 
   if (command && target) {
       if (command == "check") {
-          auto ast = SourceBuffer(new FileBuffer(target)).parse();
+          auto ast = SourceBuffer(target).parse();
           ast.codeGen();
           return ast.context.errors;
       }
       else if (command == "run") {
-        auto ast = SourceBuffer(new FileBuffer(target)).parse();
+        auto ast = SourceBuffer(target).parse();
         if (ast.context.errors > 0) return ast.context.errors;
         auto dfile = ast.codeGen().saveToTemporary;
 

@@ -75,14 +75,12 @@ struct DCompilerOptions {
 
 struct DFile {
   string filename;
+  DCompilerOptions options;
 
   this(string filename) {
       this.filename = filename;
-
       this.options.merge(DCompilerOptions.DuckRuntime);
   }
-
-  DCompilerOptions options;
 
   Executable compile() {
       return compile(tmpFolder ~ temporaryFileName());

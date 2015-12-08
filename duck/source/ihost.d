@@ -45,7 +45,6 @@ string temporaryFileName() {
     return "duck_temp" ~ tmpIndex.to!string;
 }
 
-
 struct DuckFile {
     string filename;
 
@@ -53,33 +52,12 @@ struct DuckFile {
         this.filename = filename;
     }
 
-    int check() {
-      auto ast = SourceBuffer(new FileBuffer(filename)).parse();
-      ast.codeGen();
-      return ast.context.errors;
-    }
-
     DFile convertToD() {
-        return convertToD(tmpFolder ~ temporaryFileName() ~ ".d");
-    }
-
-    DFile convertToD(string output) {
-      auto ast = SourceBuffer(new FileBuffer(filename)).parse();
+      auto ast = SourceBuffer(filename).parse();
       auto dcode = ast.codeGen();
-
-      // Save converted intermediate file
-      //debug log("Converting to D");
-      auto s = .compile(filename);
-      if (!s || !s.length ) return DFile(null);
-
-      File dst = File(output, "w");
-      dst.rawWrite(dcode.code);
-      dst.close();
-      //debug log("Converted to D");
-      return DFile(output);
+      return dcode.saveToTemporary();
     }
 }
-
 
 struct Command {
     string name;

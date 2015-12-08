@@ -11,20 +11,14 @@ Program parseBuffer(Context context, Buffer buffer) {
 struct SourceBuffer {
   Context context;
   Buffer buffer;
-
+  
+  this(string filename) {
+    this.buffer = new FileBuffer(filename);
+    this.context = new Context();
+  }
   this(Buffer buffer) {
     this.buffer = buffer;
     this.context = new Context();
-  }
-  AST parse() {
-    auto phaseFlatten = Flatten();
-    auto phaseSemantic = SemanticAnalysis(context, buffer.path);
-    auto program = context.parseBuffer(buffer).flatten();
-
-    program = program.accept(phaseSemantic);
-
-    auto a = AST(context, program);
-    return a;
   }
 }
 
@@ -36,24 +30,6 @@ struct AST {
     this.program = program;
   }
 
-  DCode codeGen() {
-    if (context.errors > 0) return DCode(null);
-    //program.accept(ExprPrint());
-    auto code = program.generateCode(context);
-
-    //writefln("%s", code);
-
-    auto s = q{import duck.runtime, duck.stdlib; }
-    ~ "\n\nvoid start() {\n" ~ code ~ "\n}\n\n"
-    "void main(string[] args) {\n"
-    "  initialize(args);\n"
-    "  Duck(&start);\n"
-    "  Scheduler.run();\n"
-    "}\n";
-
-    return DCode(cast(String)s);
-  }
-
   Node program;
 };
 
@@ -62,6 +38,35 @@ struct DCode {
     this.code = code;
   }
   String code;
+}
+
+AST parse(SourceBuffer source) {
+  auto phaseFlatten = Flatten();
+  auto phaseSemantic = SemanticAnalysis(source.context, source.buffer.path);
+  auto program = source.context.parseBuffer(source.buffer).flatten();
+
+  program = program.accept(phaseSemantic);
+
+  return AST(source.context, program);
+}
+
+DCode codeGen(AST ast) {
+  if (ast.context.errors > 0) return DCode(null);
+  //program.accept(ExprPrint());
+  auto code = ast.program.generateCode(ast.context);
+  //writeln(code);
+  auto s =
+  "import duck.runtime, duck.stdlib;\n\n"
+  "void start() {\n" ~
+  code ~
+  "\n}\n\n"
+  "void main(string[] args) {\n"
+  "  initialize(args);\n"
+  "  Duck(&start);\n"
+  "  Scheduler.run();\n"
+  "}\n";
+
+  return DCode(cast(String)s);
 }
 
 int check(String filename) {
