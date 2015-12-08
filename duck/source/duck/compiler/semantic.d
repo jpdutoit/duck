@@ -114,33 +114,33 @@ struct SemanticAnalysis {
   int pipeDepth = 0;
 
 
-  static bool isGenerator(Expr expr) {
-    return expr.exprType.kind == GeneratorType.Kind;
+  static bool isModule(Expr expr) {
+    return expr.exprType.kind == ModuleType.Kind;
   }
 
-  Expr makeGenerator(Type type, Expr ctor) {
+  Expr makeModule(Type type, Expr ctor) {
     auto t = context.temporary();
     return new InlineDeclExpr(t, new VarDeclStmt(t, new VarDecl(type, t), ctor));
   }
 
   void implicitConstruct(ref Expr expr) {
     //writefln("implicitConstruct %s", expr.accept(ExprToString()));
-    // Rewrite: Generator
-    // to:      Generator tmpVar = Generator();
+    // Rewrite: Module
+    // to:      Module tmpVar = Module();
     if (expr.exprType == TypeType) {
       if (auto refExpr = cast(RefExpr)expr) {
-        if (refExpr.decl.declType.kind == GeneratorType.Kind) {
+        if (refExpr.decl.declType.kind == ModuleType.Kind) {
           auto ctor = new CallExpr(refExpr, []);
-          expr = makeGenerator(refExpr.decl.declType, ctor);
+          expr = makeModule(refExpr.decl.declType, ctor);
           accept(expr);
           return;
         }
       }
     }
-    // Rewrite: Expr that returns a Generator
-    // to:      Generator tmpVar = expr;
-    if (expr.exprType.isKindOf!GeneratorType && !isLValue(expr)) {
-      expr = makeGenerator(expr.exprType, expr);
+    // Rewrite: Expr that returns a Module
+    // to:      Module tmpVar = expr;
+    if (expr.exprType.isKindOf!ModuleType && !isLValue(expr)) {
+      expr = makeModule(expr.exprType, expr);
       accept(expr);
     }
   }
@@ -237,12 +237,12 @@ struct SemanticAnalysis {
     }
 
     while (true) {
-      if (isGenerator(expr.right) && isLValue(expr.right)) {
+      if (isModule(expr.right) && isLValue(expr.right)) {
         expr.exprType = expr.right.exprType;
         expr.right = new MemberExpr(expr.right, context.token(Identifier, "input"));
         accept(expr.right);
       }
-      else if (isGenerator(expr.left) && isLValue(expr.left)) {
+      else if (isModule(expr.left) && isLValue(expr.left)) {
         expr.left = new MemberExpr(expr.left, context.token(Identifier, "output"));
         accept(expr.left);
       }
@@ -282,11 +282,11 @@ struct SemanticAnalysis {
     debug(Semantic) log("=>", expr);
 
     while(true) {
-      if (isGenerator(expr.left)) {
+      if (isModule(expr.left)) {
         expr.left = new MemberExpr(expr.left, context.token(Identifier, "output"));
         accept(expr.left);
       }
-      else if (isGenerator(expr.right)) {
+      else if (isModule(expr.right)) {
         expr.right = new MemberExpr(expr.right, context.token(Identifier, "output"));
         accept(expr.right);
       }
@@ -334,7 +334,7 @@ struct SemanticAnalysis {
           Type argType = expr.arguments[i].exprType;
           if (paramType != argType)
           {
-            if (isGenerator(expr.arguments[i]))
+            if (isModule(expr.arguments[i]))
             {
               expr.arguments[i] = new MemberExpr(expr.arguments[i], context.token(Identifier, "output"));
               accept(expr.arguments[i]);
@@ -348,8 +348,8 @@ struct SemanticAnalysis {
       }
       expr.exprType = type.returnType;
     }
-    // TODO: exprType here does not disntinguish between a Generator and it's instance
-    //else if (cast(GeneratorType)expr.expr.exprType || cast(StructType)expr.expr.exprType || expr.expr.exprType == NumberType) {
+    // TODO: exprType here does not disntinguish between a Module and it's instance
+    //else if (cast(ModuleType)expr.expr.exprType || cast(StructType)expr.expr.exprType || expr.expr.exprType == NumberType) {
     else if (expr.expr.exprType == TypeType) {
       // Call constructor
       if (auto refExpr = cast(RefExpr)expr.expr) {
@@ -478,10 +478,10 @@ struct SemanticAnalysis {
 
     if (expr.expr.hasError) return expr.taint;
 
-    if (auto ge = cast(GeneratorType)expr.expr.exprType) {
+    if (auto ge = cast(ModuleType)expr.expr.exprType) {
       StructDecl decl = ge.decl;
       if (!isLValue(expr.expr)) {
-        __ICE("Generators can not be temporaries.");
+        __ICE("Modules can not be temporaries.");
       }
       auto structDecl = cast(StructDecl)decl;
       auto ident = expr.identifier.value;

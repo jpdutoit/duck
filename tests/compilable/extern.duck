@@ -1,4 +1,4 @@
-extern generator test {
+extern module test {
   float a : b;
   function tick();
 }

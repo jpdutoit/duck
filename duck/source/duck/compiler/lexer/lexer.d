@@ -203,7 +203,7 @@ struct Lexer {
       auto str = front.value;
       if (str == "function") front.type = Tok!"function";
       if (str == "extern") front.type = Tok!"extern";
-      if (str == "generator") front.type = Tok!"generator";
+      if (str == "module") front.type = Tok!"module";
       if (str == "import") front.type = Tok!"import";
     }
   }

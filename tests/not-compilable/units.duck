@@ -1,4 +1,4 @@
-generator AA {
+module AA {
   frequency input;
 }
 

@@ -1,13 +1,13 @@
 import "assert";
 
-generator A {
+module A {
   mono output = 0;
   function tick() {
     output = output + 1;
   }
 }
 
-generator B {
+module B {
   mono input = 0;
   mono output = 0;
   function tick() {
@@ -15,7 +15,7 @@ generator B {
   }
 }
 
-generator C {
+module C {
   mono input = 0;
   mono output = 0;
   function tick() {
@@ -36,10 +36,10 @@ c2.input = 0;
 now += 5 samples;
 
 
-extern generator DAC {
+extern module DAC {
   mono input;
 }
-generator D {
+module D {
   mono input;
   DAC dac;
   function tick() {

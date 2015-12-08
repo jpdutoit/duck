@@ -1,4 +1,4 @@
-generator Phasor {
+module Phasor {
   frequency freq = 440 hz;
   mono phase = 0;
   mono output = 0;

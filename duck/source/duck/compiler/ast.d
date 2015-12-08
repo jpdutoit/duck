@@ -297,7 +297,7 @@ abstract class Expr : Node {
     _exprType = type;
   }
 
-  final override string toString() {
+  override string toString() {
     import duck.compiler.dbg;
     return cast(string)this.accept(ExprToString());
   }

@@ -6,7 +6,7 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 
 alias BasicTypes = AliasSeq!("number", "string", "type", "nothing", "error");
-alias ExtendedTypes = AliasSeq!(StructType, GeneratorType, FunctionType, ArrayType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -89,7 +89,7 @@ final class ArrayType : Type {
 }
 
 
-final class GeneratorType : Type {
+final class ModuleType : Type {
   mixin TypeMixin;
 
   string name;

@@ -55,16 +55,10 @@ struct FindOwnerDecl {
     return null;
   }
   StructDecl visit(MemberExpr expr) {
-    if (auto ge = cast(GeneratorType)expr.expr.exprType) {
+    if (auto ge = cast(ModuleType)expr.expr.exprType) {
       return ge.decl;
     }
     return expr.expr.accept(this);
-    /*if (expr.expr.exprType.kind == GeneratorType.Kind)) return expr.expr;
-    if (cast(MemberExpr)expr.expr) {
-      return accept(expr.expr);
-    }
-    return expr.expr.
-    return accept(expr.expr);*/
   }
 };
 
@@ -74,15 +68,15 @@ auto findOwnerDecl(Node node) {
 }
 
 
-struct FindGenerators {
-  string[] generators;
+struct FindModules {
+  string[] modules;
 
   void accept(Node node) {
     node.accept(this);
   }
   void visit(MemberExpr expr) {
-    if (expr.expr.exprType.kind == GeneratorType.Kind) {
-      generators ~= expr.findTarget();
+    if (expr.expr.exprType.kind == ModuleType.Kind) {
+      modules ~= expr.findTarget();
     }
   }
   void visit(T)(T node) {
@@ -91,10 +85,10 @@ struct FindGenerators {
   mixin DepthFirstRecurse;
 };
 
-auto findGenerators(Node node) {
-  FindGenerators fg;
+auto findModules(Node node) {
+  FindModules fg;
   node.accept(fg);
-  return fg.generators;
+  return fg.modules;
 }
 
 struct CodeAppender {
@@ -125,8 +119,6 @@ struct CodeGen {
   debug(CodeGen) mixin TreeLogger;
 
   CodeAppender output;
-
-  string[] generators;
 
   Context context;
 
@@ -189,9 +181,9 @@ struct CodeGen {
     debug(CodeGen) log("PipeExpr", expr);
 
     string target = expr.right.findTarget();
-    generators = findGenerators(expr.left);
+    auto modules = findModules(expr.left);
 
-    if (generators.length == 0) {
+    if (modules.length == 0) {
       debug(CodeGen) log("=> Rewrite as:");
       accept(new AssignExpr(context.token(Tok!"=", "="), expr.right, expr.left));
       /*accept(expr.right);
@@ -208,9 +200,9 @@ struct CodeGen {
       emit("__dg = ");
       emit("() { ");
 
-      foreach(gen; generators) {
+      foreach(mod; modules) {
         //if (auto declExpr = cast(DeclExpr)gen) {
-        emit(gen);
+        emit(mod);
         emit("._tick(); ");
         //}
       }
@@ -224,9 +216,9 @@ struct CodeGen {
       emit(target);
       emit(".__add(() { ");
 
-      foreach(gen; generators) {
+      foreach(mod; modules) {
         //if (auto declExpr = cast(DeclExpr)gen) {
-        emit(gen);
+        emit(mod);
         emit("._tick(); ");
         //}
       }
@@ -242,7 +234,7 @@ struct CodeGen {
 
     StructDecl owner = findOwnerDecl(expr.left);
     string target = expr.left.findTarget();
-    generators = findGenerators(expr.right);
+    auto modules = findModules(expr.right);
 
 
     debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
@@ -252,10 +244,10 @@ struct CodeGen {
       emit("__dg = ");
       emit("null;\n");
     }
-    foreach(gen; generators) {
+    foreach(mod; modules) {
       //if (auto declExpr = cast(DeclExpr)gen) {
-      if (gen == "this") continue;
-      emit(gen);
+      if (mod == "this") continue;
+      emit(mod);
       emit("._tick(); ");
       //}
     }
@@ -297,8 +289,8 @@ struct CodeGen {
         emit(stmt.identifier.value);
         emit(";\n");
         return;
-      case GeneratorType.Kind:
-        emit((cast(GeneratorType)stmt.decl.declType).name);
+      case ModuleType.Kind:
+        emit((cast(ModuleType)stmt.decl.declType).name);
         emit(" ");
         emit(stmt.identifier.value);
         emit(" = ");
@@ -312,7 +304,7 @@ struct CodeGen {
         accept(stmt.expr);
         emit(";\n");
         return;
-        //return (cast(GeneratorType)stmt.decl.declType).name ~ " " ~ stmt.identifier.value ~ " = " ~ stmt.expr.accept(this) ~ ";\n";
+        //return (cast(ModuleType)stmt.decl.declType).name ~ " " ~ stmt.identifier.value ~ " = " ~ stmt.expr.accept(this) ~ ";\n";
       default: throw __ICE("Code generation not implemnted for " ~ stmt.decl.declType.mangled);
     }
   }

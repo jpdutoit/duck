@@ -274,15 +274,15 @@ struct Parser {
     return new MethodDecl(new FunctionType(VoidType, []), name, methodBody, structDecl);
   }
 
-  TypeDeclStmt parseGenerator() {
+  TypeDeclStmt parseModule() {
     bool isExtern = lexer.consume(Tok!"extern") != None;
-    lexer.expect(Tok!"generator", "Expected generator");
+    lexer.expect(Tok!"module", "Expected module");
     Token ident = expect(Identifier, "Expected identifier");
     expect(Tok!"{", "Expected '}'");
 
-    auto generator = new GeneratorType(ident);
-    StructDecl structDecl = new StructDecl(generator, ident);
-    generator.decl = structDecl;
+    auto mod = new ModuleType(ident);
+    StructDecl structDecl = new StructDecl(mod, ident);
+    mod.decl = structDecl;
     structDecl.external = isExtern;
 
     while (lexer.front.type != Tok!"}") {
@@ -298,7 +298,7 @@ struct Parser {
     }
     expect(Tok!"}", "Expected '}'");
 
-    //new NamedType(ident.value.idup, new GeneratorType())
+    //new NamedType(ident.value.idup, new ModuleType())
     return new TypeDeclStmt(structDecl);
     //decls ~= structDecl;
   }
@@ -317,8 +317,8 @@ struct Parser {
       case Tok!"import":
         return parseImport();
       case Tok!"extern":
-      case Tok!"generator":
-        return parseGenerator();
+      case Tok!"module":
+        return parseModule();
       case Tok!"{":
         // Block statement
         return expect(parseBlock(), "Block expected");
@@ -347,7 +347,7 @@ struct Parser {
     return createScope ? new ScopeStmt(stmts) : stmts;
   }
 
-  Program parseModule() {
+  Program parseLibrary() {
     auto prog = new Program([parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;

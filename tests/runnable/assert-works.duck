@@ -1,6 +1,6 @@
 import "assert";
 
-generator A {
+module A {
   mono output = 10;
 }
 
@@ -8,7 +8,7 @@ A >> Assert(10);
 A >> Assert(20);
 
 
-generator B {
+module B {
   mono output = 0;
   function tick() {
     output = output + 1;

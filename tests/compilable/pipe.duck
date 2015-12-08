@@ -1,4 +1,4 @@
-extern generator A {
+extern module A {
   float input;
   float output;
 }

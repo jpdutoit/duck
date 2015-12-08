@@ -5,13 +5,13 @@ import duck.compiler.parser, duck.compiler.ast, duck.compiler.lexer, duck.compil
 public import duck.compiler.buffer;
 
 Program parseBuffer(Context context, Buffer buffer) {
-  return Parser(context, buffer).parseModule();
+  return Parser(context, buffer).parseLibrary();
 }
 
 struct SourceBuffer {
   Context context;
   Buffer buffer;
-  
+
   this(string filename) {
     this.buffer = new FileBuffer(filename);
     this.context = new Context();

@@ -1,4 +1,4 @@
-extern generator Assert {
+extern module Assert {
   mono input;
   mono output;
 }

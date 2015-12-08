@@ -1,5 +1,5 @@
 
-generator Phasor {
+module Phasor {
   frequency freq = 440 hz;
   mono phase = 0;
   mono output = 0;
@@ -11,7 +11,7 @@ generator Phasor {
   }
 }
 
-generator Clock {
+module Clock {
   frequency freq = 440 hz;
   mono phase = 1.0;
   mono output = 0;
@@ -31,7 +31,7 @@ generator Clock {
   }
 }
 
-generator SinOsc {
+module SinOsc {
   Phasor phasor;
   frequency freq : this.phasor.freq;
   frequency input : this.phasor.input;
@@ -46,7 +46,7 @@ generator SinOsc {
 }
 
 
-generator Triangle {
+module Triangle {
   Phasor phasor;
   frequency freq : this.phasor.freq;
   frequency input : this.phasor.input;
@@ -57,7 +57,7 @@ generator Triangle {
   }
 }
 
-generator SawTooth {
+module SawTooth {
   Phasor phasor;
   frequency freq : this.phasor.freq;
   frequency input : this.phasor.input;
@@ -68,79 +68,79 @@ generator SawTooth {
   }
 }
 
-extern generator DAC {
+extern module DAC {
   mono input;
   mono left;
   mono right;
 }
 
-extern generator Mono {
+extern module Mono {
   mono output;
   mono input;
 }
 
-extern generator Frequency {
+extern module Frequency {
   frequency output;
   frequency input;
 }
 
-extern generator Assert {
+extern module Assert {
   mono input;
   mono output;
 }
 
 
-extern generator Pat {
+extern module Pat {
   mono input;
   mono output;
 }
 
-extern generator ScaleQuant {
+extern module ScaleQuant {
   mono input;
   mono key;
   mono output;
 }
 
-extern generator SAH {
+extern module SAH {
   mono trigger;
   mono input;
   mono output;
 }
 
-extern generator Pitch {
+extern module Pitch {
   mono input;
   frequency output;
 }
 
 
-extern generator Square {
+extern module Square {
   frequency freq;
   frequency input;
   mono output;
 }
 
-extern generator AR {
+extern module AR {
   duration attack;
   duration release;
   mono input;
   mono output;
 }
 
-extern generator Echo {
+extern module Echo {
   mono input;
   mono output;
   mono gain;
 }
 
-extern generator OSCValue {
+extern module OSCValue {
   mono output;
 }
 
-extern generator Delay {
+extern module Delay {
   mono input;
   mono output;
 }
 
-extern generator WhiteNoise {
+extern module WhiteNoise {
   mono output;
 }
