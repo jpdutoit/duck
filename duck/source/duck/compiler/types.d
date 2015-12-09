@@ -6,7 +6,9 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 
 alias BasicTypes = AliasSeq!("number", "string", "type", "nothing", "error");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType);
+
+alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -59,6 +61,21 @@ abstract class Type {
   }
 
 };
+
+final class TupleType : Type {
+  mixin TypeMixin;
+
+  Type[] elementTypes;
+
+  override string describe() const {
+    import std.conv : to;
+    return "tuple";
+  }
+
+  this(Type[] elementTypes) {
+    this.elementTypes = elementTypes;
+  }
+}
 
 final class StructType : Type {
   mixin TypeMixin;

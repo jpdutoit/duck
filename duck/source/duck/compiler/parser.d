@@ -111,7 +111,7 @@ struct Parser {
         Expr literal = new LiteralExpr(token);
         // Unit parsing
         if (lexer.front.type == Identifier) {
-          return new CallExpr(new IdentifierExpr(lexer.consume), [literal]);
+          return new CallExpr(new IdentifierExpr(lexer.consume), new TupleExpr([literal]));
         }
         return literal;
       }
@@ -146,7 +146,7 @@ struct Parser {
       }
     }
     expect(Tok!")", "Expected ')'");
-    return new CallExpr(target, arguments);
+    return new CallExpr(target, new TupleExpr(arguments));
   }
 
   Expr parsePostfix(Expr left) {
@@ -164,7 +164,7 @@ struct Parser {
         if (lexer.consume(Tok!"(")) {
           ctor = parseCall(left);
         } else {
-          ctor = new CallExpr(left, []);
+          ctor = new CallExpr(left, new TupleExpr([]));
         }
         return new InlineDeclExpr(token, new VarDeclStmt(token, new VarDecl(left, token), ctor));
       }

@@ -22,6 +22,7 @@ alias NodeTypes = AliasSeq!(
   PipeExpr,
   MemberExpr,
   CallExpr,
+  TupleExpr,
 
   ExprStmt,
   VarDeclStmt,
@@ -376,6 +377,36 @@ class ArrayLiteralExpr : Expr {
   }
 }
 
+class TupleExpr : Expr {
+  mixin NodeMixin;
+
+  Expr[] elements;
+
+  this(Expr[] elements) {
+    this.elements = elements;
+  }
+
+  int opApply(int delegate(ref Expr) dg)
+  {
+    int result = 0;
+    for (int i = 0; i < elements.length; i++)
+    {
+      result = dg(elements[i]);
+      if (result)
+        break;
+    }
+    return result;
+  }
+
+  ref Expr opIndex(size_t index) {
+    return elements[index];
+  }
+
+  size_t length() {
+    return elements.length;
+  }
+}
+
 class IdentifierExpr : Expr {
   mixin NodeMixin;
 
@@ -430,13 +461,12 @@ class AssignExpr : BinaryExpr {
 class MemberExpr : BinaryExpr {
   mixin NodeMixin;
 
-  //Expr expr;
-  Token identifier;
-
   this(Expr expr, Token identifier) {
     super(None, expr, new IdentifierExpr(identifier));
-    //this.expr = expr;
-    this.identifier = identifier;
+  }
+
+  this(Expr left, Expr right) {
+    super(None, left, right);
   }
 }
 
@@ -444,9 +474,9 @@ class CallExpr : Expr {
   mixin NodeMixin;
 
   Expr expr;
-  Expr[] arguments;
+  TupleExpr arguments;
 
-  this(Expr expr, Expr[] arguments) {
+  this(Expr expr, TupleExpr arguments) {
     this.expr = expr;
     this.arguments = arguments;
   }

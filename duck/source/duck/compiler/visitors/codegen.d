@@ -25,7 +25,8 @@ string generateCode(Node node, Context context) {
 string lvalueToString(Expr expr){
   return expr.visit!(
     (RefExpr re) => re.identifier.value,
-    (MemberExpr me) => lvalueToString(me.left) ~ "." ~ me.identifier.value);
+    (IdentifierExpr ie) => ie.token.value,
+    (MemberExpr me) => lvalueToString(me.left) ~ "." ~ lvalueToString(me.right));
 }
 
 string findTarget(Expr expr) {
@@ -35,14 +36,14 @@ string findTarget(Expr expr) {
 }
 
 StructDecl findOwnerDecl(Expr expr) {
-    return expr.visit!(
-      (Expr expr) => cast(StructDecl)null,
-      delegate StructDecl(MemberExpr expr) {
-        if (auto ge = cast(ModuleType)expr.left.exprType) {
-          return ge.decl;
-        }
-        return expr.left.findOwnerDecl();
-      });
+  return expr.visit!(
+    (Expr expr) => cast(StructDecl)null,
+    delegate StructDecl(MemberExpr expr) {
+      if (auto ge = cast(ModuleType)expr.left.exprType) {
+        return ge.decl;
+      }
+      return expr.left.findOwnerDecl();
+    });
 }
 
 auto findModules(Expr expr) {
@@ -50,7 +51,7 @@ auto findModules(Expr expr) {
   expr.traverse((MemberExpr memberExpr) {
     if (memberExpr.left.exprType.kind == ModuleType.Kind) {
       modules ~= memberExpr.findTarget();
-      return false;
+      //return false;
     }
     return true;
   });
@@ -82,8 +83,6 @@ struct CodeAppender {
 }
 
 struct CodeGen {
-  debug(CodeGen) mixin TreeLogger;
-
   CodeAppender output;
 
   Context context;
@@ -115,7 +114,8 @@ struct CodeGen {
       //emit("(");
       accept(expr.left);
       emit(".");
-      emit(expr.identifier.value);
+      accept(expr.right);
+      //emit(expr.right.value);
       //emit(")");
       //writefln("FF");
       //return "(" ~ expr.expr.accept(this) ~ "._" ~ expr.identifier.value ~ ")";
@@ -233,18 +233,22 @@ struct CodeGen {
     accept(expr.operand);
     emit(")");
   }
+
+  void visit(TupleExpr expr) {
+    foreach (i, arg ; expr.elements) {
+      if (i != 0) emit(",");
+      accept(arg);
+    }
+  }
+
   void visit(CallExpr expr) {
     debug(CodeGen) log("CallExpr");
     accept(expr.expr);
     emit("(");
-    //if (expr.arguments.length == 1)
-    //  s = "call!" ~ s;
-    foreach (i, arg ; expr.arguments) {
-      if (i != 0) emit(",");
-      accept(arg);
-    }
+    accept(expr.arguments);
     emit(")");
   }
+
   void visit(VarDeclStmt stmt) {
     debug(CodeGen) log("VarDeclStmt");
     //import duck.compiler.visitors;

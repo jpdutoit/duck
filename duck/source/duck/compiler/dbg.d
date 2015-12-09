@@ -24,20 +24,24 @@ string annot(string whatever, Type type) {
   return whatever ~ " : " ~ type.describe();
 }
 
-mixin template TreeLogger() {
+struct TreeLogger {
   enum string PAD = "                                                                                         ";
-  static string logPadding(int __depth) { return PAD[0..__depth*4]; }
   int logDepth;
-  void logIndent() { logDepth++; }
-  void logOutdent() { logDepth--; }
-  void log(T...)(string where, T t) {
+  static string logPadding(int __depth) { return PAD[0..__depth*4]; }
+  void _log(string what) {
     import std.stdio : write, writeln, stderr;
-    stderr.write(logPadding(logDepth), where, "");
-    foreach(tt; t) {
-      stderr.write(" ", tt);
-    }
-    stderr.writeln();
+    stderr.write(logPadding(logDepth), what);
   }
+}
+
+__gshared TreeLogger _logger;
+void logIndent() { _logger.logDepth++; }
+void logOutdent() { _logger.logDepth--; }
+void log(T...)(string what, T t) {
+  import std.stdio : write, writeln, stderr;
+  _logger._log(what);
+  foreach(tt; t) stderr.write(" ", tt);
+  stderr.writeln();
 }
 
 struct ExprToString {
@@ -54,7 +58,7 @@ struct ExprToString {
     return "(" ~ expr.identifier.value.annot(expr._exprType) ~ ")";
   }
   string visit(MemberExpr expr) {
-    return "(" ~ expr.left.accept(this) ~ "." ~ expr.identifier.value.annot(expr._exprType) ~ ")";
+    return "(" ~ expr.left.accept(this) ~ "." ~ expr.right.accept(this).annot(expr._exprType) ~ ")";
   }
   string visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
     return "("  ~ expr.token.value ~ "".annot(expr._exprType) ~ ")";
@@ -71,12 +75,16 @@ struct ExprToString {
   string visit(UnaryExpr expr) {
     return "(" ~ expr.operator.value ~ expr.operand.accept(this) ~ ")".annot(expr._exprType);
   }
-  string visit(CallExpr expr) {
-    string s = "(" ~ expr.expr.accept(this) ~ "(";
-    foreach (i, arg ; expr.arguments) {
+  string visit(TupleExpr expr) {
+    string s = "(";
+    foreach (i, arg ; expr.elements) {
       if (i != 0) s ~= ",";
       s ~= arg.accept(this);
     }
-    return s ~ "))".annot(expr._exprType);
+    return s ~ ")".annot(expr._exprType);
+  }
+  string visit(CallExpr expr) {
+    string s = "(" ~ expr.expr.accept(this) ~ " " ~ expr.arguments.accept(this);
+    return s ~ ")".annot(expr._exprType);
   }
 }

@@ -8,7 +8,7 @@ public import duck.compiler.visitors.codegen;
 import duck.compiler.buffer;
 import std.traits;
 
-auto accept(N, Visitor)(N node, auto ref Visitor visitor) {
+auto accept(N, Visitor)(N node, auto ref Visitor visitor) if (is(N : Node)){
   import duck.compiler.dbg;
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
@@ -34,13 +34,26 @@ R acceptR(R, N, Visitor)(N node, auto ref Visitor visitor) {
 
 import std.typetuple;
 
+template visit(alias T) if (isSomeFunction!(T)) {
+  import duck.compiler.dbg;
+  auto visit(N)(N node) {
+    pragma(inline, true);
+    if (auto n = cast(ParameterTypeTuple!(T)[0])node)
+      return T(n);
+    else
+      throw __ICE("Can not visit node of type " ~ node.classinfo.name);
+    //return acceptR!(CommonType!(staticMap!(ReturnType, T)))(node, DelegateVisitor());
+  }
+}
+
 template visit(T...) if (T.length > 1) {
   import std.conv;
+  alias ReturnTypes = staticMap!(ReturnType, T);
   string genCode() {
     auto code = "struct DelegateVisitor {\n";
     foreach(i, t; T) {
       auto idx  = i.to!string;
-      code ~= "  ReturnType!(T["~ idx ~ "]) visit(ParameterTypeTuple!(T["~idx~"])[0] n) { return T["~idx~"](n); }\n";
+      code ~= "  ReturnTypes["~ idx ~ "] visit(ParameterTypeTuple!(T["~idx~"])[0] n) { return T["~idx~"](n); }\n";
     }
     return code ~ "\n}";
   }
@@ -99,11 +112,14 @@ mixin template RecursiveAccept() {
       accept(expr.operand);
     }
 
-    void recurse(CallExpr expr) {
-      foreach (i, ref arg ; expr.arguments) {
-        accept(arg);
+    void recurse(TupleExpr expr) {
+      foreach (ref e; expr) {
+        accept(e);
       }
+    }
+    void recurse(CallExpr expr) {
       accept(expr.expr);
+      accept(expr.arguments);
     }
 
     void recurse(MemberExpr expr) {
@@ -144,7 +160,7 @@ T dup(T)(T t) {
 
 Expr dupl(Expr expr) {
   return expr.visit!(
-    (MemberExpr expr) => new MemberExpr(dupl(expr.left), expr.identifier),
+    (MemberExpr expr) => new MemberExpr(dupl(expr.left), expr.right),
     (IdentifierExpr expr) => expr
   );
 }
@@ -152,7 +168,7 @@ Expr dupl(Expr expr) {
 
 struct Dup {
   Node visit(MemberExpr expr) {
-    return new MemberExpr(dup(expr.left), expr.identifier);
+    return new MemberExpr(dup(expr.left), expr.right);
   }
 
   Node visit(IdentifierExpr expr) {
@@ -180,9 +196,6 @@ struct LineNumber {
   Slice visit(RefExpr expr) {
     return expr.identifier;
   }
-  Slice visit(MemberExpr expr) {
-    return expr.left.accept(this) + expr.identifier;
-  }
   Slice visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
     return expr.token.slice;
   }
@@ -192,12 +205,15 @@ struct LineNumber {
   Slice visit(UnaryExpr expr) {
     return expr.operator + expr.operand.accept(this);
   }
-  Slice visit(CallExpr expr) {
-    Slice s = expr.expr.accept(this);
-    foreach (i, arg ; expr.arguments) {
-      s = s + arg.accept(this);
+  Slice visit(TupleExpr expr) {
+    Slice s;
+    foreach (ref Expr e; expr) {
+      s = s + e.accept(this);
     }
     return s;
+  }
+  Slice visit(CallExpr expr) {
+    return expr.expr.accept(this) + expr.arguments.accept(this);
   }
   Slice visit(ExprStmt stmt) {
     return stmt.expr.accept(this);

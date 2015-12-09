@@ -35,31 +35,15 @@ struct OperatorTypeMap
 }
 
 struct SemanticAnalysis {
-  int depth = 0;
-
   void accept(Target)(ref Target target) {
-    depth++;
+    logIndent();
     auto obj = target.accept(this);
-    depth--;
+    logOutdent();
 
     if (!cast(Target)obj)
      throw __ICE("expected " ~ typeof(this).stringof ~ ".visit(" ~ Target.stringof ~ ") to return a " ~ Target.stringof);
     target = cast(Target)obj;
     //return obj;
-  }
-
-  debug(Semantic) {
-    enum string PAD = "                                                                                ";
-    static string padding(int __depth) { return PAD[0..__depth*4]; }
-
-    void log(T...)(string where, T t) {
-      import std.stdio : write, writeln, stderr;
-      stderr.write(padding(depth), where, " ");
-      foreach(tt; t) {
-        stderr.write(" ", tt);
-      }
-      stderr.writeln();
-    }
   }
 
   OperatorTypeMap typeMap;
@@ -77,11 +61,21 @@ struct SemanticAnalysis {
     this.sourcePath = sourcePath;
   }
 
+  Stmt[] splitStatements;
+  int pipeDepth = 0;
+
+  void error(Expr expr, string message) {
+    context.error(expr.accept(LineNumber()), message);
+  }
+
+  void error(Token token, string message) {
+    context.error(token, message);
+  }
+
   Type type(string t) {
     Decl decl = symbolTable.lookup(t);
     return decl.declType;
   }
-  int pipeDepth = 0;
 
   Expr makeModule(Type type, Expr ctor) {
     auto t = context.temporary();
@@ -95,7 +89,7 @@ struct SemanticAnalysis {
     if (expr.exprType == TypeType) {
       if (auto refExpr = cast(RefExpr)expr) {
         if (refExpr.decl.declType.kind == ModuleType.Kind) {
-          auto ctor = new CallExpr(refExpr, []);
+          auto ctor = new CallExpr(refExpr, new TupleExpr([]));
           expr = makeModule(refExpr.decl.declType, ctor);
           accept(expr);
           return;
@@ -110,15 +104,6 @@ struct SemanticAnalysis {
     }
   }
 
-  Stmt[] splitStatements;
-
-  void error(Expr expr, string message) {
-    context.error(expr.accept(LineNumber()), message);
-  }
-
-  void error(Token token, string message) {
-    context.error(token, message);
-  }
 
 
   Node visit(ErrorExpr expr) {
@@ -154,10 +139,6 @@ struct SemanticAnalysis {
     }
     return stmt;
   }
-  /*Node visit(ExprStmt expr) {
-    accept(expr.expr);
-    return expr;
-  }*/
 
   Node visit(ArrayLiteralExpr expr) {
     debug(Semantic) log("ArrayLiteralExpr", expr);
@@ -269,23 +250,35 @@ struct SemanticAnalysis {
   }
 
 
+  Node visit (TupleExpr expr) {
+    debug(Semantic) log("TupleExpr", expr);
+    bool tupleError = false;
+    Type[] elementTypes = [];
+    assumeSafeAppend(elementTypes);
+    foreach (ref Expr e; expr) {
+      accept(e);
+      elementTypes ~= e.exprType;
+      if (e.hasError)
+        tupleError = true;
+      else
+        implicitConstruct(e);
+    }
+    debug(Semantic) log("=>", expr);
+    if (tupleError) return expr.taint;
+
+    expr.exprType = new TupleType(elementTypes);
+    debug(Semantic) log("=>", expr);
+    return expr;
+  }
+
   Node visit(CallExpr expr) {
     debug(Semantic) log("CallExpr");
     debug(Semantic) log("=>", expr);
     accept(expr.expr);
-    bool argsHasError = false;
-    foreach (ref arg; expr.arguments) {
-      accept(arg);
-      if (arg.hasError) argsHasError = true;
-    }
-
+    accept(expr.arguments);
     debug(Semantic) log("=>", expr);
 
-    foreach (ref arg; expr.arguments) {
-      implicitConstruct(arg);
-    }
-    debug(Semantic) log("=>", expr);
-    if (expr.expr.hasError || argsHasError) {
+    if (expr.expr.hasError || expr.arguments.hasError) {
       return expr.taint;
     }
 
@@ -313,8 +306,6 @@ struct SemanticAnalysis {
       }
       expr.exprType = type.returnType;
     }
-    // TODO: exprType here does not disntinguish between a Module and it's instance
-    //else if (cast(ModuleType)expr.expr.exprType || cast(StructType)expr.expr.exprType || expr.expr.exprType == NumberType) {
     else if (expr.expr.exprType == TypeType) {
       // Call constructor
       if (auto refExpr = cast(RefExpr)expr.expr) {
@@ -409,28 +400,15 @@ struct SemanticAnalysis {
     //Decl decl = currentScope.lookup(expr.identifier.value);
     Decl decl = expr.decl;
     debug(Semantic) log("RefExpr", expr.identifier.value, decl);
-    if (cast(TypeDecl)decl) {
-      expr.exprType = TypeType;
-      debug(Semantic) log("=>", expr);
-      return expr;
-    }
-    else if (cast(VarDecl)decl) {
-      expr.exprType = decl.declType;
-      debug(Semantic) log("=>", expr);
-      return expr;
-    }
-    else if (cast(MethodDecl)decl) {
-      expr.exprType = decl.declType;
-      debug(Semantic) log("=>", expr);
-      return expr;
-    }
-    else if (auto aliasDecl = cast(AliasDecl)decl) {
-      //debug(Semantic) writefln("RefExpr %s %s %s", expr.identifier.value, decl, aliasDecl.targetExpr);
-      debug(Semantic) log("=>", aliasDecl.targetExpr);
-      return aliasDecl.targetExpr;
-    }
 
-    throw __ICE();
+    auto retExpr = decl.visit!(
+      (TypeDecl decl) => (expr.exprType = TypeType, expr),
+      (VarDecl decl) => (expr.exprType = decl.declType, expr),
+      (MethodDecl decl) => (expr.exprType = decl.declType, expr),
+      (AliasDecl decl) => decl.targetExpr
+    );
+    debug(Semantic) log("=>", retExpr);
+    return retExpr;
   }
 
   Node visit(MemberExpr expr) {
@@ -449,7 +427,8 @@ struct SemanticAnalysis {
         __ICE("Modules can not be temporaries.");
       }
       auto structDecl = cast(StructDecl)decl;
-      auto ident = expr.identifier.value;
+      //auto ident = expr.identifier.value;
+      auto ident = expr.right.visit!((IdentifierExpr e) => e.token.value);
       auto fieldDecl = structDecl.lookup(ident);
 
       if (fieldDecl) {
