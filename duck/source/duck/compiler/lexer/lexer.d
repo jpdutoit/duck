@@ -147,14 +147,6 @@ struct Lexer {
       case 'a':
       ..
       case 'z':
-/*        input.consume(1);
-        while ((input.front >= 'a' && input.front <= 'z') ||
-          (input.front >= 'A' && input.front <= 'Z') ||
-          (input.front >= '0' && input.front <= '9') ||
-          (input.front == '_'))
-          input.consume(1);
-        tokenType = Identifier;
-        break;*/
       case 'A':
       ..
       case 'Z':

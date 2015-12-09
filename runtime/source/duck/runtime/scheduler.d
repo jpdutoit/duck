@@ -143,38 +143,8 @@ struct Scheduler {
       }
       if (activeFibers == 0) return;
 
-
-      /*
-      // Test for unrolling:
-      auto count = 44100;
-      auto n = (count + 7) / 8;
-      final switch (count % 8) {
-        case 0: do { tick(sampleIndex);
-        case 7:      tick(sampleIndex);
-        case 6:      tick(sampleIndex);
-        case 5:      tick(sampleIndex);
-        case 4:      tick(sampleIndex);
-        case 3:      tick(sampleIndex);
-        case 2:      tick(sampleIndex);
-        case 1:      tick(sampleIndex);
-      } while (--n > 0); }*/
-
       tick(sampleIndex);
-      //tickEndPoints(sampleIndex);
-      //writefln("nex");
 
-
-      //now.time = now.time + 1.samples;
-      //writefln("nex");
-
-/*      auto received =
-            receiveTimeout(0.dur!"seconds",
-                           (string line) {
-                               writefln("Thanks for -->%s<--", line);
-                               stdout.flush();
-                           });*/
-      //if (sampleIndex % 16 == 0)
-      //  server.update();
       //writefln("sampleIndex %s", sampleIndex);
       if (sampleIndex % 32 == 0)
         oscServer.receiveAll();

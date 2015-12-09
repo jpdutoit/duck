@@ -9,10 +9,9 @@ import core.stdc.string;
 import core.stdc.stdio;
 import core.stdc.stdlib;
 import core.stdc.errno;
-//import std.bitmanip;
 import duck.runtime;
 
-OSCServer oscServer;
+__gshared OSCServer oscServer;
 //debug = OSC;
 
 private uint swapEndianImpl(uint val) @trusted pure nothrow @nogc
@@ -33,11 +32,6 @@ struct OSCMessage {
   string target;
   string types;
   ubyte[][] arguments;
-/*  string toString() {
-    return "";
-
-    //return format("%s %s", target, types);
-  }*/
 
   void read(T)(int i, T* target) if (is(T:double) || is(T:float)) {
     if (i >= types.length) {

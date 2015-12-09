@@ -577,7 +577,6 @@ struct SemanticAnalysis {
     debug(Semantic) log("VarDeclStmt", stmt.expr);
     accept(stmt.expr);
     debug(Semantic) log("=>", stmt.expr);
-    /*/debug(Semantic) log("VarDeclStmt");*/
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 
@@ -682,16 +681,6 @@ struct SemanticAnalysis {
     typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
     typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
     typeMap.set(NumberType, "*", type("frequency"), type("frequency"));
-
-    /*foreach(ref decl; library.decls) {
-
-    }*/
-
-    //foreach(ref decl; library.decls) {
-    //  accept(decl);
-    //}
-
-    //currentScope();
 
     foreach (ref node ; library.nodes)
       accept(node);

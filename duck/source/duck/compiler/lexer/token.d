@@ -4,18 +4,6 @@ import duck.compiler.buffer;
 
 private import std.typetuple: staticIndexOf;
 private import std.meta : AliasSeq;
-/*
-  struct Type {
-    this(string name) {
-      this.name = name;
-      this.id = name.hashOf();
-    }
-    string name;
-    size_t id;
-
-    alias id this;
-  };
-*/
 
 struct Token {
   alias Type = ubyte;

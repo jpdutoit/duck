@@ -43,7 +43,7 @@ public:
   ulong __sampleIndex = ulong.max;
   __ConnDg[] __connections;
 
-  void _tick(/*ulong nextSampleIndex*/) {
+  void _tick() {
     // Only tick if we haven't previously
     if (__sampleIndex == __idx)
       return;

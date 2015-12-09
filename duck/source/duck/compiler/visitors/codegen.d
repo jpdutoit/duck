@@ -106,19 +106,9 @@ struct CodeGen {
 
   void visit(MemberExpr expr) {
     debug(CodeGen) log("MemberExpr");
-    //string owner = accept(expr.expr);
-
-
-//      writefln("%s", expr.expr.exprType);
-
-      //emit("(");
-      accept(expr.left);
-      emit(".");
-      accept(expr.right);
-      //emit(expr.right.value);
-      //emit(")");
-      //writefln("FF");
-      //return "(" ~ expr.expr.accept(this) ~ "._" ~ expr.identifier.value ~ ")";
+    accept(expr.left);
+    emit(".");
+    accept(expr.right);
   }
 
   void visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
@@ -153,9 +143,6 @@ struct CodeGen {
     if (modules.length == 0) {
       debug(CodeGen) log("=> Rewrite as:");
       accept(new AssignExpr(context.token(Tok!"=", "="), expr.right, expr.left));
-      /*accept(expr.right);
-      emit(" = ");
-      accept(expr.left);*/
       return;
     }
 

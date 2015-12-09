@@ -83,12 +83,6 @@ Command parseCommand(string s) {
 
 void interactiveMode() {
     while(true) {
-        /*if (stdin.eof()) {
-            foreach(c; processList) {
-                c.processStreams();
-            }
-            continue;
-        }*/
         auto s = std.stdio.readln();
         auto cmd = parseCommand(s[0..$-1]);
         //writefln("Command %s", cmd);

@@ -233,9 +233,5 @@ struct LineNumber {
   }
   Slice visit(TypeDeclStmt s) {
     return Slice();
-    //return s.decl.accept(this);
   }
-  /*int visit(Node node) {
-    return 0;
-  }*/
 }

@@ -187,13 +187,6 @@ class StructDecl : TypeDecl {
   }
 }*/
 
-
-// hz(number) => frequency
-// frequency / frequency => number
-// frequency + frequency => frequency
-// frequency - frequency => frequency
-// number * frequency => frequency
-
 class VarDecl : Decl {
   mixin NodeMixin;
 
