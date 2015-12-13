@@ -4,6 +4,8 @@ import duck.compiler.ast;
 import duck.compiler;
 import duck.compiler.dbg;
 
+import duck.compiler.lexer;
+
 interface Scope {
   Decl lookup(string identifier);
   void define(string identifier, Decl decl);
@@ -15,11 +17,26 @@ class DeclTable : Scope {
   Decl[] symbolsInDefinitionOrder;
 
   void define(string identifier, Decl decl) {
-    if (identifier in symbols) {
-      throw __ICE("Cannot redefine " ~ identifier.idup);
+    Decl* existing = identifier in symbols;
+    if (existing) {
+      if (auto cd = cast(CallableDecl)decl) {
+        if (auto os = cast(OverloadSet)(*existing)) {
+          os.add(cd);
+          symbolsInDefinitionOrder ~= decl;
+          return;
+        }
+      }
+      else
+        throw __ICE("Cannot redefine " ~ identifier.idup);
+    }
+
+    symbolsInDefinitionOrder ~= decl;
+    if (auto cd = cast(CallableDecl)decl) {
+      OverloadSet os = new OverloadSet(decl.name);
+      os.add(cd);
+      decl = os;
     }
     symbols[identifier] = decl;
-    symbolsInDefinitionOrder ~= decl;
   }
 
   bool defines(string identifier) {

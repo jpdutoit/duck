@@ -1,0 +1,9 @@
+extern function test1() -> float;
+extern function test2(float, duration) -> frequency;
+extern function seconds(float) -> duration;
+extern function hz(float) -> frequency;
+extern function operator+(float, float) -> float;
+
+duration a = 1 hz + test2(1, 1 seconds);
+
+float b = 1 + 2;

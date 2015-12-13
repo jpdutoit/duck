@@ -137,6 +137,7 @@ struct Parser {
     return null;
   }
 
+
   CallExpr parseCall(Expr target) {
     Expr[] arguments;
     if (lexer.front.type != Tok!")") {
@@ -238,7 +239,7 @@ struct Parser {
     else if (lexer.consume(Tok!":")) {
       Expr target = expect(parseExpression(), "Expression expected");
       Token thisToken = context.token(Identifier, "this");
-      return new MacroDecl(new IdentifierExpr(type), name, [new RefExpr(thisToken, structDecl)], [thisToken], target);
+      return new MacroDecl(new TypeExpr(new IdentifierExpr(type)), name, [new TypeExpr(new RefExpr(thisToken, structDecl))], [thisToken], target);
       //return new AliasDecl(new IdentifierExpr(type), name, target, structDecl);
     }
 
@@ -259,16 +260,51 @@ struct Parser {
     } else {
       methodBody = expect(parseBlock(), "Expected function body");
     }
-    return new MethodDecl(new FunctionType(VoidType, []), name, methodBody, structDecl);
+    return new MethodDecl(FunctionType.create(VoidType.create, TupleType.create([])), name, methodBody, structDecl);
   }
 
-  TypeDeclStmt parseModule() {
-    bool isExtern = lexer.consume(Tok!"extern") != None;
+  TypeDeclStmt parseFunction(bool isExtern = false) {
+    lexer.expect(Tok!"function", "Expected module");
+    Token ident = expect(Identifier, "Expected identifier");
+    FunctionDecl func = new FunctionDecl(ident);
+    if (ident.value == "operator") {
+      switch (lexer.front.type) {
+        case Tok!"+":
+          ident = lexer.consume();
+          break;
+        default:
+          context.error(lexer.front, "Expected an overridable operator.");
+      }
+    }
+    func.name = ident;
+    func.external = isExtern;
+
+    expect(Tok!"(", "Expected '('");
+    if (lexer.front.type != Tok!")") {
+      do {
+        func.parameterTypes ~= new TypeExpr(parseExpression());
+        if (isExtern)
+          lexer.consume(Identifier);
+        else
+          func.parameterIdentifiers ~= expect(Identifier, "Expected parameter name");
+
+      } while (lexer.consume(Tok!","));
+    }
+    expect(Tok!")", "Expected ')'");
+
+    if (isExtern) {
+      expect(Tok!"->", "Expected '->'");
+      func.returnType = new TypeExpr(parseExpression());
+    }
+    return new TypeDeclStmt(func);
+  }
+
+  TypeDeclStmt parseModule(bool isExtern = false) {
     lexer.expect(Tok!"module", "Expected module");
     Token ident = expect(Identifier, "Expected identifier");
     expect(Tok!"{", "Expected '}'");
 
-    auto mod = new ModuleType(ident);
+    auto mod = ModuleType.create(ident);
     StructDecl structDecl = new StructDecl(mod, ident);
     mod.decl = structDecl;
     structDecl.external = isExtern;
@@ -305,8 +341,21 @@ struct Parser {
       case Tok!"import":
         return parseImport();
       case Tok!"extern":
+        lexer.consume();
+        if (lexer.front.type == Tok!"module")
+          return parseModule(true);
+        else {
+          auto f = parseFunction(true);
+          lexer.expect(Tok!";", "Expected ';'");
+          return f;
+        }
       case Tok!"module":
         return parseModule();
+      case Tok!"function": {
+        auto f = parseFunction();
+        lexer.expect(Tok!";", "Expected ';'");
+        return f;
+      }
       case Tok!"{":
         // Block statement
         return expect(parseBlock(), "Block expected");

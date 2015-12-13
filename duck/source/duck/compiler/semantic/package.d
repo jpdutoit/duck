@@ -9,7 +9,8 @@ import duck.compiler.semantic.helpers;
 
 import std.stdio;
 
-//debug = Semantic;
+debug = Semantic;
+
 
 struct OperatorTypeMap
 {
@@ -36,9 +37,9 @@ struct OperatorTypeMap
 
 struct SemanticAnalysis {
   void accept(Target)(ref Target target) {
-    logIndent();
+    debug(Semantic) logIndent();
     auto obj = target.accept(this);
-    logOutdent();
+    debug(Semantic) logOutdent();
 
     if (!cast(Target)obj)
      throw __ICE("expected " ~ typeof(this).stringof ~ ".visit(" ~ Target.stringof ~ ") to return a " ~ Target.stringof);
@@ -83,28 +84,30 @@ struct SemanticAnalysis {
   }
 
   void implicitConstruct(ref Expr expr) {
-    //writefln("implicitConstruct %s", expr.accept(ExprToString()));
-    // Rewrite: Module
-    // to:      Module tmpVar = Module();
-    if (expr.exprType == TypeType) {
-      if (auto refExpr = cast(RefExpr)expr) {
-        if (refExpr.decl.declType.kind == ModuleType.Kind) {
-          auto ctor = new CallExpr(refExpr, new TupleExpr([]));
-          expr = makeModule(refExpr.decl.declType, ctor);
-          accept(expr);
-          return;
+    expr.exprType.visit!(
+      delegate(TypeType t) {
+        // Rewrite: ModuleType
+        // to:      ModuleType tmpVar = Module();
+        if (auto refExpr = cast(RefExpr)expr) {
+          if (refExpr.decl.declType.isKindOf!ModuleType) {
+            auto ctor = new CallExpr(refExpr, new TupleExpr([]));
+            expr = makeModule(refExpr.decl.declType, ctor);
+            accept(expr);
+            return;
+          }
         }
-      }
-    }
-    // Rewrite: Expr that returns a Module
-    // to:      Module tmpVar = expr;
-    if (expr.exprType.isKindOf!ModuleType && !isLValue(expr)) {
-      expr = makeModule(expr.exprType, expr);
-      accept(expr);
-    }
+      },
+      delegate(ModuleType t) {
+        // Rewrite: Expr that returns a ModuleType temporary
+        // to:      ModuleType tmpVar = expr;
+        if (!expr.isLValue) {
+          expr = makeModule(expr.exprType, expr);
+          accept(expr);
+        }
+      },
+      delegate(Type type) {}
+    );
   }
-
-
 
   Node visit(ErrorExpr expr) {
     return expr;
@@ -151,7 +154,7 @@ struct SemanticAnalysis {
         error(e, "Expected array element to have type " ~ elementType.mangled);
       }
     }
-    expr.exprType = new ArrayType(expr.exprs[0].exprType);
+    expr.exprType = ArrayType.create(expr.exprs[0].exprType);
     debug(Semantic) log("=>", expr);
     return expr;
   }
@@ -194,11 +197,11 @@ struct SemanticAnalysis {
       }
       else {
         if (!expr.left.hasError && !expr.right.hasError) {
-          if (expr.left.exprType == TypeType) {
+          if (expr.left.exprType.kind == TypeType.Kind) {
             expr.taint;
             error(expr.left, "expected a value expression");
           }
-          if (expr.right.exprType == TypeType || !isLValue(expr.right)) {
+          if (expr.right.exprType.kind == TypeType.Kind || !isLValue(expr.right)) {
             expr.taint;
             error(expr.right, "not a valid connection target");
           }
@@ -249,7 +252,6 @@ struct SemanticAnalysis {
     }
   }
 
-
   Node visit (TupleExpr expr) {
     debug(Semantic) log("TupleExpr", expr);
     bool tupleError = false;
@@ -266,7 +268,7 @@ struct SemanticAnalysis {
     debug(Semantic) log("=>", expr);
     if (tupleError) return expr.taint;
 
-    expr.exprType = new TupleType(elementTypes);
+    expr.exprType = TupleType.create(elementTypes);
     debug(Semantic) log("=>", expr);
     return expr;
   }
@@ -282,43 +284,82 @@ struct SemanticAnalysis {
       return expr.taint;
     }
 
-    if (auto type = cast(FunctionType)(expr.expr.exprType)) {
-      if (type.parameterTypes.length != expr.arguments.length) {
-        error(expr, "Wrong number of arguments");
-      }
-      outer: while (true) {
-        for (int i = 0; i < type.parameterTypes.length; ++i) {
-          Type paramType = type.parameterTypes[i];
-          Type argType = expr.arguments[i].exprType;
-          if (paramType != argType)
-          {
-            if (isModule(expr.arguments[i]))
-            {
-              expr.arguments[i] = new MemberExpr(expr.arguments[i], context.token(Identifier, "output"));
-              accept(expr.arguments[i]);
-              continue outer;
+    if (auto re = cast(RefExpr)expr.expr) {
+      if (auto os = cast(OverloadSet)re.decl) {
+        foreach(decl; os.decls) {
+          FunctionType type = cast(FunctionType)decl.declType;
+          import std.algorithm.comparison;
+          if (type.parameters.length == expr.arguments.length) {
+            outer: while (true) {
+              for (int i = 0; i < type.paremeters.length; ++i) {
+                Type paramType = type.parameters[i];
+                Type argType = expr.arguments[i].exprType;
+                if (paramType != argType)
+                {
+                  if (isModule(expr.arguments[i]))
+                  {
+                    expr.arguments[i] = new MemberExpr(expr.arguments[i], context.token(Identifier, "output"));
+                    accept(expr.arguments[i]);
+                    continue outer;
+                  }
+                  else
+                    error(expr.arguments[i], "Cannot implicity convert argument of type " ~ mangled(argType) ~ " to " ~ mangled(paramType));
+                }
+              }
+              break;
             }
-            else
-              error(expr.arguments[i], "Cannot implicity convert argument of type " ~ mangled(argType) ~ " to " ~ mangled(paramType));
           }
+          expr.exprType = type.returnType;
+          return expr;
         }
-        break;
-      }
-      expr.exprType = type.returnType;
-    }
-    else if (expr.expr.exprType == TypeType) {
-      // Call constructor
-      if (auto refExpr = cast(RefExpr)expr.expr) {
-        expr.exprType = refExpr.decl.declType;
+        error(expr, "No functions matches arguments.");
+        expr.taint();
+        return expr;
       }
     }
-    else {
-      if (!expr.expr.hasError)
-        error(expr, "Cannot call something with type " ~ mangled(expr.expr.exprType));
-      return expr.taint;
-    }
-    debug(Semantic) log("=>", expr);
-    return expr;
+
+    return expr.expr.exprType.visit!(
+      delegate (FunctionType type) {
+        import std.algorithm.comparison;
+        ulong len = min(type.parameters.length, expr.arguments.length);
+        if (type.parameters.length != expr.arguments.length) {
+          error(expr, "Wrong number of arguments");
+          expr.taint();
+        }
+        outer: while (true) {
+          for (int i = 0; i < len; ++i) {
+            Type paramType = type.parameters[i];
+            Type argType = expr.arguments[i].exprType;
+            if (paramType != argType)
+            {
+              if (isModule(expr.arguments[i]))
+              {
+                expr.arguments[i] = new MemberExpr(expr.arguments[i], context.token(Identifier, "output"));
+                accept(expr.arguments[i]);
+                continue outer;
+              }
+              else
+                error(expr.arguments[i], "Cannot implicity convert argument of type " ~ mangled(argType) ~ " to " ~ mangled(paramType));
+            }
+          }
+          break;
+        }
+        expr.exprType = type.returnType;
+        return expr;
+      },
+      delegate (TypeType tt) {
+        // Call constructor
+        if (auto refExpr = cast(RefExpr)expr.expr) {
+          expr.exprType = refExpr.decl.declType;
+        }
+        return expr;
+      },
+      delegate (Type tt) {
+        if (!expr.expr.hasError)
+          error(expr, "Cannot call something with type " ~ mangled(expr.expr.exprType));
+        return expr.taint;
+      }
+    );
   }
 
   Node visit(AssignExpr expr) {
@@ -342,50 +383,36 @@ struct SemanticAnalysis {
 
   Node visit(IdentifierExpr expr) {
     if (expr.hasType) return expr;
-    debug(Semantic) log("IdentifierExpr", expr.token.value);
+    debug(Semantic) log("IdentifierExpr", expr.identifier);
 
     // Look up identifier in symbol table
-    Decl decl = symbolTable.lookup(expr.token.value);
+    Decl decl = symbolTable.lookup(expr.identifier);
     if (!decl) {
-      error(expr, "Undefined identifier " ~ expr.token.value.idup);
-      /*
-      RefExpr re = new RefExpr(expr.token, new VarDecl(ErrorType, expr.token));
-      accept(re);
-      re.exprType = ErrorType;
-      return re;
-      */
+      error(expr, "Undefined identifier " ~ expr.identifier.idup);
+      //return new ErrorExpr(expr.accept(LineNumber()));
       return expr.taint;
     } else {
-      if (auto fieldDecl = cast(FieldDecl)decl) {
-        Expr memberExpr = new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.token);
-        accept(memberExpr);
-        debug(Semantic) log("=>", memberExpr);
-        return memberExpr;
-      }
-      else if (auto macroDecl = cast(MacroDecl)decl) {
-        Expr memberExpr = new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.token);
-        accept(memberExpr);
-        debug(Semantic) log("=>", memberExpr);
-        return memberExpr;
-      }
-      else {
-        Expr refExpr = new RefExpr(expr.token, decl);
-        accept(refExpr);
-        debug(Semantic) log("=>", refExpr);
-        return refExpr;
-      }
+      auto result = decl.visit!(
+        (FieldDecl fieldDecl)
+          => new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.dupl()),
+        (MacroDecl macroDecl)
+          => new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.dupl()),
+        (Decl decl) => new RefExpr(expr.token, decl)
+      );
+      accept(result);
+      debug(Semantic) log("=>", result);
+      return result;
     }
   }
+
   Node visit(TypeExpr expr) {
       debug(Semantic) log("TypeExpr", expr.expr);
       accept(expr.expr);
-
-
       debug(Semantic) log("=>", expr.expr);
 
       if (auto re = cast(RefExpr)expr.expr) {
-        if (expr.expr.exprType == TypeType && cast(TypeDecl)re.decl) {
-          expr.exprType = TypeType;
+        if (expr.expr.exprType.isKindOf!TypeType && cast(TypeDecl)re.decl) {
+          expr.exprType = TypeType.create;
           expr.decl = cast(TypeDecl)re.decl;
           return expr;
         }
@@ -402,9 +429,11 @@ struct SemanticAnalysis {
     debug(Semantic) log("RefExpr", expr.identifier.value, decl);
 
     auto retExpr = decl.visit!(
-      (TypeDecl decl) => (expr.exprType = TypeType, expr),
+      (TypeDecl decl) => (expr.exprType = TypeType.create, expr),
       (VarDecl decl) => (expr.exprType = decl.declType, expr),
       (MethodDecl decl) => (expr.exprType = decl.declType, expr),
+      (FunctionDecl decl) => (expr.exprType = decl.declType, expr),
+      (OverloadSet os) => (expr.exprType = VoidType.create, expr),
       (AliasDecl decl) => decl.targetExpr
     );
     debug(Semantic) log("=>", retExpr);
@@ -428,7 +457,7 @@ struct SemanticAnalysis {
       }
       auto structDecl = cast(StructDecl)decl;
       //auto ident = expr.identifier.value;
-      auto ident = expr.right.visit!((IdentifierExpr e) => e.token.value);
+      auto ident = expr.right.visit!((IdentifierExpr e) => e.identifier);
       auto fieldDecl = structDecl.lookup(ident);
 
       if (fieldDecl) {
@@ -503,13 +532,28 @@ struct SemanticAnalysis {
     return decl;
   }
 
+  FunctionDecl visit(FunctionDecl decl) {
+    debug(Semantic) log("FunctionDecl", decl.name, decl.parameterTypes, "->", decl.returnType);
+    accept(decl.returnType);
+    Type[] paramTypes;
+    for (int i = 0; i < decl.parameterTypes.length; ++i) {
+      accept(decl.parameterTypes[i]);
+      paramTypes ~= decl.parameterTypes[i].decl.declType;
+    }
+    debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnType);
+    decl.declType = FunctionType.create(decl.returnType.decl.declType, TupleType.create(paramTypes));
+
+    debug(Semantic) log("=>", decl.declType.describe);
+    return decl;
+  }
+
   Node visit(FieldDecl decl) {
     debug(Semantic) log("FieldDecl");
     accept(decl.typeExpr);
     if (decl.valueExpr)
       accept(decl.valueExpr);
 
-    if (decl.typeExpr.exprType == TypeType) {
+    if (decl.typeExpr.exprType.kind == TypeType.Kind) {
       if (auto typeDecl = decl.typeExpr.decl) {
         decl.declType = typeDecl.declType;
         if (decl.valueExpr && decl.declType != decl.valueExpr.exprType && !decl.valueExpr.hasError) {
@@ -602,7 +646,7 @@ struct SemanticAnalysis {
       globalScope.define(stmt.decl.name, stmt.decl);
     }
     accept(stmt.decl);
-    if (stmt.decl.declType != ErrorType) {
+    if (stmt.decl.declType.kind != ErrorType.Kind) {
       library.exports ~= stmt.decl;
     }
     return stmt;
@@ -639,9 +683,9 @@ struct SemanticAnalysis {
     symbolTable.pushScope(new DeclTable());
     globalScope = symbolTable.scopes[1];
 
-    __gshared static auto freq = new StructType("frequency");
-    __gshared static auto dur = new StructType("duration");
-    __gshared static auto Time = new StructType("Time");
+    __gshared static auto freq = StructType.create("frequency");
+    __gshared static auto dur = StructType.create("duration");
+    __gshared static auto Time = StructType.create("Time");
 
 
     // TODO: These should loaded from extern definitions in the standard library.
@@ -649,38 +693,29 @@ struct SemanticAnalysis {
     globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
     globalScope.define("now", new VarDecl(Time, context.token(Identifier, "now")));
     globalScope.define("duration", new TypeDecl(dur, context.token(Identifier, "duration")));
-    globalScope.define("mono", new TypeDecl(NumberType, context.token(Identifier, "mono")));
-    globalScope.define("float", new TypeDecl(NumberType, context.token(Identifier, "float")));
+    globalScope.define("mono", new TypeDecl(NumberType.create, context.token(Identifier, "mono")));
+    globalScope.define("float", new TypeDecl(NumberType.create, context.token(Identifier, "float")));
     globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
     globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
 
-
-    globalScope.define("sin", new VarDecl(new FunctionType(NumberType, [NumberType]), context.token(Identifier, "sin")));
-    globalScope.define("abs", new VarDecl(new FunctionType(NumberType, [NumberType]), context.token(Identifier, "abs")));
-    globalScope.define("hz", new VarDecl(new FunctionType(freq, [NumberType]), context.token(Identifier, "hz")));
-    globalScope.define("bpm", new VarDecl(new FunctionType(freq, [NumberType]), context.token(Identifier, "bpm")));
-    globalScope.define("ms", new VarDecl(new FunctionType(dur, [NumberType]), context.token(Identifier, "ms")));
-    globalScope.define("seconds", new VarDecl(new FunctionType(dur, [NumberType]), context.token(Identifier, "seconds")));
-    globalScope.define("samples", new VarDecl(new FunctionType(dur, [NumberType]), context.token(Identifier, "samples")));
-
-    typeMap.set(NumberType, "*", NumberType, NumberType);
-    typeMap.set(NumberType, "+", NumberType, NumberType);
-    typeMap.set(NumberType, "-", NumberType, NumberType);
-    typeMap.set(NumberType, "/", NumberType, NumberType);
-    typeMap.set(NumberType, "%", NumberType, NumberType);
+    typeMap.set(NumberType.create, "*", NumberType.create, NumberType.create);
+    //typeMap.set(NumberType.create, "+", NumberType.create, NumberType.create);
+    typeMap.set(NumberType.create, "-", NumberType.create, NumberType.create);
+    typeMap.set(NumberType.create, "/", NumberType.create, NumberType.create);
+    typeMap.set(NumberType.create, "%", NumberType.create, NumberType.create);
 
     typeMap.set(type("Time"), "%", type("duration"), type("duration"));
-    typeMap.set(NumberType, "*", type("duration"), type("duration"));
+    typeMap.set(NumberType.create, "*", type("duration"), type("duration"));
     typeMap.set(type("duration"), "+", type("duration"), type("duration"));
     typeMap.set(type("duration"), "-", type("duration"), type("duration"));
 
-    typeMap.set(type("duration"), "*", NumberType, type("duration"));
-    typeMap.set(type("frequency"), "*", NumberType, type("frequency"));
-    typeMap.set(type("frequency"), "/", NumberType, type("frequency"));
-    typeMap.set(type("frequency"), "/", type("frequency"), NumberType);
+    typeMap.set(type("duration"), "*", NumberType.create, type("duration"));
+    typeMap.set(type("frequency"), "*", NumberType.create, type("frequency"));
+    typeMap.set(type("frequency"), "/", NumberType.create, type("frequency"));
+    typeMap.set(type("frequency"), "/", type("frequency"), NumberType.create);
     typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
     typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
-    typeMap.set(NumberType, "*", type("frequency"), type("frequency"));
+    typeMap.set(NumberType.create, "*", type("frequency"), type("frequency"));
 
     foreach (ref node ; library.nodes)
       accept(node);

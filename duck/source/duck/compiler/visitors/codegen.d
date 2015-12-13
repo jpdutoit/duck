@@ -25,7 +25,7 @@ string generateCode(Node node, Context context) {
 string lvalueToString(Expr expr){
   return expr.visit!(
     (RefExpr re) => re.identifier.value,
-    (IdentifierExpr ie) => ie.token.value,
+    (IdentifierExpr ie) => ie.identifier,
     (MemberExpr me) => lvalueToString(me.left) ~ "." ~ lvalueToString(me.right));
 }
 
@@ -111,10 +111,16 @@ struct CodeGen {
     accept(expr.right);
   }
 
-  void visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
-    debug(CodeGen) log("Ident/LiteralExpr");
+  void visit(IdentifierExpr expr) {
+    debug(CodeGen) log("IdentifierExpr");
+    emit(expr.identifier);
+  }
+
+  void visit(LiteralExpr expr) {
+    debug(CodeGen) log("LiteralExpr");
     emit(expr.token.value);
   }
+
   void visit(ArrayLiteralExpr expr) {
     debug(CodeGen) log("ArrayLiteralExpr");
     emit("[");
@@ -238,33 +244,19 @@ struct CodeGen {
 
   void visit(VarDeclStmt stmt) {
     debug(CodeGen) log("VarDeclStmt");
-    //import duck.compiler.visitors;
-    //writefln("VarDeclStmt %s %s", stmt.decl, stmt.decl.accept(ExprPrint()));
-    switch (stmt.decl.declType.kind) {
-      case StructType.Kind:
-        emit((cast(StructType)stmt.decl.declType).name);
-        emit(" ");
-        emit(stmt.identifier.value);
-        emit(";\n");
-        return;
-      case ModuleType.Kind:
-        emit((cast(ModuleType)stmt.decl.declType).name);
-        emit(" ");
-        emit(stmt.identifier.value);
-        emit(" = ");
-        accept(stmt.expr);
-        emit(";\n");
-        return;
-      case NumberType.Kind:
-        emit("float ");
-        emit(stmt.identifier.value);
-        emit(" = ");
-        accept(stmt.expr);
-        emit(";\n");
-        return;
-        //return (cast(ModuleType)stmt.decl.declType).name ~ " " ~ stmt.identifier.value ~ " = " ~ stmt.expr.accept(this) ~ ";\n";
-      default: throw __ICE("Code generation not implemnted for " ~ stmt.decl.declType.mangled);
-    }
+
+    string typeName = stmt.decl.declType.visit!(
+      (StructType s) => s.name,
+      (ModuleType m) => m.name,
+      (NumberType n) => "float"
+    );
+    emit(typeName);
+    emit(" ");
+    emit(stmt.identifier.value);
+    emit(" = ");
+    accept(stmt.expr);
+    emit(";\n");
+
   }
   void visit(TypeDeclStmt stmt) {
     accept(stmt.decl);
@@ -346,8 +338,14 @@ struct CodeGen {
   void visit(MacroDecl aliasDecl) {
   }
 
+  void visit(FunctionDecl funcDecl) {
+    debug(CodeGen) log("FunctionDecl", funcDecl.name.value);
+    if (!funcDecl.external) {
+
+    }
+  }
   void visit(StructDecl structDecl) {
-    debug(CodeGen) log("Struct", structDecl.name.value);
+    debug(CodeGen) log("StructDecl", structDecl.name.value);
     if (!structDecl.external) {
         emit("struct ");
         emit(structDecl.name.value);

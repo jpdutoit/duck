@@ -1,3 +1,5 @@
+extern function hz(float) -> frequency;
+
 module AA {
   float output;
 }

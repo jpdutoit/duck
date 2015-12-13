@@ -1,3 +1,10 @@
+extern function sin(float) -> float;
+extern function abs(float) -> float;
+extern function hz(float) -> frequency;
+extern function bpm(float) -> frequency;
+extern function ms(float) -> duration;
+extern function seconds(float) -> duration;
+extern function samples(float) -> duration;
 
 module Phasor {
   frequency freq = 440 hz;

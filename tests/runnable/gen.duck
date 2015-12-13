@@ -1,5 +1,8 @@
 import "assert";
 
+extern function samples(float) -> duration;
+extern function sin(float) -> float;
+
 module A {
   mono output = 0;
   function tick() {
@@ -22,6 +25,8 @@ module C {
     output = input + 1;
   }
 }
+
+
 
 A >> B >> C >> Assert([3, 5, 7, 9, 11]);
 A.output >> B >> Assert([2, 4, 6, 8, 10]);

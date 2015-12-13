@@ -54,6 +54,9 @@ struct ExprToString {
     }
     return s ~ "]";
   }
+  string visit(TypeExpr expr) {
+    return expr.expr.accept(this);
+  }
   string visit(RefExpr expr) {
     return "(" ~ expr.identifier.value.annot(expr._exprType) ~ ")";
   }

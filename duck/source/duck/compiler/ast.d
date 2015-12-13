@@ -32,6 +32,8 @@ alias NodeTypes = AliasSeq!(
   Stmts,
 
   Decl,
+  OverloadSet,
+  FunctionDecl,
   VarDecl,
   TypeDecl,
   ConstDecl,
@@ -90,6 +92,24 @@ abstract class Decl : Node {
     this.declType = type;
   }
 
+  this(Token name) {
+    this.name = name;
+  }
+
+}
+
+class OverloadSet : Decl {
+  mixin NodeMixin;
+
+  CallableDecl[] decls;
+
+  void add(CallableDecl decl) {
+    decls ~= decl;
+  }
+
+  this(Token name) {
+    super(name);
+  }
 }
 
 class AliasDecl : Decl {
@@ -103,16 +123,17 @@ class AliasDecl : Decl {
   }
 }
 
-class MacroDecl : Decl {
+class MacroDecl : CallableDecl {
   mixin NodeMixin;
 
-  Expr[] argTypes;
-  Token[] argNames;
   Expr expansion;
-  Expr typeExpr;
+  alias argTypes = parameterTypes;
+  alias argNames = parameterIdentifiers;
+  alias typeExpr = returnType;
 
-  this(Expr typeExpr, Token identifier, Expr[] argTypes, Token[] argNames, Expr expansion) {
-    super(null, identifier);
+
+  this(TypeExpr typeExpr, Token identifier, TypeExpr[] argTypes, Token[] argNames, Expr expansion) {
+    super(identifier);
     this.typeExpr = typeExpr;
     this.argTypes = argTypes;
     this.argNames = argNames;
@@ -136,13 +157,38 @@ class FieldDecl : Decl{
   }
 }
 
-class MethodDecl : Decl {
+class CallableDecl : Decl {
+  Stmt callableBody;
+  TypeExpr[] parameterTypes;
+  Token[] parameterIdentifiers;
+  TypeExpr returnType;
+
+  this(Token identifier) {
+    super(identifier);
+  }
+}
+
+class FunctionDecl : CallableDecl {
   mixin NodeMixin;
-  Stmt methodBody;
+
+  alias functionBody = callableBody;
+  bool external;
+
+  this(Token identifier) {
+    super(identifier);
+  }
+}
+
+
+class MethodDecl : CallableDecl {
+  mixin NodeMixin;
+
+  alias methodBody = callableBody;
   Decl parentDecl;
 
   this(Type type, Token identifier, Stmt methodBody, Decl parent) {
-    super(type, identifier);
+    super(identifier);
+    this.declType = type;
     this.methodBody = methodBody;
     this.parentDecl = parent;
   }
@@ -301,7 +347,7 @@ class ErrorExpr : Expr {
     Slice slice;
     this(Slice span) {
       this.slice = slice;
-      this.exprType = ErrorType;
+      this.exprType = ErrorType.create;
     }
 }
 
@@ -355,9 +401,9 @@ class LiteralExpr : Expr {
   this(Token token) {
     this.token = token;
     if (token.type == Number)
-      this.exprType = NumberType;
+      this.exprType = NumberType.create;
     else if (token.type == StringLiteral)
-      this.exprType = StringType;
+      this.exprType = StringType.create;
   }
 }
 
@@ -403,9 +449,15 @@ class TupleExpr : Expr {
 class IdentifierExpr : Expr {
   mixin NodeMixin;
 
+  string identifier;
   Token token;
 
+  this(string identifier) {
+    this.token = None;
+    this.identifier = identifier;
+  }
   this(Token token) {
+    this.identifier = token.value;
     this.token = token;
   }
 }
@@ -461,6 +513,7 @@ class MemberExpr : BinaryExpr {
   this(Expr left, Expr right) {
     super(None, left, right);
   }
+
 }
 
 class CallExpr : Expr {

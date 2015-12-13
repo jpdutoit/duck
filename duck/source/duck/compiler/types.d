@@ -19,10 +19,14 @@ template TypeId(T) {
 }
 
 template BasicType(string desc) {
-  final class BasicTypeT : Type {
+  final class BasicType : Type {
     static enum _Kind Kind = staticIndexOf!(desc, BasicTypes);
     override _Kind kind() { return Kind; };
     static assert(Kind >= 0, T.stringof ~ " is not in basic types list.");
+
+    static BasicType create() {
+      return instance;
+    }
 
     override string describe() const {
       return desc;
@@ -30,8 +34,9 @@ template BasicType(string desc) {
     override bool opEquals(Object o) {
       return this is o;
     }
+    private: static __gshared instance = new BasicType();
   }
-  static __gshared BasicType = new BasicTypeT();
+  //static __gshared BasicType = new BasicTypeT();
 }
 
 alias NumberType = BasicType!("number");
@@ -72,9 +77,17 @@ final class TupleType : Type {
     return "tuple";
   }
 
-  this(Type[] elementTypes) {
-    this.elementTypes = elementTypes;
+  static auto create(Type[] elementTypes) {
+    return new TupleType().init(elementTypes);
   }
+
+  auto init(Type[] elementTypes) {
+    this.elementTypes = elementTypes;
+    return this;
+  }
+
+  size_t length() { return elementTypes.length; }
+  ref Type opIndex(size_t index) { return elementTypes[index]; }
 }
 
 final class StructType : Type {
@@ -86,8 +99,13 @@ final class StructType : Type {
     return cast(immutable)name;
   }
 
-  this(string name) {
+  static auto create(string name) {
+    return new StructType().init(name);
+  }
+
+  auto init(string name) {
     this.name = name;
+    return this;
   }
 }
 
@@ -100,8 +118,13 @@ final class ArrayType : Type {
     return "array with elements of type " ~ elementType.describe;// ~ "[]";
   }
 
-  this(Type elementType) {
+  static auto create(Type elementType) {
+    return new ArrayType().init(elementType);
+  }
+
+  auto init(Type elementType) {
     this.elementType = elementType;
+    return this;
   }
 }
 
@@ -113,30 +136,40 @@ final class ModuleType : Type {
   StructDecl decl;
 
   override string describe() const {
-    return cast(immutable)name;
+    return "module";
   }
-  this(string name) {
+
+  static auto create(string name) {
+    return new ModuleType().init(name);
+  }
+
+  auto init(string name) {
     this.name = name;
+    return this;
   }
 }
 
 class FunctionType : Type {
   mixin TypeMixin;
 
-  this(Type returnType, Type[] parameterTypes) {
-      this.returnType = returnType;
-      this.parameterTypes = parameterTypes;
+  static auto create(Type returnType, TupleType parameters) {
+    auto f = new FunctionType();
+    f.returnType = returnType;
+    f.parameters = parameters;
+    return f;
   }
 
   Type returnType;
-  Type[] parameterTypes;
+  //Type[] parameterTypes;
+  TupleType parameters;
+
   override string describe() const {
     auto s = "ƒ(";
-    foreach (i, param ; parameterTypes) {
+    foreach (i, param ; parameters.elementTypes) {
       if (i != 0) s ~= ", ";
       s ~= param.describe();
     }
-    return s ~ ")";// ~ ")->"~returnType.mangled;
+    return s ~ ") -> "~returnType.describe;
   }
 };
 

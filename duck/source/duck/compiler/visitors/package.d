@@ -20,12 +20,24 @@ auto accept(N, Visitor)(N node, auto ref Visitor visitor) if (is(N : Node)){
   }
 }
 
-R acceptR(R, N, Visitor)(N node, auto ref Visitor visitor) {
+R acceptNodes(R, N, Visitor)(N node, auto ref Visitor visitor) {
   import duck.compiler.dbg;
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
       static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
         case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
+    }
+    default:
+      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+  }
+}
+
+R acceptTypes(R, N, Visitor)(N node, auto ref Visitor visitor) {
+  import duck.compiler.dbg;
+  switch(node.kind) {
+    foreach(Type; Types) {
+      static if (is(Type : N) && is(typeof(visitor.visit(cast(Type)node))))
+        case Type.Kind: return visitor.visit(cast(Type)node);
     }
     default:
       throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
@@ -57,9 +69,13 @@ template visit(T...) if (T.length > 1) {
     }
     return code ~ "\n}";
   }
-  auto visit(N)(N node) {
+  auto visit(N)(N node) if (is(N : Node)) {
     mixin(genCode());
-    return acceptR!(CommonType!(staticMap!(ReturnType, T)))(node, DelegateVisitor());
+    return acceptNodes!(CommonType!(staticMap!(ReturnType, T)), N, DelegateVisitor)(node, DelegateVisitor());
+  }
+  auto visit(N)(N node) if (is(N : Type)) {
+    mixin(genCode());
+    return acceptTypes!(CommonType!(staticMap!(ReturnType, T)), N, DelegateVisitor)(node, DelegateVisitor());
   }
 }
 
@@ -172,7 +188,7 @@ struct Dup {
   }
 
   Node visit(IdentifierExpr expr) {
-    return new IdentifierExpr(expr.token);
+    return expr.token ? new IdentifierExpr(expr.token) : new IdentifierExpr(expr.identifier);
   }
 }
 
