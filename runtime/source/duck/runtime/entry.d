@@ -2,11 +2,16 @@ module duck.runtime.entry;
 import duck.runtime;
 import duck.stdlib;
 import duck.stdlib.ugens : bigEndian;
-import duck.plugin.osc.server;
+
+version(USE_OSC) {
+  import duck.plugin.osc.server;
+}
 
 void initialize(string[] args) {
-  oscServer = new OSCServer();
-  oscServer.start(8000);
+  version(USE_OSC) {
+    oscServer = new OSCServer();
+    oscServer.start(8000);
+  }
 
   version(USE_PORT_AUDIO) {
     outputMode = OutputMode.PortAudio;

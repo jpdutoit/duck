@@ -5,7 +5,9 @@ private import duck.runtime;
 private import duck.runtime.model;
 
 private import core.sys.posix.signal;
-import duck.plugin.osc.server;
+version(USE_OSC) {
+  import duck.plugin.osc.server;
+}
 
 import duck.stdlib.units;
 
@@ -146,9 +148,10 @@ struct Scheduler {
       tick(sampleIndex);
 
       //writefln("sampleIndex %s", sampleIndex);
-      if (sampleIndex % 32 == 0)
-        oscServer.receiveAll();
-
+      version(USE_OSC) {
+        if (sampleIndex % 32 == 0)
+          oscServer.receiveAll();
+      }
       if (sampleIndex % 44100 == 0) {
         print(sampleIndex);
         print("\n");

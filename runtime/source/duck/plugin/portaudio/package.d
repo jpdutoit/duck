@@ -1,7 +1,5 @@
 module duck.plugin.portaudio;
 
-version(USE_PORT_AUDIO):
-
 import duck.runtime, duck.stdlib;
 
 import deimos.portaudio;

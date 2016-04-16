@@ -46,8 +46,16 @@ struct DCompilerOptions {
   }
 
   static immutable DCompilerOptions
+    OSC = {
+      versions: ["USE_OSC"],
+      sourceFiles: [
+        "duck/plugin/osc/server",
+        "duck/plugin/osc/ugen"
+      ]
+    },
     PortAudio = {
       sourceFiles: [
+        "duck/plugin/portaudio/package",
         "deimos/portaudio.di"
       ],
       libraries: ["../runtime/lib/libportaudio.a"],
@@ -66,10 +74,8 @@ struct DCompilerOptions {
         "duck/stdlib/package",
         "duck/stdlib/scales",
         "duck/stdlib/units",
-        "duck/stdlib/ugens",
-        "duck/plugin/portaudio/package",
-        "duck/plugin/osc/server",
-        "duck/plugin/osc/ugen"]
+        "duck/stdlib/ugens"
+      ]
       };
 }
 
