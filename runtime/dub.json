@@ -9,6 +9,7 @@
   "targetName": "duck",
   "targetPath": "../lib",
   "sourcePaths": [],
+  "copyFiles": ["duck_packages"],
   "sourceFiles": [
       "source/duck/runtime/package",
       "source/duck/runtime/model",

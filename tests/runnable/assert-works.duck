@@ -1,4 +1,4 @@
-import "assert";
+import "./assert";
 
 extern function samples(float) -> duration;
 

@@ -657,18 +657,32 @@ struct SemanticAnalysis {
 
     debug(Semantic) log("Import", stmt.identifier.value);
 
-    auto p = buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck");
-    if (!p.exists) {
-      context.error(stmt.identifier, "Cannot find library at '%s'", p);
-    } else {
-      auto AST = SourceBuffer(new FileBuffer(p)).parse();
-      if (auto library = cast(Library)AST.library) {
-        foreach(decl; library.exports) {
-          this.library.imports.define(decl.name, decl);
-        }
-      }
-
+    if (stmt.identifier.length <= 2) {
+      context.error(stmt.identifier, "Expected path to package to not be empty.");
+      return new Stmts([]);
     }
+    string[] paths;
+    if (stmt.identifier[1] == '.' || stmt.identifier[1] == '/') {
+      paths ~= buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck").idup;  
+    }
+    else {
+      for (int i = 0; i < context.packageRoots.length; ++i) {
+        paths ~= buildNormalizedPath(context.packageRoots[i], "duck_packages", stmt.identifier[1..$-1].idup ~ ".duck").idup;
+      }
+    }
+    for (int i = 0; i < paths.length; ++i) {
+      auto path = paths[i];
+      if (path.exists()) {
+        auto AST = SourceBuffer(new FileBuffer(path)).parse();
+        if (auto library = cast(Library)AST.library) {
+          foreach(decl; library.exports) {
+            this.library.imports.define(decl.name, decl);
+          }
+        }
+        return new Stmts([]);
+      }
+    }
+    context.error(stmt.identifier, "Cannot find library at '%s'", paths[$-1]);
     //return stmt;
     return new Stmts([]);
   }

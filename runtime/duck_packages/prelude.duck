@@ -1,3 +1,5 @@
+extern function operator+(float, float) -> float;
+
 extern function sin(float) -> float;
 extern function abs(float) -> float;
 extern function hz(float) -> frequency;

@@ -18,10 +18,18 @@ abstract class Buffer {
   string contents;
 }
 
-class FileBuffer : Buffer {
-  this(string path) {
+class FileBuffer : Buffer 
+{
+  
+  this(string path, bool loadIt = true) {
     super(path, path);
-    this.load();
+    if (loadIt)
+      this.load();
+  }
+  this(string name, string path, bool loadIt = true) {
+    super(name, path);
+    if (loadIt)
+      this.load();
   }
 
   void load() {

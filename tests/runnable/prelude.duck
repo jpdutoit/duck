@@ -1,4 +1,4 @@
-import "../../examples/prelude";
+import "prelude";
 
 
 float a = sin(2);

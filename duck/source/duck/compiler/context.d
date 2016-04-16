@@ -17,6 +17,8 @@ class Context {
     return token(Identifier, "__tmp" ~ (++temporaries).to!string);
   }
 
+  string[] packageRoots;
+
   void error(Args...)(Slice slice, string format, Args args)
   {
     errors++;
