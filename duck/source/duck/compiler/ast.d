@@ -4,6 +4,7 @@ import duck.compiler.lexer, duck.compiler.types, duck.compiler.semantic;
 import duck.compiler.scopes;
 import duck.compiler;
 import duck.compiler.dbg;
+import duck.compiler.context;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
@@ -71,8 +72,10 @@ class Library : Node {
   Node[] nodes;
   DeclTable imports;
   Decl[] exports;
+  Node[] declarations;
 
-  this(Node[] nodes) {
+  this(Node[] nodes, Node[] decls) {
+    this.declarations = decls;
     this.imports = new DeclTable();
     this.nodes = nodes;
   }
@@ -277,6 +280,7 @@ class Stmts : Stmt {
 class ImportStmt : Stmt {
   mixin NodeMixin;
   Token identifier;
+  Context targetContext;
 
   this(Token identifier) {
     this.identifier = identifier;

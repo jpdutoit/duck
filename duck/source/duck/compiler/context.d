@@ -40,7 +40,7 @@ class Context {
     if (_library) {
       return _library;
     }
-    _library = new Library([]);
+    _library = new Library([], []);
 
     auto phaseFlatten = Flatten();
     auto phaseSemantic = SemanticAnalysis(this, buffer.path);
@@ -68,10 +68,9 @@ class Context {
     if (this.errors > 0) return DCode(null);
     
     auto s =
-    "import duck.runtime, duck.stdlib;\n\n"
-    "void start() {\n" ~
+    "import duck.runtime, duck.stdlib;\n\n" ~
     code ~
-    "\n}\n";
+    "\n";
 
     for (int i = 0; i < dependencies.length; ++i) {
       dependencies[i].dcode;

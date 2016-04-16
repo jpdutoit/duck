@@ -24,19 +24,30 @@ duck run [--no-port-audio] file
 duck check file
 """);
 }
+
 int main(string[] args) {
   version(D_Coverage) {
     dmd_coverSourcePath(".");
     dmd_coverDestPath("coverage");
     dmd_coverSetMerge(true);
   }
+  version(unittest) {
+    return 0;
+  }
+  else {
 
   bool usePortAudio = true;
+  bool useStdLib = true;
+
   int index = 1;
   string command;
   string target;
+
   for (;index < args.length; ++index) {
-    if (!command && args[index] == "--help" || args[index] == "-h") {
+    if ((command == "exec" || command == "run" || command == "check") && args[index] == "--no-stdlib") {
+      useStdLib = false;
+    }
+    else if (!command && (args[index] == "--help" || args[index] == "-h")) {
       printHelp();
       return 0;
     }
@@ -71,6 +82,11 @@ int main(string[] args) {
 
     if (command == "exec") {
       Context context = Duck.contextForString(target);
+      if (!useStdLib)
+        context.includePrelude = false;
+
+      context.library;
+      if (context.errors > 0) return context.errors;
 
       auto dfile = context.dfile();
       if (context.errors > 0) return context.errors;
@@ -82,13 +98,23 @@ int main(string[] args) {
     }
     else if (command == "check") {
       Context context = Duck.contextForFile(target);
+      if (!useStdLib)
+        context.includePrelude = false;
+
+      context.library;
+      if (context.errors > 0) return context.errors;
 
       context.dcode;
       return context.errors;
     }
     else if (command == "run") {
       Context context = Duck.contextForFile(target);
+      if (!useStdLib)
+        context.includePrelude = false;
       
+      context.library;
+      if (context.errors > 0) return context.errors;
+
       DFile dfile = context.dfile;
 
       if (usePortAudio)
@@ -106,4 +132,5 @@ int main(string[] args) {
     printHelp();
   }
   return 0;
+  }
 }

@@ -385,12 +385,29 @@ struct CodeGen {
     }
   }
 
+  void visit(ImportStmt importStatement) {
+    line(importStatement);
+    emit("import ");
+    emit(importStatement.targetContext.moduleName);
+    emit(";\n");
+  }
+
   void visit(Library library) {
     debug(CodeGen) log("Library");
+
+    foreach (i, node; library.declarations) {
+      accept(node);
+    }
+
+    emit ("void start() {\n");
+    
     indent();
     foreach (i, node; library.nodes) {
       accept(node);
     }
     outdent();
+
+    emit ("\n}\n");
+    
   }
 };

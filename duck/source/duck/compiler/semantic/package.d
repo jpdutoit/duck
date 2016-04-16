@@ -9,7 +9,7 @@ import duck.compiler.semantic.helpers;
 import duck;
 
 import std.stdio;
-///debug = Semantic;
+//debug = Semantic;
 
 struct OperatorTypeMap
 {
@@ -779,6 +779,7 @@ struct SemanticAnalysis {
       auto path = paths[i];
       if (path.exists()) {
         Context context  = Duck.contextForFile(path);
+        stmt.targetContext = context;
         if (i == 0)
           context.includePrelude = false;
 
@@ -795,7 +796,7 @@ struct SemanticAnalysis {
         this.context.errors += context.errors;
         this.context.dependencies ~= context;
 
-        return new Stmts([]);
+        return stmt;
       }
     }
     context.error(stmt.identifier, "Cannot find library at '%s'", paths[$-1]);
@@ -847,8 +848,12 @@ struct SemanticAnalysis {
     typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
     typeMap.set(NumberType.create, "*", type("frequency"), type("frequency"));
 
+    foreach (ref node ; library.declarations)
+      accept(node);
+
     foreach (ref node ; library.nodes)
       accept(node);
+
     symbolTable.popScope();
     symbolTable.popScope();
     debug(Semantic) log("Done");

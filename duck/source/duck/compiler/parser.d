@@ -267,7 +267,7 @@ struct Parser {
 
   }
 
-  TypeDeclStmt parseFunction(bool isExtern = false) {
+  Stmt parseFunction(bool isExtern = false) {
     lexer.expect(Tok!"function", "Expected module");
     Token ident = expect(Identifier, "Expected identifier");
     FunctionDecl func = new FunctionDecl(ident);
@@ -304,10 +304,11 @@ struct Parser {
       expect(Tok!"->", "Expected '->'");
       func.returnType = new TypeExpr(parseExpression());
     }
-    return new TypeDeclStmt(func);
+    this.decls ~= new TypeDeclStmt(func);
+    return new Stmts([]);
   }
 
-  TypeDeclStmt parseModule(bool isExtern = false) {
+  Stmt parseModule(bool isExtern = false) {
     lexer.expect(Tok!"module", "Expected module");
     Token ident = expect(Identifier, "Expected identifier");
     expect(Tok!"{", "Expected '}'");
@@ -331,7 +332,8 @@ struct Parser {
     expect(Tok!"}", "Expected '}'");
 
     //new NamedType(ident.value.idup, new ModuleType())
-    return new TypeDeclStmt(structDecl);
+    this.decls ~= new TypeDeclStmt(structDecl);
+    return new Stmts([]);
     //decls ~= structDecl;
   }
 
@@ -395,11 +397,12 @@ struct Parser {
   Library parseLibrary() {
     auto prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""));
     auto stmt = parseStatements(false);
-    auto prog = new Library(context.includePrelude ? [prelude, stmt] : [stmt]);
+    auto prog = new Library(context.includePrelude ? [prelude, stmt] : [stmt], decls);
     //auto prog = new Library([prelude, parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }
 
+  Node[] decls;
   Context context;
 }
