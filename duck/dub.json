@@ -7,6 +7,7 @@
   "targetType": "executable",
   "sourcePaths": [],
   "sourceFiles": [
+    "source/duck/package.d",
     "source/duck/compiler/package.d",
     "source/duck/compiler/buffer/package.d",
     "source/duck/compiler/buffer/slice.d",

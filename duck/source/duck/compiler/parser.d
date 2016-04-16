@@ -393,7 +393,10 @@ struct Parser {
   }
 
   Library parseLibrary() {
-    auto prog = new Library([parseStatements()]);
+    auto prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""));
+    auto stmt = parseStatements(false);
+    auto prog = new Library(context.includePrelude ? [prelude, stmt] : [stmt]);
+    //auto prog = new Library([prelude, parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }

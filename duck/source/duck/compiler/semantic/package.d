@@ -6,6 +6,7 @@ import duck.compiler.scopes;
 import duck.compiler;
 import duck.compiler.dbg;
 import duck.compiler.semantic.helpers;
+import duck;
 
 import std.stdio;
 ///debug = Semantic;
@@ -777,12 +778,23 @@ struct SemanticAnalysis {
     for (int i = 0; i < paths.length; ++i) {
       auto path = paths[i];
       if (path.exists()) {
-        auto AST = SourceBuffer(new FileBuffer(path)).parse();
-        if (auto library = cast(Library)AST.library) {
+        Context context  = Duck.contextForFile(path);
+        if (i == 0)
+          context.includePrelude = false;
+
+        //auto buffer = SourceBuffer(new FileBuffer(path));
+        //buffer.context = context;
+        auto library = context.library;
+
+        if (library) {
           foreach(decl; library.exports) {
             this.library.imports.define(decl.name, decl);
           }
         }
+
+        this.context.errors += context.errors;
+        this.context.dependencies ~= context;
+
         return new Stmts([]);
       }
     }

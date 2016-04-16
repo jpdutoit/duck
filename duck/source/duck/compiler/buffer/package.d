@@ -12,10 +12,32 @@ abstract class Buffer {
     this.path = path;
   }
 
+  size_t hashOf() {
+    if (_hash) return _hash;
+
+    import std.digest.md;
+    MD5 hash;
+    hash.start();
+    hash.put(cast(ubyte[])name);
+    hash.put(cast(ubyte[])path);
+    hash.put(cast(ubyte[])contents);
+    hash.put(cast(ubyte)0);
+    ubyte[16] result = hash.finish();
+    return _hash = *(cast(size_t*)result.ptr);
+  }
+
+  override
+  bool opEquals(Object object) {
+    Buffer buffer = cast(Buffer)object;
+    if (!buffer) return false;
+    return buffer.hashOf == hashOf;
+  }
+
   final auto opSlice(uint from, uint to) {
     return Slice(this, from, to);
   }
   string contents;
+  size_t _hash;
 }
 
 class FileBuffer : Buffer 

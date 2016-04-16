@@ -8,6 +8,8 @@ import std.stdio;
 import std.algorithm.searching;
 import duck.compiler.context;
 
+import duck;
+
 version (D_Coverage) {
   extern (C) void dmd_coverDestPath(string);
   extern (C) void dmd_coverSourcePath(string);
@@ -28,10 +30,6 @@ int main(string[] args) {
     dmd_coverDestPath("coverage");
     dmd_coverSetMerge(true);
   }
-
-  auto builtinPackagePath = buildPath(args[0].dirName(), "../lib");
-  Context context = new Context();
-  context.packageRoots ~= builtinPackagePath.idup;
 
   bool usePortAudio = true;
   int index = 1;
@@ -72,38 +70,26 @@ int main(string[] args) {
     }
 
     if (command == "exec") {
-      auto buffer = SourceBuffer(new FileBuffer("", getcwd() ~ "/argument", false));
-      buffer.buffer.contents = "import \"prelude\";" ~ target ~ "\0";
-      context.packageRoots ~= getcwd().idup;
-      buffer.context = context;
-      //writeln(buffer.buffer.contents);
+      Context context = Duck.contextForString(target);
 
-      auto ast = buffer.parse();
-      if (ast.context.errors > 0) return ast.context.errors;
-      auto dfile = ast.codeGen().saveToTemporary;
+      auto dfile = context.dfile();
+      if (context.errors > 0) return context.errors;
+
       if (usePortAudio)
         dfile.options.merge(DCompilerOptions.PortAudio);
 
       auto proc = dfile.compile.execute();
     }
     else if (command == "check") {
-        context.packageRoots ~= target.dirName().idup();
+      Context context = Duck.contextForFile(target);
 
-        auto buffer = SourceBuffer(target);
-        buffer.context = context;
-        auto ast = buffer.parse();
-        
-        ast.codeGen();
-        return ast.context.errors;
+      context.dcode;
+      return context.errors;
     }
     else if (command == "run") {
-      context.packageRoots ~= target.dirName().idup();
-
-      auto buffer = SourceBuffer(target);
-      buffer.context = context;
-      auto ast = buffer.parse();
-      if (ast.context.errors > 0) return ast.context.errors;
-      auto dfile = ast.codeGen().saveToTemporary;
+      Context context = Duck.contextForFile(target);
+      
+      DFile dfile = context.dfile;
 
       if (usePortAudio)
         dfile.options.merge(DCompilerOptions.PortAudio);

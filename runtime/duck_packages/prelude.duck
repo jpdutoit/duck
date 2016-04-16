@@ -12,11 +12,11 @@ module Phasor {
   frequency freq = 440 hz;
   mono phase = 0;
   mono output = 0;
-  frequency input : this.freq;
+  frequency input = 440 hz;
 
   function tick() {
     output = phase;
-    phase = (phase + (freq / SAMPLE_RATE)) % 1.0;
+    phase = (phase + (input / SAMPLE_RATE)) % 1.0;
   }
 }
 
@@ -42,14 +42,16 @@ module Clock {
 
 module SinOsc {
   Phasor phasor;
-  frequency freq : this.phasor.freq;
-  frequency input : this.phasor.input;
+  //frequency freq;// : this.phasor.freq;
+  frequency input;// : this.phasor.input;
   mono output;
+
 
   //TODO: Implement pipes in definition
   //sin(phasor * 2 * 3.141592) >> mono output;
 
   function tick() {
+    phasor.input = input;
     output = sin(phasor * 2 * 3.141592);
   }
 }

@@ -5,6 +5,9 @@ import std.stdio;
 import std.process;
 import std.algorithm;
 import std.array;
+import std.exception;
+
+import std.path : buildPath;
 
 private {
   int tmpIndex = 0;
@@ -16,14 +19,6 @@ string temporaryFileName() {
     return "duck_temp" ~ tmpIndex.to!string;
 }
 
-DFile saveToTemporary(DCode code) {
-  string filename = tmpFolder ~ temporaryFileName() ~ ".d";
-  File dst = File(filename, "w");
-  dst.rawWrite(code.code);
-  dst.close();
-  debug(duck_host) stderr.writefln("Converted to D: %s", filename);
-  return DFile(filename);
-}
 
 struct DCompilerOptions {
   string[] flags;
@@ -81,11 +76,25 @@ struct DCompilerOptions {
 
 struct DFile {
   string filename;
+  string name;
   DCompilerOptions options;
 
-  this(string filename) {
-      this.filename = filename;
-      this.options.merge(DCompilerOptions.DuckRuntime);
+  bool opCast() {
+    return filename != null;
+  }
+
+  this(string filename, string name = null) {
+    this.name = name;
+    this.filename = filename;
+    this.options.merge(DCompilerOptions.DuckRuntime);
+  }
+
+  static tempFromHash(size_t hash) {
+    import std.digest.digest : toHexString;
+    ubyte[8] result = (cast(ubyte*) &hash)[0..8];
+    string name = "duck_" ~ toHexString(result[0..8]).assumeUnique;
+    string filename = (tmpFolder ~ name ~ ".d").assumeUnique;
+    return DFile(filename, name);
   }
 
   Executable compile() {
@@ -94,7 +103,8 @@ struct DFile {
 
   Executable compile(string output) {
     stdout.flush();
-    auto command = "dmd " ~ this.filename ~ " -Iruntime/source -of" ~ output ~ buildCommand(options);
+    auto command = "dmd  -Iruntime/source -of" ~ output ~ buildCommand(options);
+    debug(VERBOSE) writeln("EXECUTE: ", command);
     debug(duck_host) stderr.writefln("%s", command);
     Pid compile = spawnShell(command, stdin, stdout, stderr, null, Config.none, null);
     auto result = wait(compile);
@@ -117,7 +127,7 @@ struct DFile {
     foreach (string v; options.flags)
       command ~= " " ~ v;
     foreach(string sourceFile; options.sourceFiles)
-        command ~= " " ~ path ~ "../runtime/source/" ~ sourceFile;
+      command ~= " " ~ buildPath(hostFolder, "../runtime/source/", sourceFile);
     foreach (string v; options.versions)
       command ~= " -version=" ~ v;
     foreach(string library; options.libraries)
@@ -138,6 +148,10 @@ struct Executable {
 
     Process execute() {
         return Process(this.filename);
+    }
+
+    bool opCast(){
+      return filename != null && filename.length > 0;
     }
 }
 
