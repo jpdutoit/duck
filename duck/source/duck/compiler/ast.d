@@ -108,7 +108,7 @@ class OverloadSet : Decl {
   }
 
   this(Token name) {
-    super(name);
+    super(OverloadSetType.create(this), name);
   }
 }
 
@@ -162,6 +162,7 @@ class CallableDecl : Decl {
   TypeExpr[] parameterTypes;
   Token[] parameterIdentifiers;
   TypeExpr returnType;
+  bool external;
 
   this(Token identifier) {
     super(identifier);
@@ -172,7 +173,6 @@ class FunctionDecl : CallableDecl {
   mixin NodeMixin;
 
   alias functionBody = callableBody;
-  bool external;
 
   this(Token identifier) {
     super(identifier);

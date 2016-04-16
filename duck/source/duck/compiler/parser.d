@@ -260,7 +260,11 @@ struct Parser {
     } else {
       methodBody = expect(parseBlock(), "Expected function body");
     }
-    return new MethodDecl(FunctionType.create(VoidType.create, TupleType.create([])), name, methodBody, structDecl);
+    auto type = FunctionType.create(VoidType.create, TupleType.create([]));
+    auto decl = new MethodDecl(type, name, methodBody, structDecl);
+    type.decl = decl;
+    return decl;
+
   }
 
   TypeDeclStmt parseFunction(bool isExtern = false) {

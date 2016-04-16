@@ -7,6 +7,8 @@ import duck.compiler.ast;
 import duck.compiler.types;
 import duck.compiler.lexer.tokens;
 
+import std.stdio;
+
 bool hasError(Expr expr) {
   return (cast(ErrorType)expr._exprType) !is null;
 }
@@ -32,6 +34,52 @@ bool isLValue(Expr expr) {
     (Expr e) => false
   );
 }
+
+
+Decl getTypeDecl(Expr expr) {
+  return expr.visit!(
+    (TypeExpr te) => te.decl,
+    (RefExpr re) => re.decl,
+    (Expr e) => null
+  );
+}
+
+Type getResultType(Decl decl) {
+  return decl.visit!(
+    (FieldDecl fd) => fd.declType,
+    (CallableDecl cd) => cd.returnType.decl.declType
+  );
+}
+
+
+int matchScore(Type[] args, CallableDecl F) {
+  if (args.length != F.parameterTypes.length) return -1;
+  int score = 0;
+  size_t len = args.length;
+  for (int i = 0; i < len; ++i) {
+    Type paramType = F.parameterTypes[i].getTypeDecl.declType;
+    Type argType = args[i];
+
+    if (paramType == argType) {
+      score += 10;
+    } else {
+      if (auto mt = cast(ModuleType)argType)
+      {
+        auto output = mt.decl.lookup("output");
+        if (auto resultType = output.getResultType) {
+          if (resultType == paramType) {
+            score += 5;
+            continue;
+          }
+        }
+      }
+
+      return -1;
+    }
+  }
+  return score;
+}
+
 
 /*
 F1 is determined to be a better function than F2 if implicit conversions for
@@ -107,7 +155,7 @@ unittest {
   assert(rankArgLists([NumberType.create, StringType.create], [NumberType.create, StringType.create], [StringType.create, StringType.create], 0, 2) == MatchResult.Better);
   assert(rankArgLists([NumberType.create, StringType.create], [StringType.create, StringType.create], [NumberType.create, StringType.create], 0, 2) == MatchResult.Worse);
 }
-/**
+/*
 http://en.cppreference.com/w/cpp/language/overload_resolution
 https://stackoverflow.com/questions/29090692/how-is-ambiguity-determined-in-the-overload-resolution-algorithm
 ...] let ICSi(F) denote the implicit conversion sequence that converts the i-th argument in
@@ -157,5 +205,5 @@ for (int i = 0; i < type.parameterTypes.length; ++i) {
 
 
 bool isModule(Expr expr) {
-  return expr.exprType.kind == ModuleType.Kind;
+  return expr.exprType.isKindOf!ModuleType;
 }

@@ -49,7 +49,7 @@ import std.typetuple;
 template visit(alias T) if (isSomeFunction!(T)) {
   import duck.compiler.dbg;
   auto visit(N)(N node) {
-    pragma(inline, true);
+    //pragma(inline, true);
     if (auto n = cast(ParameterTypeTuple!(T)[0])node)
       return T(n);
     else

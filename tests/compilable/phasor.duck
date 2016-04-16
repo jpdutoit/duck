@@ -1,3 +1,4 @@
+extern function operator+(float, float) -> float;
 extern function hz(float) -> frequency;
 
 module Phasor {
@@ -8,7 +9,9 @@ module Phasor {
 
   function tick() {
     output = phase;
-    phase = (phase + (input / SAMPLE_RATE)) % 1.0;
+    // The following should work too
+    // phase = (phase + (input / SAMPLE_RATE)) % 1.0;
+    phase = (phase + (freq / SAMPLE_RATE)) % 1.0;
   }
 
   function reset() {
@@ -18,8 +21,8 @@ module Phasor {
 
 
 Phasor p1();
-// This should actually print an error:
-p1.freq >> Phasor(1);
-p1.freq >> Phasor;
+p1.freq >> Phasor(1).freq;
+p1.freq >> Phasor.freq;
 
+p1.reset();
 p1.reset();

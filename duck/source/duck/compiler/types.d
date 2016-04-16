@@ -6,9 +6,9 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 
 alias BasicTypes = AliasSeq!("number", "string", "type", "nothing", "error");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType);
 
-alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType);
+alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -74,7 +74,12 @@ final class TupleType : Type {
 
   override string describe() const {
     import std.conv : to;
-    return "tuple";
+    string s = "tuple(";
+    foreach (i, e ; elementTypes) {
+      if (i != 0) s ~= ", ";
+      s ~= e.describe();
+    }
+    return s ~ ")";
   }
 
   static auto create(Type[] elementTypes) {
@@ -149,6 +154,21 @@ final class ModuleType : Type {
   }
 }
 
+class OverloadSetType : Type {
+  mixin TypeMixin;
+
+  static auto create(OverloadSet set) {
+    auto o = new OverloadSetType();
+    o.overloadSet = set;
+    return o;
+  }
+
+  override string describe() const {
+    return "overloads";
+  }
+  OverloadSet overloadSet;
+}
+
 class FunctionType : Type {
   mixin TypeMixin;
 
@@ -162,6 +182,7 @@ class FunctionType : Type {
   Type returnType;
   //Type[] parameterTypes;
   TupleType parameters;
+  CallableDecl decl;
 
   override string describe() const {
     auto s = "ƒ(";
