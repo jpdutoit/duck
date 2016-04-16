@@ -269,7 +269,11 @@ struct Parser {
     FunctionDecl func = new FunctionDecl(ident);
     if (ident.value == "operator") {
       switch (lexer.front.type) {
+        case Tok!"-":
         case Tok!"+":
+        case Tok!"*":
+        case Tok!"/":
+        case Tok!"%":
           ident = lexer.consume();
           break;
         default:
