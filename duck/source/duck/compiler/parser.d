@@ -290,7 +290,7 @@ struct Parser {
     expect(Tok!"(", "Expected '('");
     if (lexer.front.type != Tok!")") {
       do {
-        func.parameterTypes ~= new TypeExpr(parseExpression());
+        func.parameterTypes ~= new TypeExpr(parsePrefix());
         if (isExtern)
           lexer.consume(Identifier);
         else
@@ -303,8 +303,18 @@ struct Parser {
     if (isExtern) {
       expect(Tok!"->", "Expected '->'");
       func.returnType = new TypeExpr(parseExpression());
+      lexer.expect(Tok!";", "Expected ';'");
+    } else if (lexer.consume(Tok!"->")) {
+      func.returnType = new TypeExpr(parseExpression());
     }
+
+    if (!isExtern) {
+      func.functionBody = expect(parseBlock(), "Expected function body");
+    }
+
     this.decls ~= new TypeDeclStmt(func);
+
+    
     return new Stmts([]);
   }
 
@@ -356,14 +366,12 @@ struct Parser {
           return parseModule(true);
         else {
           auto f = parseFunction(true);
-          lexer.expect(Tok!";", "Expected ';'");
           return f;
         }
       case Tok!"module":
         return parseModule();
       case Tok!"function": {
         auto f = parseFunction();
-        lexer.expect(Tok!";", "Expected ';'");
         return f;
       }
       case Tok!"{":

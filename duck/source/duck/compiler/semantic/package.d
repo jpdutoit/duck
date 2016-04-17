@@ -640,20 +640,41 @@ struct SemanticAnalysis {
 
   FunctionDecl visit(FunctionDecl decl) {
     debug(Semantic) log("FunctionDecl", decl.name, decl.parameterTypes, "->", decl.returnType);
-    accept(decl.returnType);
+    if (decl.returnType)
+      accept(decl.returnType);
+
     Type[] paramTypes;
     for (int i = 0; i < decl.parameterTypes.length; ++i) {
       accept(decl.parameterTypes[i]);
       paramTypes ~= decl.parameterTypes[i].decl.declType;
     }
     debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnType);
-    auto type = FunctionType.create(decl.returnType.decl.declType, TupleType.create(paramTypes));
+
+
+    auto type = FunctionType.create(decl.returnType ? decl.returnType.decl.declType : VoidType.create, TupleType.create(paramTypes));
     type.decl = decl;
     decl.declType = type;
 
     debug(Semantic) log("=>", decl.declType.describe);
     return decl;
   }
+
+   Node visit(MethodDecl decl) {
+    debug(Semantic) log("MethodDecl");
+    if (decl.methodBody) {
+      DeclTable funcScope = new DeclTable();
+
+      auto thisToken = context.token(Identifier, "this");
+      Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
+      thisVar.accept(this);
+      funcScope.define("this", thisVar);
+      symbolTable.pushScope(funcScope);
+      accept(decl.methodBody);
+      symbolTable.popScope();
+    }
+    return decl;
+  }
+
 
   Node visit(FieldDecl decl) {
     debug(Semantic) log("FieldDecl");
@@ -673,22 +694,6 @@ struct SemanticAnalysis {
     }
     decl.taint();
     error(decl.typeExpr, "Expected type");
-    return decl;
-  }
-
-  Node visit(MethodDecl decl) {
-    debug(Semantic) log("MethodDecl");
-    if (decl.methodBody) {
-      DeclTable funcScope = new DeclTable();
-
-      auto thisToken = context.token(Identifier, "this");
-      Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
-      thisVar.accept(this);
-      funcScope.define("this", thisVar);
-      symbolTable.pushScope(funcScope);
-      accept(decl.methodBody);
-      symbolTable.popScope();
-    }
     return decl;
   }
 

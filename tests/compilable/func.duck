@@ -16,4 +16,8 @@ module A {
   float output;
 }
 
+function testfn1() {}
+function testfn2(float f) -> float {}
+function testfn2(float a, float b) {}
+
 duration c = hz(A);
