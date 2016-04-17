@@ -1,6 +1,9 @@
 extern function hz(float) -> frequency;
 extern function operator+(float, float) -> float;
 extern function sin(float) -> float;
+extern function operator/(frequency, frequency) -> float;
+extern function operator%(float, float) -> float;
+extern function operator*(float, float) -> float;
 
 module Phasor {
   frequency freq = 440 hz;

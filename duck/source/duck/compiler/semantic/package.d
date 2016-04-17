@@ -822,7 +822,6 @@ struct SemanticAnalysis {
     __gshared static auto dur = StructType.create("duration");
     __gshared static auto Time = StructType.create("Time");
 
-
     // TODO: These should loaded from extern definitions in the standard library.
 
     globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
@@ -833,25 +832,7 @@ struct SemanticAnalysis {
     globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
     globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
 
-    typeMap.set(NumberType.create, "*", NumberType.create, NumberType.create);
-    //typeMap.set(NumberType.create, "+", NumberType.create, NumberType.create);
-    typeMap.set(NumberType.create, "-", NumberType.create, NumberType.create);
-    typeMap.set(NumberType.create, "/", NumberType.create, NumberType.create);
-    typeMap.set(NumberType.create, "%", NumberType.create, NumberType.create);
-
-    typeMap.set(type("Time"), "%", type("duration"), type("duration"));
-    typeMap.set(NumberType.create, "*", type("duration"), type("duration"));
-    typeMap.set(type("duration"), "+", type("duration"), type("duration"));
-    typeMap.set(type("duration"), "-", type("duration"), type("duration"));
-
-    typeMap.set(type("duration"), "*", NumberType.create, type("duration"));
-    typeMap.set(type("frequency"), "*", NumberType.create, type("frequency"));
-    typeMap.set(type("frequency"), "/", NumberType.create, type("frequency"));
-    typeMap.set(type("frequency"), "/", type("frequency"), NumberType.create);
-    typeMap.set(type("frequency"), "+", type("frequency"), type("frequency"));
-    typeMap.set(type("frequency"), "-", type("frequency"), type("frequency"));
-    typeMap.set(NumberType.create, "*", type("frequency"), type("frequency"));
-
+    
     foreach (ref node ; library.declarations)
       accept(node);
 

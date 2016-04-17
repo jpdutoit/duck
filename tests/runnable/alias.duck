@@ -19,3 +19,7 @@ A + 1 >> A.input;
 A a;
 2 >> a.a;
 1 >> a;
+
+
+float b;
+3 >> b;

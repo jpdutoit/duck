@@ -1,4 +1,25 @@
 extern function operator+(float, float) -> float;
+extern function operator*(float, float) -> float;
+extern function operator-(float, float) -> float;
+extern function operator/(float, float) -> float;
+extern function operator%(float, float) -> float;
+
+extern function operator*(duration, float) -> duration;
+
+extern function operator*(frequency, float) -> frequency;
+extern function operator*(float, frequency) -> frequency;
+
+extern function operator/(frequency, float) -> frequency;
+extern function operator/(frequency, frequency) -> float;
+extern function operator+(frequency, frequency) -> frequency;
+extern function operator-(frequency, frequency) -> frequency;
+
+extern function operator%(Time, duration) -> duration;
+extern function operator*(float, duration) -> duration;
+extern function operator+(duration, duration) -> duration;
+extern function operator-(duration, duration) -> duration;
+
+
 
 extern function sin(float) -> float;
 extern function abs(float) -> float;

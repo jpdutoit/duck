@@ -1,6 +1,7 @@
 import "./assert";
 
 extern function operator+(float, float) -> float;
+extern function operator*(float, float) -> float;
 extern function samples(float) -> duration;
 extern function sin(float) -> float;
 

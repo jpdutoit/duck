@@ -4,6 +4,8 @@ extern function seconds(float) -> duration;
 extern function hz(float) -> frequency;
 extern function hz(duration) -> frequency;
 
+extern function operator+(frequency, frequency) -> frequency;
+
 extern function test3() -> frequency;
 
 float f = 1 hz + test3;
