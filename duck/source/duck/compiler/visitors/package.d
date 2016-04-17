@@ -177,7 +177,8 @@ T dup(T)(T t) {
 Expr dupl(Expr expr) {
   return expr.visit!(
     (MemberExpr expr) => new MemberExpr(dupl(expr.left), expr.right),
-    (IdentifierExpr expr) => expr
+    (IdentifierExpr expr) => expr,
+    (RefExpr expr) => expr
   );
 }
 

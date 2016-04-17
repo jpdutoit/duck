@@ -29,6 +29,7 @@ auto taint(Decl decl) {
 
 bool isLValue(Expr expr) {
   return expr.visit!(
+    (IdentifierExpr i) => true,
     (RefExpr r) => true,
     (MemberExpr m) => isLValue(m.left),
     (Expr e) => false

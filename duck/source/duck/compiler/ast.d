@@ -33,6 +33,7 @@ alias NodeTypes = AliasSeq!(
   Stmts,
 
   Decl,
+  UnboundDecl,
   OverloadSet,
   FunctionDecl,
   VarDecl,
@@ -98,7 +99,18 @@ abstract class Decl : Node {
   this(Token name) {
     this.name = name;
   }
+}
 
+class UnboundDecl : Decl {
+  mixin NodeMixin;
+
+  this(Type type, Token name) {
+    super(type, name);
+  }
+
+  this(Token name) {
+    super(name);
+  }
 }
 
 class OverloadSet : Decl {
@@ -133,14 +145,16 @@ class MacroDecl : CallableDecl {
   alias argTypes = parameterTypes;
   alias argNames = parameterIdentifiers;
   alias typeExpr = returnType;
+  StructDecl parentDecl;
 
-
-  this(TypeExpr typeExpr, Token identifier, TypeExpr[] argTypes, Token[] argNames, Expr expansion) {
+  this(TypeExpr typeExpr, Token identifier, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
     super(identifier);
     this.typeExpr = typeExpr;
     this.argTypes = argTypes;
     this.argNames = argNames;
     this.expansion = expansion;
+    this.dynamic = parentDecl !is null;
+    this.parentDecl = parentDecl;
   }
 }
 
@@ -166,6 +180,7 @@ class CallableDecl : Decl {
   Token[] parameterIdentifiers;
   TypeExpr returnType;
   bool external;
+  bool dynamic;
 
   this(Token identifier) {
     super(identifier);

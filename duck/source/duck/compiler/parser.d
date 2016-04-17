@@ -239,7 +239,7 @@ struct Parser {
     else if (lexer.consume(Tok!":")) {
       Expr target = expect(parseExpression(), "Expression expected");
       Token thisToken = context.token(Identifier, "this");
-      return new MacroDecl(new TypeExpr(new IdentifierExpr(type)), name, [new TypeExpr(new RefExpr(thisToken, structDecl))], [thisToken], target);
+      return new MacroDecl(new TypeExpr(new IdentifierExpr(type)), name, [new TypeExpr(new RefExpr(thisToken, structDecl))], [thisToken], target, structDecl);
       //return new AliasDecl(new IdentifierExpr(type), name, target, structDecl);
     }
 

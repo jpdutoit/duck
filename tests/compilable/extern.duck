@@ -1,4 +1,5 @@
 extern module test {
+  float b;
   float a : b;
   function tick();
 }

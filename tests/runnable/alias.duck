@@ -1,0 +1,21 @@
+
+extern function operator+(float, float) -> float;
+
+module A {
+	float a;
+	float input : a;	
+	float output : a;
+	
+	function tick() {
+		a = 2;
+	}
+}
+
+
+1 >> A.a;
+A + 1 >> A.a;
+A + 1 >> A;
+A + 1 >> A.input;
+A a;
+2 >> a.a;
+1 >> a;

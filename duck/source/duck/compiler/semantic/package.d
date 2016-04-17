@@ -200,10 +200,14 @@ struct SemanticAnalysis {
         expr.exprType = expr.right.exprType;
         expr.right = new MemberExpr(expr.right, context.token(Identifier, "input"));
         accept(expr.right);
+        implicitCall(expr.right);
+        debug(Semantic) log("=>", expr);
       }
       else if (isModule(expr.left) && isLValue(expr.left)) {
         expr.left = new MemberExpr(expr.left, context.token(Identifier, "output"));
         accept(expr.left);
+        implicitCall(expr.left);
+        debug(Semantic) log("=>", expr);
       }
       else {
         if (!expr.left.hasError && !expr.right.hasError) {
@@ -246,10 +250,12 @@ struct SemanticAnalysis {
       if (isModule(expr.left)) {
         expr.left = new MemberExpr(expr.left, context.token(Identifier, "output"));
         accept(expr.left);
+        implicitCall(expr.left);
       }
       else if (isModule(expr.right)) {
         expr.right = new MemberExpr(expr.right, context.token(Identifier, "output"));
         accept(expr.right);
+        implicitCall(expr.right);
       }
       else {
         auto os = cast(OverloadSet)symbolTable.lookup(expr.operator.value);
@@ -257,7 +263,7 @@ struct SemanticAnalysis {
           TupleExpr args = new TupleExpr([expr.left, expr.right]);
           accept(args);
           CallableDecl[] viable;
-          auto best = findBestOverload(os, args, &viable);
+          auto best = findBestOverload(os, null, args, &viable);
 
           if (best) {
             if (!best.external) {
@@ -287,7 +293,7 @@ struct SemanticAnalysis {
     }
   }
 
-  Node visit (TupleExpr expr) {
+  Node visit(TupleExpr expr) {
     debug(Semantic) log("TupleExpr", expr);
     bool tupleError = false;
     Type[] elementTypes = [];
@@ -311,17 +317,26 @@ struct SemanticAnalysis {
   }
 
 
-  CallableDecl findBestOverload(OverloadSet os, TupleExpr args, CallableDecl[]* viable) {
+  CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, CallableDecl[]* viable) {
     int bestScore = 0;
     int matches = 0;
     CallableDecl bestCallable;
 
     CallableDecl[32] overloads;
+    TupleExpr dynamicArgs = contextExpr ? new TupleExpr([contextExpr] ~ args.elements) : args;
+
+    // TODO: Should not really accept TupleExpr here as it will cause double work on all the pre-existing elements
+    if (dynamicArgs != args)
+      accept(dynamicArgs);
+
     foreach(decl; os.decls) {
+
+      TupleExpr useArgs = decl.dynamic ? dynamicArgs : args;
+      
       //FunctionType type = cast(FunctionType)decl.declType;
-      debug(Semantic) log("Checking", decl, args.exprType,  ((cast(TupleType)args.exprType).elementTypes));
-      int score = ((cast(TupleType)args.exprType).elementTypes).matchScore(decl);
-      debug(Semantic) log("=> check", args.exprType.describe, decl);
+      debug(Semantic) log("Checking", decl, useArgs.exprType,  ((cast(TupleType)useArgs.exprType).elementTypes));
+      int score = ((cast(TupleType)useArgs.exprType).elementTypes).matchScore(decl);
+      debug(Semantic) log("=> check", useArgs.exprType.describe, decl);
       if (score >= bestScore) {
         if (score != bestScore) {
           matches = 0;
@@ -350,6 +365,25 @@ struct SemanticAnalysis {
       (MemberExpr expr) => expr.left);
   }
 
+  Expr expandMacro(MacroDecl macroDecl, Expr contextExpr) {
+    debug(Semantic) log("=> ExpandMacro", macroDecl, contextExpr);
+
+    Scope macroScope = new DeclTable();
+    symbolTable.pushScope(macroScope);
+    macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), contextExpr));
+
+    debug(Semantic) log("=> expansion", macroDecl.expansion);
+    Expr expansion = macroDecl.expansion.dupl();
+    debug(Semantic) log("=> expansion", expansion);
+    accept(expansion);
+  
+    debug(Semantic) log("=>", expansion);
+
+    symbolTable.popScope();
+
+    return expansion;
+  }
+
   Node visit(CallExpr expr) {
     debug(Semantic) log("CallExpr");
     debug(Semantic) log("=>", expr);
@@ -364,8 +398,18 @@ struct SemanticAnalysis {
     return expr.expr.exprType.visit!(
       delegate (OverloadSetType ot) {
         OverloadSet os = ot.overloadSet;
+
+        Expr contextExpr;
+        expr.expr.visit!(
+          delegate (MemberExpr expr) {
+            contextExpr = expr.left;
+          },
+          (Expr expr) { }
+        );
+
+        debug(Semantic) log("=>", "context", contextExpr);
         CallableDecl[] viable;
-        CallableDecl best = findBestOverload(os, expr.arguments, &viable);
+        CallableDecl best = findBestOverload(os, contextExpr, expr.arguments, &viable);
 
         if (viable.length > 0) {
           error(expr, "Ambigious call.");
@@ -374,7 +418,13 @@ struct SemanticAnalysis {
         }
         else if (best) {
           expr.exprType = (cast(FunctionType)best.declType).returnType;
-          debug(Semantic) log("=>", expr);
+          debug(Semantic) log("=> best overload", best);
+
+          // Expand macros immediately
+          if (auto macroDecl = cast(MacroDecl)best) {
+            return expandMacro(macroDecl, contextExpr);
+          }
+
           return expr;
         }
         else {
@@ -383,47 +433,6 @@ struct SemanticAnalysis {
           return expr;
         }
       },
-      /*delegate (FunctionType ft)  {
-        if (auto macroDecl = cast(MacroDecl)fieldDecl) {
-          Scope macroScope = new DeclTable();
-          symbolTable.pushScope(macroScope);
-          macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.left));
-          Expr expansion = macroDecl.expansion.dup();
-          accept(expansion);
-          symbolTable.popScope();
-
-          debug(Semantic) log("=>", expansion);
-          return expansion;
-        }
-      },*/
-      /*delegate (FunctionType type) {
-        import std.algorithm.comparison;
-        ulong len = min(type.parameters.length, expr.arguments.length);
-        if (type.parameters.length != expr.arguments.length) {
-          error(expr, "Wrong number of arguments");
-          expr.taint();
-        }
-        outer: while (true) {
-          for (int i = 0; i < len; ++i) {
-            Type paramType = type.parameters[i];
-            Type argType = expr.arguments[i].exprType;
-            if (paramType != argType)
-            {
-              if (isModule(expr.arguments[i]))
-              {
-                expr.arguments[i] = new MemberExpr(expr.arguments[i], context.token(Identifier, "output"));
-                accept(expr.arguments[i]);
-                continue outer;
-              }
-              else
-                error(expr.arguments[i], "Cannot implicity convert argument of type " ~ mangled(argType) ~ " to " ~ mangled(paramType));
-            }
-          }
-          break;
-        }
-        expr.exprType = type.returnType;
-        return expr;
-      },*/
       delegate (TypeType tt) {
         // Call constructor
         if (auto refExpr = cast(RefExpr)expr.expr) {
@@ -443,8 +452,10 @@ struct SemanticAnalysis {
     //TODO: Type check
     debug(Semantic) log("AssignExpr", expr);
     accept(expr.left);
+    implicitCall(expr.left);
     debug(Semantic) log("=>", expr);
     accept(expr.right);
+    implicitCall(expr.right);
     debug(Semantic) log("=>", expr);
     expr.exprType = expr.left.exprType;
     return expr;
@@ -459,17 +470,17 @@ struct SemanticAnalysis {
   }
 
   Node visit(IdentifierExpr expr) {
-    if (expr.hasType) return expr;
     debug(Semantic) log("IdentifierExpr", expr.identifier);
 
     // Look up identifier in symbol table
     Decl decl = symbolTable.lookup(expr.identifier);
     if (!decl) {
-      error(expr, "Undefined identifier " ~ expr.identifier.idup);
-      //return new ErrorExpr(expr.accept(LineNumber()));
-      return expr.taint;
+      if (!expr.hasError) {
+        error(expr, "Undefined identifier " ~ expr.identifier.idup);
+        expr.taint;
+      } 
+      return expr;
     } else {
-
       Expr resolve(Decl decl) {
         return decl.visit!(
           (OverloadSet overloadSet) {
@@ -485,13 +496,19 @@ struct SemanticAnalysis {
             => new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.dupl()),
           (MacroDecl macroDecl)
             => new MemberExpr(new IdentifierExpr(context.token(Identifier, "this")), expr.dupl()),
+          (AliasDecl aliasDecl)
+            => aliasDecl.targetExpr,
+          (UnboundDecl unboundDecl) {
+            expr.exprType = unboundDecl.declType;
+            return expr;
+          },
           (Decl decl) => new RefExpr(expr.token, decl)
         );
       }
 
       auto result = resolve(decl);
-
-      accept(result);
+      if (result != expr)
+        accept(result);
       debug(Semantic) log("=>", result);
       return result;
     }
@@ -526,6 +543,7 @@ struct SemanticAnalysis {
       (MethodDecl decl) => (expr.exprType = decl.declType, expr),
       (FunctionDecl decl) => (expr.exprType = decl.declType, expr),
       (OverloadSet os) => (expr.exprType = OverloadSetType.create(os), expr),
+      //(UnboundDecl decl) => (expr.exprType = decl.declType, expr),
       (AliasDecl decl) => decl.targetExpr
     );
     debug(Semantic) log("=>", retExpr);
@@ -533,9 +551,9 @@ struct SemanticAnalysis {
   }
 
   Node visit(MemberExpr expr) {
-    debug(Semantic) log("MemberExpr", expr);
-    if (!expr.left.hasType)
-      accept(expr.left);
+    debug(Semantic) log("MemberExpr", expr, expr.left);
+
+    accept(expr.left);
     debug(Semantic) log("=>", expr);
     implicitConstruct(expr.left);
     implicitCall(expr.left);
@@ -548,26 +566,15 @@ struct SemanticAnalysis {
       if (!isLValue(expr.left)) {
         __ICE("Modules can not be temporaries.");
       }
+
       auto structDecl = cast(StructDecl)decl;
-      //auto ident = expr.identifier.value;
       auto ident = expr.right.visit!((IdentifierExpr e) => e.identifier);
       auto fieldDecl = structDecl.lookup(ident);
 
+      debug(Semantic) log("=>", fieldDecl);
       if (fieldDecl) {
         expr.exprType = fieldDecl.declType;
 
-        if (auto macroDecl = cast(MacroDecl)fieldDecl) {
-          Scope macroScope = new DeclTable();
-          symbolTable.pushScope(macroScope);
-          macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), expr.left));
-          Expr expansion = macroDecl.expansion.dup();
-          accept(expansion);
-          symbolTable.popScope();
-
-          debug(Semantic) log("=>", expansion);
-          return expansion;
-        }
-        debug(Semantic) log("=>", expr);
         return expr;
       }
       error(expr, "No field " ~ ident.idup ~ " in " ~ structDecl.name.value.idup);
@@ -594,10 +601,17 @@ struct SemanticAnalysis {
     return stmts;
   }
 
+  Node visit(UnboundDecl decl) {
+    return decl;
+  }
+
   Node visit(MacroDecl decl) {
     debug (Semantic) log("MacroDecl");
+    //log("=> type", decl.expansion);
     accept(decl.typeExpr);
+    //log("=> returnType", decl.expansion);
     accept(decl.returnType);
+
     Type[] paramTypes;
     for (int i = 0; i < decl.parameterTypes.length; ++i) {
       accept(decl.parameterTypes[i]);
@@ -608,30 +622,19 @@ struct SemanticAnalysis {
     type.decl = decl;
     decl.declType = type;
     debug(Semantic) log("=>", decl.declType.describe);
-    //fixme
-    //DeclTable aliasScope = new DeclTable();
 
-    /*VarDecl thisVar = new VarDecl(new RefExpr(token(Identifier, "this"), decl.parentDecl), token(Identifier, "this"));
+
+    DeclTable funcScope = new DeclTable();
+    auto thisToken = context.token(Identifier, "this");
+    Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
     thisVar.accept(this);
-    aliasScope.define("this", thisVar);
-    symbolTable.pushScope(aliasScope);
-    accept(decl.targetExpr);
-    symbolTable.popScope();*/
+    funcScope.define("this", thisVar);
+    debug(Semantic) log("=> expansion", decl.expansion);
+    symbolTable.pushScope(funcScope);
+    accept(decl.expansion);
+    symbolTable.popScope();
+    debug(Semantic) log("=> expansion", decl.expansion);
 
-    //if (auto typeExpr = cast(RefExpr)decl.typeExpr) {
-      //if (auto typeDecl = cast(TypeDecl)typeExpr.decl) {
-
-        //decl.declType = typeDecl.declType;
-  /*      if (decl.declType != decl.targetExpr.exprType) {
-          error(decl.targetExpr, "Expected alias expression to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.targetExpr.exprType) ~ ".");
-          decl.targetExpr.exprType = ErrorType;
-        }*/
-        //return decl;
-    //  }
-    //}
-
-    //decl.declType = ErrorType;
-    //error(decl.typeExpr, "Expected type");
     return decl;
   }
 
@@ -677,8 +680,9 @@ struct SemanticAnalysis {
     debug(Semantic) log("MethodDecl");
     if (decl.methodBody) {
       DeclTable funcScope = new DeclTable();
+
       auto thisToken = context.token(Identifier, "this");
-      VarDecl thisVar = new VarDecl(new RefExpr(thisToken, decl.parentDecl), thisToken);
+      Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
       thisVar.accept(this);
       funcScope.define("this", thisVar);
       symbolTable.pushScope(funcScope);

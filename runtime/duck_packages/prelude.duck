@@ -42,16 +42,14 @@ module Clock {
 
 module SinOsc {
   Phasor phasor;
-  //frequency freq;// : this.phasor.freq;
-  frequency input;// : this.phasor.input;
+  frequency freq : this.phasor.freq;
+  frequency input : this.phasor.input;
   mono output;
-
 
   //TODO: Implement pipes in definition
   //sin(phasor * 2 * 3.141592) >> mono output;
 
   function tick() {
-    phasor.input = input;
     output = sin(phasor * 2 * 3.141592);
   }
 }
