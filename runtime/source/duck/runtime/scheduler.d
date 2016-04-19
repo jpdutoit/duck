@@ -143,8 +143,8 @@ struct Scheduler {
           oscServer.receiveAll();
       }
       if (sampleIndex % 44100 == 0) {
-        print(sampleIndex);
-        print("\n");
+        //print(sampleIndex);
+        //print("\n");
         //return;
       }
     }

@@ -2,6 +2,9 @@ module interactive_host;
 
 import duck.compiler, duck.host;
 
+import duck;
+import duck.compiler.context;
+
 import std.file, std.stdio, std.path, std.algorithm, std.array, core.thread, std.process, std.concurrency;
 import core.sys.posix.signal;
 
@@ -44,7 +47,7 @@ string temporaryFileName() {
     import std.conv: to;
     return "duck_temp" ~ tmpIndex.to!string;
 }
-
+/*
 struct DuckFile {
     string filename;
 
@@ -57,7 +60,7 @@ struct DuckFile {
       auto dcode = ast.codeGen();
       return dcode.saveToTemporary();
     }
-}
+}*/
 
 struct Command {
     string name;
@@ -81,25 +84,56 @@ Command parseCommand(string s) {
     return command;
 }
 
+void describe(Process process) {
+    writeln(process.pid.processID(), ": ", process.filename);
+}
+
+void describe(ref Process[] list) {
+    list = list.filter!(a => a.alive)().array;
+
+    foreach(i, ref process; list) {
+        auto id = process.pid.processID();
+        if (id >= 0)
+            process.describe();
+    }
+}
+
 void interactiveMode() {
     while(true) {
+        write(">");
         auto s = std.stdio.readln();
+        stdout.flush();
         auto cmd = parseCommand(s[0..$-1]);
         //writefln("Command %s", cmd);
         if (cmd.name) {
-            if (cmd.name == "start") {
+            if (cmd.name == "help") {
+                writeln("""Commands:
+  list             - List all active modules
+  stop id          - Stop the module with the given id
+  start filename   - Start a module
+""");
+            }
+            else if (cmd.name == "start") {
                 foreach (filename; cmd.args) {
-                    auto dFile = DuckFile(filename).convertToD;
-                    if (dFile.filename) {
-                      dFile.options.merge(DCompilerOptions.PortAudio);
-                      auto process = dFile.compile().execute();
-                      procList ~= process;
-                      writefln("%s,%s", process.pid.processID(), process.filename);
-                      stdout.flush();
-                    } else {
-                      writefln("");
-                      stdout.flush();
-                    }
+                    Context context = Duck.contextForFile(filename);
+
+                    if (context.errors > 0) continue;
+
+                    context.library;
+
+                    if (context.errors > 0) continue;
+
+                    DFile dfile = context.dfile;
+
+                    if (context.errors > 0) continue;
+
+                    if (true)
+                        dfile.options.merge(DCompilerOptions.PortAudio);
+
+                    auto process = dfile.compile.execute();
+                    procList ~= process;
+                    procList.describe();
+                    stdout.flush();
                 }
             }
             else if (cmd.name == "stop") {
@@ -108,25 +142,22 @@ void interactiveMode() {
                     int pid = pidString.to!int;
                     foreach(process; procList) {
                         if (process.pid.processID() == pid) {
-                            writefln("%s,%s", process.pid.processID(), process.filename);
-                            stdout.flush();
                             process.stop();
                         }
                     }
                 }
-                procList = procList.filter!(a => a.alive)().array;
+                procList.describe();
+                stdout.flush();
             }
             else if (cmd.name == "list") {
-                procList = procList.filter!(a => a.alive)().array;
-                foreach(i, ref c; procList) {
-                    auto id = c.pid.processID();
-                    if (id >= 0)
-                        writef("%s,%s", id, c.filename);
-                    if (i + 1 < procList.length)
-                        writef(";");
-                }
-                writefln("");
+                procList.describe();
                 stdout.flush();
+            }
+            else if (cmd.name == "quit") {
+                return;
+            }
+            else {
+                writeln("Unknown command: ", cmd.name);
             }
         }
     }

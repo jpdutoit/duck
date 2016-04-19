@@ -141,6 +141,12 @@ class Context {
     stderr.writeln(str);
   }
 
+  void error(string str) {
+    errors ++;
+    stderr.write("Error: ");
+    stderr.writeln(str);
+  }
+
 
   protected DCode _dcode;
   protected Library _library;

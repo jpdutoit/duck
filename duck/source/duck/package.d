@@ -4,7 +4,7 @@ import duck.compiler.context;
 import duck.host;
 import duck.compiler.buffer;
 
-import std.file : getcwd;
+import std.file : getcwd, isFile, exists;
 import std.path : buildPath, dirName, baseName;
 
 class Duck {
@@ -27,6 +27,11 @@ class Duck {
 
   static Context contextForFile(string filename) {
     import std.stdio;
+    if (!filename.exists || !filename.isFile) {
+      Context context = new Context();
+      context.error("No such file: " ~ filename);
+      return context;
+    }
 
     Buffer buffer = new FileBuffer(filename, true);
 

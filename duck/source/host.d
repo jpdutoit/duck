@@ -85,6 +85,8 @@ int main(string[] args) {
       if (!useStdLib)
         context.includePrelude = false;
 
+      if (context.errors > 0) return context.errors;
+
       context.library;
       if (context.errors > 0) return context.errors;
 
@@ -98,6 +100,9 @@ int main(string[] args) {
     }
     else if (command == "check") {
       Context context = Duck.contextForFile(target);
+
+      if (context.errors > 0) return context.errors;
+
       if (!useStdLib)
         context.includePrelude = false;
 
@@ -109,10 +114,14 @@ int main(string[] args) {
     }
     else if (command == "run") {
       Context context = Duck.contextForFile(target);
+
+      if (context.errors > 0) return context.errors;
+
       if (!useStdLib)
         context.includePrelude = false;
       
       context.library;
+      
       if (context.errors > 0) return context.errors;
 
       DFile dfile = context.dfile;
