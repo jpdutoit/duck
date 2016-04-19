@@ -62,15 +62,7 @@ struct duration {
     t.samples = samples;
     return t;
   }
-  /*duration opBinary(string op:"%")(auto ref duration other) {
-    return duration.withSamples(mixin("samples"~op~"other.samples"));
-  }
-  duration opBinary(string op)(auto ref duration other) if (op != ">>") {
-    return duration.withSamples(mixin("samples"~op~"other.samples"));
-  }
-  Time opBinary(string op)(auto ref Time other)  if (op != ">>") {
-    return Time.withSamples(mixin("samples"~op~"other.samples"));
-  }*/
+
   int opCmp(duration other) {
     return samples < other.samples ? -1 : samples > other.samples ? 1 : 0;
   }

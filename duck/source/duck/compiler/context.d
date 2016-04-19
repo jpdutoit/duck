@@ -152,10 +152,6 @@ class Context {
   Context[] dependencies;
   Buffer buffer;
 
-
-
-
-
   string[] packageRoots;
 
   TempBuffer temp;

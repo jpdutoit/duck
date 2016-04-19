@@ -60,6 +60,6 @@ void initialize(string[] args) {
   */
 }
 int Duck(void function() fn) {
-  spork(fn);
+  Scheduler.start(fn);
   return 0;
 }

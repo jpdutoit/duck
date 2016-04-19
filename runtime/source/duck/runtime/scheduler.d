@@ -79,16 +79,6 @@ struct Scheduler {
     Fiber.yield();
   }
 
-  /*static void lineReader(Tid owner)
-  {
-      while (!finished && !stdin.eof()) {
-          string line = stdin.readln().chomp();
-          owner.send(line);
-      }
-      //writefln("Stop listening to input");
-      stdout.flush();
-  }*/
-
   static void start(T)(scope T dg)
     if (is (T:void delegate()) || is (T:void function()))
   {
@@ -162,19 +152,9 @@ struct Scheduler {
   }
 };
 
-void sleep() {
-  Scheduler.sleep();
-}
-
 void sleep(duration dur) {
   Scheduler.sleep(dur);
 }
-
-void spork(T)(scope T dg)
-{
-  Scheduler.start(dg);
-}
-
 
 struct Now {
   Time time = Time.withSamples(0);

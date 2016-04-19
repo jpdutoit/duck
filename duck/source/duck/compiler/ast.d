@@ -227,30 +227,6 @@ class StructDecl : TypeDecl {
   }
 }
 
-/*class FuncDecl : Decl {
-  mixin NodeMixin;
-  bool external;
-  Stmt funcBody;
-
-  this(Type type, Token identifier, Stmt methodBody, Decl parent) {
-    super(type, identifier);
-    this.methodBody = methodBody;
-    this.parentDecl = parent;
-  }
-}*/
-/*class FuncDecl : Decl {
-  Token identifier;
-  Type returnType;
-  FieldDecl[] arguments;
-  this(Type type, Token identifier, Type returnType, FieldDecl[] args, Stmt funcBody) {
-    super(type);
-    this.identifier = identifier;
-    this.returnType = type;
-    this.arguments = args;
-    this.fields = fields;
-  }
-}*/
-
 class VarDecl : Decl {
   mixin NodeMixin;
 
