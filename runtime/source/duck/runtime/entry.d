@@ -59,7 +59,9 @@ void initialize(string[] args) {
   print("\n");
   */
 }
-int Duck(void function() fn) {
-  Scheduler.start(fn);
-  return 0;
+
+static void Duck(T)(scope T dg)
+    if (is (T:void delegate()) || is (T:void function()))
+{
+  Scheduler.start(dg);
 }

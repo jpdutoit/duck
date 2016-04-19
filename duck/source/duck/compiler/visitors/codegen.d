@@ -158,35 +158,44 @@ struct CodeGen {
     if (!owner.external) {
       emit(expr.right.lvalueToString());
       emit("__dg = ");
-      emit("() { ");
+      emit("() {");
+      indent();
 
       foreach(mod; modules) {
         //if (auto declExpr = cast(DeclExpr)gen) {
+        emit("\n");
         emit(mod);
         emit("._tick(); ");
         //}
       }
-      emit(" ");
+      emit("\n");
       accept(expr.right);
       emit(" = ");
       accept(expr.left);
-      emit(";}");
+      emit(";");
+      outdent();
+      emit("\n}");
     }
     else {
       emit(target);
-      emit(".__add(() { ");
+      emit(".__add((){ ");
+      indent();
 
       foreach(mod; modules) {
         //if (auto declExpr = cast(DeclExpr)gen) {
+        emit("\n");
         emit(mod);
         emit("._tick(); ");
         //}
       }
-      emit(" ");
+      emit("\n");
       accept(expr.right);
       emit(" = ");
       accept(expr.left);
-      emit(";})");
+      emit(";");
+      outdent();
+      emit("\n;})");
+
     }
   }
   void visit(AssignExpr expr) {
@@ -399,16 +408,19 @@ struct CodeGen {
       accept(node);
     }
 
-    emit ("void start() {\n");
-    
+    //emit ("void start() {\n");
+
+    emit("struct MainModule {");
+    indent();
+    emit("\n\nvoid run() {\n");
     indent();
     foreach (i, node; library.nodes) {
       if (cast(TypeDeclStmt)node is null)
         accept(node);
     }
     outdent();
-
-    emit ("\n}\n");
-    
+    emit("\n}");
+    outdent();
+    emit("\n}");
   }
 };

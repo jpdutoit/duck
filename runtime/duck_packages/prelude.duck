@@ -33,7 +33,7 @@ module Phasor {
   frequency freq = 440 hz;
   mono phase = 0;
   mono output = 0;
-  frequency input = 440 hz;
+  frequency input : freq;
 
   function tick() {
     output = phase;
@@ -72,7 +72,7 @@ module Clock {
 module SinOsc {
   Phasor phasor;
   frequency freq : this.phasor.freq;
-  frequency input : this.phasor.input;
+  frequency input : this.phasor.freq;
   mono output;
 
   //TODO: Implement pipes in definition
@@ -87,7 +87,7 @@ module SinOsc {
 module Triangle {
   Phasor phasor;
   frequency freq : this.phasor.freq;
-  frequency input : this.phasor.input;
+  frequency input : this.phasor.freq;
   mono output;
 
   function tick() {
@@ -98,7 +98,7 @@ module Triangle {
 module SawTooth {
   Phasor phasor;
   frequency freq : this.phasor.freq;
-  frequency input : this.phasor.input;
+  frequency input : this.phasor.freq;
   mono output;
 
   function tick() {

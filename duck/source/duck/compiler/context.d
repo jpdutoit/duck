@@ -93,7 +93,8 @@ class Context {
       dst.rawWrite(
         "\n\nvoid main(string[] args) {\n"
         "  initialize(args);\n"
-        "  Duck(&start);\n"
+        "  MainModule m;\n"
+        "  Duck(&m.run);\n"
         "  Scheduler.run();\n"
         "}\n"
       );
