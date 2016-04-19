@@ -312,10 +312,11 @@ struct Parser {
       func.functionBody = expect(parseBlock(), "Expected function body");
     }
 
-    this.decls ~= new TypeDeclStmt(func);
+    auto stmt = new TypeDeclStmt(func);
+    this.decls ~= stmt;
 
     
-    return new Stmts([]);
+    return stmt;
   }
 
   Stmt parseModule(bool isExtern = false) {
@@ -342,8 +343,9 @@ struct Parser {
     expect(Tok!"}", "Expected '}'");
 
     //new NamedType(ident.value.idup, new ModuleType())
-    this.decls ~= new TypeDeclStmt(structDecl);
-    return new Stmts([]);
+    auto stmt = new TypeDeclStmt(structDecl);
+    this.decls ~= stmt;
+    return stmt;
     //decls ~= structDecl;
   }
 
@@ -404,6 +406,8 @@ struct Parser {
 
   Library parseLibrary() {
     auto prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""));
+    if (context.includePrelude)
+      decls ~= prelude;
     auto stmt = parseStatements(false);
     auto prog = new Library(context.includePrelude ? [prelude, stmt] : [stmt], decls);
     //auto prog = new Library([prelude, parseStatements()]);

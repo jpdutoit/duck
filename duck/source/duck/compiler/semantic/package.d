@@ -839,8 +839,8 @@ struct SemanticAnalysis {
     globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
 
     
-    foreach (ref node ; library.declarations)
-      accept(node);
+    //foreach (ref node ; library.declarations)
+//      accept(node);
 
     foreach (ref node ; library.nodes)
       accept(node);

@@ -403,7 +403,8 @@ struct CodeGen {
     
     indent();
     foreach (i, node; library.nodes) {
-      accept(node);
+      if (cast(TypeDeclStmt)node is null)
+        accept(node);
     }
     outdent();
 
