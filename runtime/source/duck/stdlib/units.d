@@ -154,6 +154,12 @@ mixin template UnitOperators() {
 struct frequency {
   float value;
 
+  static opCall() {
+    frequency freq;
+    freq.value = 0;
+    return freq;
+  }
+
   static opCall(float f) {
     pragma(inline, true);
     frequency freq;

@@ -41,6 +41,14 @@ module Phasor {
   }
 }
 
+extern module Clock {
+  frequency freq;
+  float phase;
+  float output;
+  frequency input;
+}
+
+/*
 module Clock {
   frequency freq = 440 hz;
   mono phase = 1.0;
@@ -50,17 +58,17 @@ module Clock {
   function tick() {
     phase = (phase + (freq / SAMPLE_RATE));
     //TODO: Implement if statements
-    /*
-    if (phase >= 1.0) {
-      phase = phase % 1.0;
-      output = 1;
-    } else {
-      output = 0;
-    }
-    */
+    
+    //if (phase >= 1.0) {
+     // phase = phase % 1.0;
+     // output = 1;
+    //} else {
+    //  output = 0;
+    //}
+    //
   }
 }
-
+*/
 module SinOsc {
   Phasor phasor;
   frequency freq : this.phasor.freq;

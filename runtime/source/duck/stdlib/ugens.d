@@ -25,17 +25,17 @@ alias Frequency = Value!frequency;
 
 
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 struct WhiteNoise {
   mono output = 0;
 
   void tick() {
-    //import std.random : uniform;
-    //output = uniform(-1.0, 1.0);
+    import std.random : uniform;
+    output = uniform(-1.0, 1.0);
   }
   mixin UGEN!WhiteNoise;
 }
-*/
+
 ///////////////////////////////////////////////////////////////////////////////
  uint bigEndian(uint value) {
         return value << 24
@@ -60,6 +60,7 @@ struct Pat {
 
   string pattern;
   this(string s) {
+    pattern = s;
     phase = pattern.length - 0.000001;
   }
   double phase = 1.0;

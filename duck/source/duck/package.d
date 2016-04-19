@@ -44,3 +44,7 @@ class Duck {
     return context;
   }
 }
+
+unittest {
+  Duck.contextForString("string");
+}
