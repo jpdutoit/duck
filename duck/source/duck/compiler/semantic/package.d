@@ -834,6 +834,7 @@ struct SemanticAnalysis {
     globalScope.define("duration", new TypeDecl(dur, context.token(Identifier, "duration")));
     globalScope.define("mono", new TypeDecl(NumberType.create, context.token(Identifier, "mono")));
     globalScope.define("float", new TypeDecl(NumberType.create, context.token(Identifier, "float")));
+    globalScope.define("string", new TypeDecl(StringType.create, context.token(Identifier, "string")));
     globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
     globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
 

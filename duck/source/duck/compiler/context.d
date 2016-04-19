@@ -68,7 +68,7 @@ class Context {
     if (this.errors > 0) return DCode(null);
     
     auto s =
-    "import duck.runtime, duck.stdlib;\n\n" ~
+    "import duck.runtime, duck.stdlib, core.stdc.stdio : printf;\n\n" ~
     code ~
     "\n";
 

@@ -19,7 +19,7 @@ extern function operator*(float, duration) -> duration;
 extern function operator+(duration, duration) -> duration;
 extern function operator-(duration, duration) -> duration;
 
-
+extern function printf(string) -> float;
 
 extern function sin(float) -> float;
 extern function abs(float) -> float;
