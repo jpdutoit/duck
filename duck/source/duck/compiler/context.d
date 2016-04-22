@@ -19,6 +19,7 @@ class Context {
     temp = new TempBuffer("");
     import core.runtime;
     this.packageRoots ~=  buildPath(Runtime.args[0].dirName(), "../lib");
+    this.instrument = true;
   }
 
   this(Buffer buffer) {
@@ -153,6 +154,8 @@ class Context {
   protected Library _library;
   protected DFile _dfile;
   protected string _moduleName;
+
+  bool instrument;
 
   DCompilerOptions compilerOptions;
   bool includePrelude;

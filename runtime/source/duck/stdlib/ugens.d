@@ -487,6 +487,8 @@ struct DAC {
             audio.write(cast(void*)buffer);
           break;
         }
+        case OutputMode.None:
+          break;
       }
 
       index = 0;

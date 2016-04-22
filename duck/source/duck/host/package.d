@@ -66,6 +66,8 @@ struct DCompilerOptions {
         "duck/runtime/scheduler",
         "duck/runtime/entry",
         "duck/runtime/global",
+        "duck/runtime/instrument",
+        "duck/runtime/print",
         "duck/stdlib/package",
         "duck/stdlib/scales",
         "duck/stdlib/units",

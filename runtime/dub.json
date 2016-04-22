@@ -16,6 +16,8 @@
       "source/duck/runtime/scheduler",
       "source/duck/runtime/entry",
       "source/duck/runtime/global",
+      "source/duck/runtime/print",
+      "source/duck/runtime/instrument",
       "source/duck/stdlib/package",
       "source/duck/stdlib/scales",
       "source/duck/stdlib/units",

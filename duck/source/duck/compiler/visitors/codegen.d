@@ -140,6 +140,21 @@ struct CodeGen {
     emit(")");
   }
 
+  void instrument(Expr value, Expr target) {
+    auto slice = value.accept(LineNumber());
+    emit("\n");
+    emit("instrument(\"");
+    emit(slice.toLocationString());
+    emit(": ");
+    emit(slice.toString());
+    emit("\"");
+    emit(", cast(void*)&");
+    accept(target);
+    emit(", ");
+    accept(value);
+    emit(");");
+  }
+
   void visit(PipeExpr expr) {
     debug(CodeGen) log("PipeExpr", expr);
 
@@ -173,6 +188,9 @@ struct CodeGen {
       emit(" = ");
       accept(expr.left);
       emit(";");
+      if (context.instrument) {
+        instrument(expr.left, expr.right);
+      }
       outdent();
       emit("\n}");
     }
@@ -193,6 +211,9 @@ struct CodeGen {
       emit(" = ");
       accept(expr.left);
       emit(";");
+      if (context.instrument) {
+        instrument(expr.left, expr.right);
+      }
       outdent();
       emit("\n;})");
 

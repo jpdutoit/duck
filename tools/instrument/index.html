@@ -1,0 +1,282 @@
+<html>
+<head>
+<style>
+.item {
+	margin: 10px 0;
+}
+.label {
+	margin: 8px;
+}
+html, body {width: 100%; margin: 0; padding: 0;}
+canvas {
+	border-top: 32px solid #444;
+	border-bottom: 32px solid #444;
+	border-left: 8px solid #444;
+	border-right: 8px solid #444;
+	background-color: #444;
+}
+.canvas-container {
+	
+}
+</style>
+</head>
+<body>
+<form action='#' onsubmit="return false;">
+<input type='file' id='fileinput'>
+<input type='button' id='btnLoad' value='Load' onclick='loadFile();'>
+</form>
+<script>
+	var audioContext = new AudioContext();
+
+  // set the buffer in the AudioBufferSourceNode
+  	//audioSource.buffer = myArrayBuffer;
+	//audioSource.start();
+
+  // connect the AudioBufferSourceNode to the
+  // destination so we can hear the sound
+
+  	// start the source playing
+  	
+
+
+	function loadFile() {
+        var input, file, fr;
+
+        if (typeof window.FileReader !== 'function') {
+            bodyAppend("p", "The file API isn't supported on this browser yet.");
+            return;
+        }
+
+        input = document.getElementById('fileinput');
+        if (!input) {
+            bodyAppend("p", "Um, couldn't find the fileinput element.");
+        }
+        else if (!input.files) {
+            bodyAppend("p", "This browser doesn't seem to support the `files` property of file inputs.");
+        }
+        else if (!input.files[0]) {
+            bodyAppend("p", "Please select a file before clicking 'Load'");
+        }
+        else {
+            file = input.files[0];
+            fr = new FileReader();
+            fr.onload = receivedBuffer;
+            fr.readAsArrayBuffer(file);
+        }
+        function receivedBuffer() {
+            showResult(fr.result, "Binary");
+        }
+    }
+
+    var decoder = new TextDecoder("utf8");
+
+	var sampleIndex = 0;
+	var all = [];
+    var pipes = {
+
+    };
+
+    function showResult(buffer, type) {
+    	console.log(type, buffer);
+    	var index = 0;
+    	var view = new DataView(buffer);
+    	while (true) {
+    		if (view.getUint8(index) == 0) {
+    			index+=2;
+    			break;
+    		}
+    		index++;
+    	}
+
+    	
+    	window.buf= buffer;
+
+    	console.log(index);
+    	while (index + 1 < view.byteLength) {
+    		var code = view.getInt16(index, true);
+    		index += 2;
+    		if (code == 0) {
+    			sampleIndex++;
+    			continue;
+    		}
+    		if (code < 0) {
+    			var pipeIndex = -code;
+    			var length = view.getInt16(index, true);
+    			index += 2;
+    			var name = decoder.decode(buffer.slice(index, index+length));
+    			index += length;
+    			console.log(pipeIndex, length, name);
+    			pipes[pipeIndex] = {
+    				index : pipeIndex,
+    				id: name,
+    				length: 0,
+    				startIndex : sampleIndex,
+    				buffers: []
+    			}
+    			all.push(pipes[pipeIndex]);
+    			continue;
+    		}
+    		if (code > 0) {
+    			var pipeIndex = code;
+    			var value = view.getFloat32(index, true);
+    			index += 4;
+    			var pipe = pipes[code];
+    			var bufIdx = Math.floor(pipe.length / 16384);
+    			if (bufIdx >= pipe.buffers.length)
+    				pipe.buffers.push(new Float32Array(16384));
+    			pipe.buffers[bufIdx][pipe.length % 16384] = value; 
+    			pipe.length++;
+    			continue;
+    		}
+    		break;
+    	}
+
+    	for (var key in pipes) {
+    		var pipe = pipes[key];
+    		var buffer = audioContext.createBuffer(1, pipe.length, 44100);
+    		var samples = buffer.getChannelData(0);
+    		for (var i = 0; i < pipe.length; ++i) {
+    			samples[i] = pipe.buffers[Math.floor(i / 16384)][i % 16384];
+    		}
+    		pipe.audioBuffer = buffer;
+
+    	}
+
+    	
+    	render();
+    }
+    function render() {
+    	var HEIGHT = 128*2;
+		var WIDTH = 1200*2;
+
+		var maxLength = 1;
+		for (var key in pipes) {
+			var pipe = pipes[key];
+			maxLength = Math.max(maxLength, pipe.length);	
+		}
+		
+//		maxLength = WIDTH;
+
+		var A_WINDOW_SIZE = Math.min(1024*12*100, maxLength/WIDTH), WINDOW_SIZE;
+		var REPEAT_X = 1;
+		if (A_WINDOW_SIZE < 1) {
+			REPEAT_X = Math.max(1, Math.ceil(1/A_WINDOW_SIZE));
+			WINDOW_SIZE = 1;
+		} else {
+			WINDOW_SIZE = Math.floor(A_WINDOW_SIZE);
+		}
+		console.log(REPEAT_X, A_WINDOW_SIZE, WINDOW_SIZE)
+
+		//all.sort(function(a,b) {return (a.id > b.id) ? 1 : ((b.id > a.id) ? -1 : 0);} );
+
+		for (var keyIndex = 0; keyIndex < all.length; keyIndex++) {
+			var pipe = all[keyIndex];
+
+			var max = -99999999999999, min = 99999999999999;
+			for (var i = 0; i < pipe.length; ++i) {
+				var value = pipe.buffers[Math.floor(i / 16384)][i % 16384];
+				max = Math.max(max, value);
+				min = Math.min(min, value);
+			}
+
+			var p = document.createElement("div");
+			p.setAttribute("class", "item");
+
+    		var label = document.createElement("div")
+    		label.setAttribute("class", "label");
+    		label.innerText = pipe.id;
+    		p.appendChild(label);
+    		document.body.appendChild(p);
+
+    		var container = document.createElement("div");
+    		container.setAttribute("class", "canvas-container")
+    		p.appendChild(container);
+    		var canvas = document.createElement("canvas");
+    		canvas.setAttribute("width", WIDTH.toString());
+    		canvas.setAttribute("height", HEIGHT.toString());
+    		canvas.style.width = (WIDTH/2)+"px";
+			canvas.style.height = (HEIGHT/2)+"px";
+			canvas.onclick = (function(pipe) { 
+				return function() {
+				 	var audioSource = audioContext.createBufferSource();
+				  	audioSource.connect(audioContext.destination);
+					audioSource.buffer = pipe.audioBuffer;
+					audioSource.onended = function() {
+						audioSource.disconnect();
+					}
+					audioSource.start();
+				}
+			})(pipe);
+    		container.appendChild(canvas);
+    		var context = canvas.getContext('2d');
+    		context.scale(2,2);
+    		
+    		var imageData = context.createImageData(1,HEIGHT); 
+    		var pixels = imageData.data;
+
+    		var lcmax = -99999999999999, lcmin = 99999999999999;
+			var cmax = -99999999999999, cmin = 99999999999999;
+    		for (var i = 0; i < pipe.length; ++i) {
+				var value = pipe.buffers[Math.floor(i / 16384)][i % 16384];
+				cmax = Math.max(cmax, value);
+				cmin = Math.min(cmin, value);
+    			if (i % WINDOW_SIZE == WINDOW_SIZE-1) {
+
+    				if (Math.abs(max-min) < 1e-8) {
+    					cmax = 15;
+    					cmin = 15;
+    				} else {
+	    				cmax = Math.ceil(0.5+(HEIGHT-1.5)*(cmax - min)/(max-min));
+	    				cmin = Math.ceil(0.5+(HEIGHT-1.5)*(cmin - min)/(max-min));
+	    			}
+
+    				var ncmax = cmax;
+					var ncmin = cmin;
+
+					cmax = Math.max(cmax, lcmax);
+					cmin = Math.min(cmin, lcmin);
+
+    				//console.log(cmin, cmax);
+    				for (var j = 0; j < HEIGHT; ++j) {
+    					var k = (HEIGHT-1-j);
+    					pixels[k*4 + 0] = (!(j < cmin || j > cmax))*255;
+    					pixels[k*4 + 1] = (!(j < cmin || j > cmax))*255;
+    					pixels[k*4 + 2] = (!(j < cmin || j > cmax))*255;
+    					pixels[k*4 + 3] = (!(j < cmin || j > cmax))*255
+    				}
+					context.putImageData(imageData, Math.floor(i / A_WINDOW_SIZE)+0, 0);
+
+					if (REPEAT_X>1) {
+						cmax = ncmax;
+						cmin = ncmin;
+
+	    				for (var j = 0; j < HEIGHT; ++j) {
+	    					var k = (HEIGHT-1-j);
+	    					pixels[k*4 + 0] = (!(j < cmin || j > cmax))*255;
+    						pixels[k*4 + 1] = (!(j < cmin || j > cmax))*255;
+    						pixels[k*4 + 2] = (!(j < cmin || j > cmax))*255;
+	    					pixels[k*4 + 3] = (!(j < cmin || j > cmax))*255
+	    				}
+	    				for (var j = 1; j < REPEAT_X; ++j)
+							context.putImageData(imageData, Math.floor(i / A_WINDOW_SIZE)+j, 0);  
+					}
+					lcmax = ncmax;
+					lcmin = ncmin;
+    				cmax = -99999999999999;
+    				cmin = 99999999999999;
+
+					if (Math.floor(i / A_WINDOW_SIZE) + 1 >= WIDTH) break;
+    			}
+    		}
+
+			/*d[0]   = r;
+			d[1]   = g;
+			d[2]   = b;
+			d[3]   = a;*/
+			
+		}
+		
+	}
+</script>
+</body>
+</html>

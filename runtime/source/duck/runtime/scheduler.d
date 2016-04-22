@@ -135,6 +135,8 @@ struct Scheduler {
       }
       if (activeFibers == 0) return;
 
+      import duck.stdlib : instrumentNextSample;
+      instrumentNextSample();
       tick(sampleIndex);
 
       //writefln("sampleIndex %s", sampleIndex);

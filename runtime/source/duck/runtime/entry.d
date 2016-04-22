@@ -17,7 +17,7 @@ void initialize(string[] args) {
     outputMode = OutputMode.PortAudio;
   }
   else {
-    outputMode = OutputMode.AU;
+    outputMode = OutputMode.None;
   }
 
   for (int i = 1; i < args.length; ++i) {
