@@ -11,28 +11,9 @@ import duck;
 import std.stdio;
 //debug = Semantic;
 
-struct OperatorTypeMap
-{
-  alias TypeType = Type[Type];
-  alias TypeTypeType = TypeType[Type];
-  TypeTypeType[string] binary;
+protected:
 
-  void set(Type a, string op, Type b, Type c) {
-    binary[op][a][b]=c;
-  }
-  Type get(Type a, string op, Type b) {
-    if (op in binary) {
-      TypeTypeType t3 = binary[op];
-      if (a in t3) {
-        TypeType t2 = t3[a];
-        if (b in t2) {
-          return t2[b];
-        }
-      }
-    }
-    return null;
-  }
-}
+public:
 
 struct SemanticAnalysis {
   void accept(Target)(ref Target target) {
@@ -45,8 +26,6 @@ struct SemanticAnalysis {
     target = cast(Target)obj;
     //return obj;
   }
-
-  OperatorTypeMap typeMap;
 
   SymbolTable symbolTable;
   Scope globalScope;
@@ -91,6 +70,7 @@ struct SemanticAnalysis {
       (Type type) { }
     );
   }
+
   void implicitConstruct(ref Expr expr) {
     expr.exprType.visit!(
       delegate(TypeType t) {
@@ -117,6 +97,11 @@ struct SemanticAnalysis {
     );
   }
 
+  void implicitConstructCall(ref Expr expr) {
+    implicitConstruct(expr);
+    implicitCall(expr);
+  }
+
   Node visit(ErrorExpr expr) {
     return expr;
   }
@@ -126,11 +111,9 @@ struct SemanticAnalysis {
     accept(expr.declStmt);
 
     splitStatements ~= expr.declStmt;
-    //debug(Semantic) writefln("InlineDeclExpr2 %s", expr.declStmt);
     Expr ident = new IdentifierExpr(expr.token);
     accept(ident);
     debug(Semantic) log("=>", ident);
-    //debug(Semantic) writefln("InlineDeclExpr3 %s", ident);
 
     return ident;
   }
@@ -172,15 +155,12 @@ struct SemanticAnalysis {
     debug(Semantic) log("=>", expr);
     pipeDepth++;
     accept(expr.left);
-    debug(Semantic) log("=>", expr);
     accept(expr.right);
     pipeDepth--;
     debug(Semantic) log("=>", expr);
 
-    implicitConstruct(expr.left);
-    implicitCall(expr.left);
-    implicitConstruct(expr.right);
-    implicitCall(expr.right);
+    implicitConstructCall(expr.left);
+    implicitConstructCall(expr.right);
 
     debug(Semantic) log("=>", expr);
 
@@ -240,10 +220,8 @@ struct SemanticAnalysis {
     accept(expr.right);
     debug(Semantic) log("=>", expr);
 
-    implicitConstruct(expr.left);
-    implicitCall(expr.left);
-    implicitConstruct(expr.right);
-    implicitCall(expr.right);
+    implicitConstructCall(expr.left);
+    implicitConstructCall(expr.right);
     debug(Semantic) log("=>", expr);
 
     while(true) {
@@ -276,19 +254,11 @@ struct SemanticAnalysis {
             debug(Semantic) log("=>", expr);
             return expr;
           }
-
-
         }
 
-
-        Type targetType = typeMap.get(expr.left.exprType, expr.operator.value, expr.right.exprType);
-        if (!targetType) {// || (expr.left.exprType != expr.right.exprType)) {
-          if (!expr.left.hasError && !expr.right.hasError)
-            error(expr.left, "Operation " ~ mangled(expr.left.exprType) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.exprType) ~ " is not defined.");
-          return expr.taint();
-        }
-        expr.exprType = targetType;
-        return expr;
+        if (!expr.left.hasError && !expr.right.hasError)
+          error(expr.left, "Operation " ~ mangled(expr.left.exprType) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.exprType) ~ " is not defined.");
+        return expr.taint();
       }
     }
   }
@@ -303,8 +273,7 @@ struct SemanticAnalysis {
       if (e.hasError)
         tupleError = true;
       else {
-        implicitConstruct(e);
-        implicitCall(e);
+        implicitConstructCall(e);
       }
       elementTypes ~= e.exprType;
     }
@@ -314,55 +283,6 @@ struct SemanticAnalysis {
     expr.exprType = TupleType.create(elementTypes);
     debug(Semantic) log("=>", expr);
     return expr;
-  }
-
-
-  CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, CallableDecl[]* viable) {
-    int bestScore = 0;
-    int matches = 0;
-    CallableDecl bestCallable;
-
-    CallableDecl[32] overloads;
-    TupleExpr dynamicArgs = contextExpr ? new TupleExpr([contextExpr] ~ args.elements) : args;
-
-    // TODO: Should not really accept TupleExpr here as it will cause double work on all the pre-existing elements
-    if (dynamicArgs != args)
-      accept(dynamicArgs);
-
-    foreach(decl; os.decls) {
-
-      TupleExpr useArgs = decl.dynamic ? dynamicArgs : args;
-      
-      //FunctionType type = cast(FunctionType)decl.declType;
-      debug(Semantic) log("Checking", decl, useArgs.exprType,  ((cast(TupleType)useArgs.exprType).elementTypes));
-      int score = ((cast(TupleType)useArgs.exprType).elementTypes).matchScore(decl);
-      debug(Semantic) log("=> check", useArgs.exprType.describe, decl);
-      if (score >= bestScore) {
-        if (score != bestScore) {
-          matches = 0;
-        }
-        overloads[matches++] = decl;
-        bestScore = score;
-        bestCallable = decl;
-        debug(Semantic) log("=>", bestScore, bestCallable);
-      }
-    }
-    if (matches > 1) {
-      foreach (overload; overloads) *viable ~= overload;
-      //overloads[0..matches].copy(*viable);
-      return null;
-    }
-    if (bestCallable !is null && bestScore >= 0) {
-      return bestCallable;
-    }
-    return null;
-  }
-
-
-  Expr findTarget(Expr expr) {
-    return expr.visit!(
-      (Expr expr) => cast(Expr)null,
-      (MemberExpr expr) => expr.left);
   }
 
   Expr expandMacro(MacroDecl macroDecl, Expr contextExpr) {
@@ -478,7 +398,7 @@ struct SemanticAnalysis {
       if (!expr.hasError) {
         error(expr, "Undefined identifier " ~ expr.identifier.idup);
         expr.taint;
-      } 
+      }
       return expr;
     } else {
       Expr resolve(Decl decl) {
@@ -555,8 +475,7 @@ struct SemanticAnalysis {
 
     accept(expr.left);
     debug(Semantic) log("=>", expr);
-    implicitConstruct(expr.left);
-    implicitCall(expr.left);
+    implicitConstructCall(expr.left);
     debug(Semantic) log("=>", expr);
 
     if (expr.left.hasError) return expr.taint;
@@ -569,7 +488,7 @@ struct SemanticAnalysis {
 
       auto structDecl = cast(StructDecl)decl;
       auto ident = expr.right.visit!((IdentifierExpr e) => e.identifier);
-      auto fieldDecl = structDecl.lookup(ident);
+      auto fieldDecl = structDecl.decls.lookup(ident);
 
       debug(Semantic) log("=>", fieldDecl);
       if (fieldDecl) {
@@ -612,6 +531,8 @@ struct SemanticAnalysis {
     //log("=> returnType", decl.expansion);
     accept(decl.returnType);
 
+    if (decl.contextType)
+      accept(decl.contextType);
     Type[] paramTypes;
     for (int i = 0; i < decl.parameterTypes.length; ++i) {
       accept(decl.parameterTypes[i]);
@@ -719,13 +640,13 @@ struct SemanticAnalysis {
     debug(Semantic) log("StructDecl", structDecl.name);
     symbolTable.pushScope(structDecl.decls);
     ///FIXME
-    foreach(name, ref decl; structDecl.symbolsInDefinitionOrder) {
+    foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder) {
       if (cast(FieldDecl)decl)accept(decl);
     }
-    foreach(name, ref decl; structDecl.symbolsInDefinitionOrder) {
+    foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder) {
       if (cast(MacroDecl)decl)accept(decl);
     }
-    foreach(name, ref decl; structDecl.symbolsInDefinitionOrder)
+    foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder)
       if (cast(MethodDecl)decl)accept(decl);
     symbolTable.popScope();
     return structDecl;
@@ -775,25 +696,17 @@ struct SemanticAnalysis {
       context.error(stmt.identifier, "Expected path to package to not be empty.");
       return new Stmts([]);
     }
-    string[] paths;
-    if (stmt.identifier[1] == '.' || stmt.identifier[1] == '/') {
-      paths ~= buildNormalizedPath(sourcePath, "..", stmt.identifier[1..$-1].idup ~ ".duck").idup;  
-    }
-    else {
-      for (int i = 0; i < context.packageRoots.length; ++i) {
-        paths ~= buildNormalizedPath(context.packageRoots[i], "duck_packages", stmt.identifier[1..$-1].idup ~ ".duck").idup;
-      }
-    }
-    for (int i = 0; i < paths.length; ++i) {
-      auto path = paths[i];
+
+    auto paths = ImportPaths(stmt.identifier[1..$-1], this.sourcePath, this.context.packageRoots);
+    string lastPath;
+    foreach (i, string path ; paths) {
+      lastPath = path;
       if (path.exists()) {
         Context context  = Duck.contextForFile(path);
         stmt.targetContext = context;
         if (i == 0)
           context.includePrelude = false;
 
-        //auto buffer = SourceBuffer(new FileBuffer(path));
-        //buffer.context = context;
         auto library = context.library;
 
         if (library) {
@@ -808,7 +721,7 @@ struct SemanticAnalysis {
         return stmt;
       }
     }
-    context.error(stmt.identifier, "Cannot find library at '%s'", paths[$-1]);
+    context.error(stmt.identifier, "Cannot find library at '%s'", lastPath);
     //return stmt;
     return new Stmts([]);
   }
@@ -822,25 +735,10 @@ struct SemanticAnalysis {
     symbolTable.pushScope(library.imports);
     symbolTable.pushScope(new DeclTable());
     globalScope = symbolTable.scopes[1];
-
-    __gshared static auto freq = StructType.create("frequency");
-    __gshared static auto dur = StructType.create("duration");
-    __gshared static auto Time = StructType.create("Time");
-
-    // TODO: These should loaded from extern definitions in the standard library.
-
-    globalScope.define("SAMPLE_RATE", new VarDecl(freq, context.token(Identifier, "SAMPLE_RATE")));
-    globalScope.define("now", new VarDecl(Time, context.token(Identifier, "now")));
-    globalScope.define("duration", new TypeDecl(dur, context.token(Identifier, "duration")));
+    
     globalScope.define("mono", new TypeDecl(NumberType.create, context.token(Identifier, "mono")));
     globalScope.define("float", new TypeDecl(NumberType.create, context.token(Identifier, "float")));
     globalScope.define("string", new TypeDecl(StringType.create, context.token(Identifier, "string")));
-    globalScope.define("frequency", new TypeDecl(freq, context.token(Identifier, "frequency")));
-    globalScope.define("Time", new TypeDecl(Time, context.token(Identifier, "Time")));
-
-    
-    //foreach (ref node ; library.declarations)
-//      accept(node);
 
     foreach (ref node ; library.nodes)
       accept(node);
@@ -850,7 +748,6 @@ struct SemanticAnalysis {
     debug(Semantic) log("Done");
     return library;
   }
-
 
   // Nothing to do for these
   Node visit(LiteralExpr expr) {

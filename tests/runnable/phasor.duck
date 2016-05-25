@@ -1,3 +1,7 @@
+extern struct frequency;
+
+extern frequency SAMPLE_RATE;
+
 extern function operator+(float, float) -> float;
 extern function hz(float) -> frequency;
 extern function operator/(frequency, frequency) -> float;

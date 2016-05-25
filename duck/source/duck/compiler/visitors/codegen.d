@@ -170,6 +170,14 @@ struct CodeGen {
     StructDecl owner = findOwnerDecl(expr.right);
     debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
 
+    if ((cast(ModuleDecl)owner is null)) {
+      accept(expr.right);
+      emit(" = ");
+      accept(expr.left);
+      emit(";");
+      return;
+    }
+
     if (!owner.external) {
       emit(expr.right.lvalueToString());
       emit("__dg = ");
@@ -226,20 +234,20 @@ struct CodeGen {
     string target = expr.left.findTarget();
     auto modules = findModules(expr.right);
 
-
     debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
 
-    if (owner && !owner.external) {
-      emit(expr.left.lvalueToString());
-      emit("__dg = ");
-      emit("null;\n");
+    if (cast(ModuleDecl)owner !is null) {
+      if (!owner.external) {
+        emit(expr.left.lvalueToString());
+        emit("__dg = ");
+        emit("null;\n");
+      }
     }
+
     foreach(mod; modules) {
-      //if (auto declExpr = cast(DeclExpr)gen) {
       if (mod == "this") continue;
       emit(mod);
       emit("._tick(); ");
-      //}
     }
 
     debug(CodeGen) log("=> LHS:");
@@ -275,9 +283,12 @@ struct CodeGen {
   void visit(VarDeclStmt stmt) {
     debug(CodeGen) log("VarDeclStmt");
 
+    VarDecl varDecl = cast(VarDecl)stmt.decl;
+    if (varDecl.external) return;
+
     string typeName = stmt.decl.declType.visit!(
-      (StructType s) => s.name,
       (ModuleType m) => m.name,
+      (StructType s) => s.name,
       (NumberType n) => "float"
     );
     emit(typeName);
@@ -374,15 +385,23 @@ struct CodeGen {
 
     }
   }
+
   void visit(StructDecl structDecl) {
-    debug(CodeGen) log("StructDecl", structDecl.name.value);
-    if (!structDecl.external) {
+   debug(CodeGen) log("StructDecl", structDecl.name.value); 
+   if (!structDecl.external) {
+     assert(false, "Structs not yet supported");
+   }
+  }
+
+  void visit(ModuleDecl moduleDecl) {
+    debug(CodeGen) log("ModuleDecl", moduleDecl.name.value);
+    if (!moduleDecl.external) {
         emit("struct ");
-        emit(structDecl.name.value);
+        emit(moduleDecl.name.value);
         emit(" {");
         indent();
         emit("\n");
-        foreach(field ; structDecl.symbolsInDefinitionOrder) {
+        foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
           accept(field);
         }
         emit("ulong __sampleIndex = ulong.max;\n");
@@ -396,7 +415,7 @@ struct CodeGen {
           "__sampleIndex = __idx;\n\n"
         );
 
-        foreach(field ; structDecl.symbolsInDefinitionOrder) {
+        foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
           if (auto fd = cast(FieldDecl)field) {
             emit("if (");
             emit(fd.name.value);
@@ -405,7 +424,7 @@ struct CodeGen {
             emit("__dg();\n");
           }
         }
-        if (structDecl.defines("tick")) {
+        if (moduleDecl.decls.defines("tick")) {
           emit("tick();");
         }
         outdent();

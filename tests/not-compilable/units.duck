@@ -1,3 +1,5 @@
+extern struct frequency;
+
 module AA {
   frequency input;
 }
@@ -7,7 +9,7 @@ module AA {
 /*
 OUTPUT:
 ---
-tests/not-compilable/units.duck(5:1-14): Error: cannot connect a number to a frequency input
-tests/not-compilable/units.duck(6:1-5): Error: cannot connect a number to a frequency input
+tests/not-compilable/units.duck(7:1-14): Error: cannot connect a number to a frequency input
+tests/not-compilable/units.duck(8:1-5): Error: cannot connect a number to a frequency input
 ---
 */

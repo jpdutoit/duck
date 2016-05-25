@@ -1,0 +1,7 @@
+extern struct duration;
+extern struct Now;
+extern Now now;
+
+extern function samples(float) -> duration;
+
+now += 1 samples;

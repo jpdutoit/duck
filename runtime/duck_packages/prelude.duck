@@ -1,3 +1,11 @@
+extern struct frequency;
+extern struct Time;
+extern struct duration;
+
+extern frequency SAMPLE_RATE;
+extern struct Now;
+extern Now now;
+
 extern function operator+(float, float) -> float;
 extern function operator*(float, float) -> float;
 extern function operator-(float, float) -> float;

@@ -1,3 +1,5 @@
+extern struct frequency;
+
 extern function hz(float) -> frequency;
 
 module AA {
@@ -9,7 +11,7 @@ hz(AA.output);
 /**
 OUTPUT:
 ---
-tests/not-compilable/functions.duck(7:1-9): Error: No functions matches arguments.
-tests/not-compilable/functions.duck(8:1-12): Error: No functions matches arguments.
+tests/not-compilable/functions.duck(9:1-9): Error: No functions matches arguments.
+tests/not-compilable/functions.duck(10:1-12): Error: No functions matches arguments.
 ---
 */

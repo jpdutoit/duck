@@ -1,5 +1,9 @@
 import "./assert";
 
+extern struct Now;
+extern Now now;
+
+extern struct duration;
 extern function operator+(float, float) -> float;
 extern function operator*(float, float) -> float;
 extern function samples(float) -> duration;

@@ -1,3 +1,6 @@
+extern struct duration;
+extern struct frequency;
+
 extern function test1() -> float;
 extern function test2(float, duration) -> frequency;
 extern function seconds(float) -> duration;

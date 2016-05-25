@@ -95,10 +95,11 @@ final class TupleType : Type {
   ref Type opIndex(size_t index) { return elementTypes[index]; }
 }
 
-final class StructType : Type {
+class StructType : Type {
   mixin TypeMixin;
 
   string name;
+  StructDecl decl;
 
   override string describe() const {
     return cast(immutable)name;
@@ -134,24 +135,22 @@ final class ArrayType : Type {
 }
 
 
-final class ModuleType : Type {
+final class ModuleType : StructType {
   mixin TypeMixin;
-
-  string name;
-  StructDecl decl;
 
   override string describe() const {
     return "module";
   }
 
-  static auto create(string name) {
+  static ModuleType create(string name) {
     return new ModuleType().init(name);
   }
 
-  auto init(string name) {
+  ModuleType init(string name) {
     this.name = name;
     return this;
   }
+
 }
 
 class OverloadSetType : Type {

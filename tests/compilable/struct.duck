@@ -1,0 +1,13 @@
+extern struct something;
+
+extern function operator+(something, something) -> float;
+extern function operator+(float, float) -> float;
+
+something a;
+something b;
+a + b;
+1 + 2;
+
+extern struct Now;
+extern Now now;
+now += 1;

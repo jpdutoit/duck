@@ -1,5 +1,10 @@
 import "./assert";
 
+extern struct duration;
+
+extern struct Now;
+extern Now now;
+
 extern function operator+(float, float) -> float;
 
 extern function samples(float) -> duration;
@@ -28,8 +33,8 @@ now += 10 samples;
 OPTIONS: --no-port-audio
 OUTPUT:
 ---
-(12) Expected [20.000000], got [10.000000] at index 0
-(23) Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
-(22) Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
+(17) Expected [20.000000], got [10.000000] at index 0
+(28) Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
+(27) Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
 ---
 */

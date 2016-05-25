@@ -9,6 +9,71 @@ import duck.compiler.lexer.tokens;
 
 import std.stdio;
 
+struct ImportPaths
+{
+  string target;
+  string sourcePath;
+  string[] packageRoots;
+
+  this(string _target, string _sourcePath, string[] _packageRoots) {
+    target = _target;
+    sourcePath = _sourcePath;
+    packageRoots = _packageRoots;
+  }
+
+  int opApply(int delegate(size_t i, string path) dg)
+  {
+    import std.path : buildNormalizedPath;
+    int result = 0;
+
+    if (target[0] == '.' || target[0] == '/') {
+      return dg(0, buildNormalizedPath(sourcePath, "..", target ~ ".duck"));
+    }
+
+    for (size_t i = 0; i < packageRoots.length; ++i) {
+      result = dg(i, buildNormalizedPath(packageRoots[i], "duck_packages", target ~ ".duck"));
+      if (result)
+        break;
+    }
+
+    return result;
+  }
+}
+
+CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, CallableDecl[]* viable) {
+  int bestScore = 0;
+  int matches = 0;
+  CallableDecl bestCallable;
+
+  CallableDecl[32] overloads;
+  foreach(decl; os.decls) {
+
+    //FunctionType type = cast(FunctionType)decl.declType;
+    debug(Semantic) log("Checking", decl, args.exprType,  ((cast(TupleType)args.exprType).elementTypes));
+    int score = ((cast(TupleType)args.exprType).elementTypes).matchScore(contextExpr ? contextExpr.exprType : null, decl);
+    debug(Semantic) log("=> check", args.exprType.describe, decl);
+    if (score >= bestScore) {
+      if (score != bestScore) {
+        matches = 0;
+      }
+      overloads[matches++] = decl;
+      bestScore = score;
+      bestCallable = decl;
+      debug(Semantic) log("=>", bestScore, bestCallable);
+    }
+  }
+  if (matches > 1) {
+    foreach (overload; overloads) *viable ~= overload;
+    //overloads[0..matches].copy(*viable);
+    return null;
+  }
+  if (bestCallable !is null && bestScore >= 0) {
+    return bestCallable;
+  }
+  return null;
+}
+
+
 bool hasError(Expr expr) {
   return (cast(ErrorType)expr._exprType) !is null;
 }
@@ -25,6 +90,12 @@ auto taint(Expr expr) {
 auto taint(Decl decl) {
   decl.declType = ErrorType.create;
   return decl;
+}
+
+Expr findTarget(Expr expr) {
+  return expr.visit!(
+    (Expr expr) => cast(Expr)null,
+    (MemberExpr expr) => expr.left);
 }
 
 bool isLValue(Expr expr) {
@@ -53,7 +124,17 @@ Type getResultType(Decl decl) {
 }
 
 
-int matchScore(Type[] args, CallableDecl F) {
+int matchScore(Type[] args, Type contextType, CallableDecl F) {
+  if (F.contextType !is null) {
+    if (contextType is null) {
+      return -1;
+    }
+    Type targetContextType = F.contextType.getTypeDecl.declType;
+    if (contextType != targetContextType) {
+      return -1;
+    }
+  }
+
   if (args.length != F.parameterTypes.length) return -1;
   int score = 0;
   size_t len = args.length;
@@ -66,7 +147,7 @@ int matchScore(Type[] args, CallableDecl F) {
     } else {
       if (auto mt = cast(ModuleType)argType)
       {
-        auto output = mt.decl.lookup("output");
+        auto output = mt.decl.decls.lookup("output");
         if (auto resultType = output.getResultType) {
           if (resultType == paramType) {
             score += 5;

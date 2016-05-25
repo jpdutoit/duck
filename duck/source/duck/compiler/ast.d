@@ -42,6 +42,7 @@ alias NodeTypes = AliasSeq!(
   FieldDecl,
   MethodDecl,
   StructDecl,
+  ModuleDecl,
   AliasDecl,
   MacroDecl,
 
@@ -147,8 +148,9 @@ class MacroDecl : CallableDecl {
   alias typeExpr = returnType;
   StructDecl parentDecl;
 
-  this(TypeExpr typeExpr, Token identifier, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
+  this(TypeExpr typeExpr, Token identifier, TypeExpr contextType, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
     super(identifier);
+    this.contextType = contextType;
     this.typeExpr = typeExpr;
     this.argTypes = argTypes;
     this.argNames = argNames;
@@ -158,7 +160,7 @@ class MacroDecl : CallableDecl {
   }
 }
 
-class FieldDecl : Decl{
+class FieldDecl : Decl {
   mixin NodeMixin;
 
   TypeExpr typeExpr;
@@ -176,6 +178,7 @@ class FieldDecl : Decl{
 
 class CallableDecl : Decl {
   Stmt callableBody;
+  TypeExpr contextType;
   TypeExpr[] parameterTypes;
   Token[] parameterIdentifiers;
   TypeExpr returnType;
@@ -217,7 +220,8 @@ class StructDecl : TypeDecl {
 
   /// Testing
   DeclTable decls;
-  alias decls this;
+  //alias decls this;
+
 
   bool external;
 
@@ -227,9 +231,20 @@ class StructDecl : TypeDecl {
   }
 }
 
+class ModuleDecl : StructDecl {
+  mixin NodeMixin;
+
+  //alias decls this;
+
+  this(Type type, Token name) {
+    super(type, name);
+  }
+}
+
 class VarDecl : Decl {
   mixin NodeMixin;
 
+  bool external;
   Expr typeExpr;
 
   this(Type type, Token name) {
