@@ -8,6 +8,18 @@ module AA {
 
 hz(10, 20);
 hz(AA.output);
+
+function testfn() {
+  //TODO: Return type should actually be inferred.
+  return 1;
+}
+
+function testfn() -> float{
+  //TODO: This should type-check against return type specified above
+  return "hello";
+}
+
+
 /**
 OUTPUT:
 ---

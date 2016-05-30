@@ -7,7 +7,6 @@ b();
 OUTPUT:
 ---
 tests/not-compilable/vars.duck(1:1-12): Error: Undefined identifier no_such_type
-tests/not-compilable/vars.duck(1:1-12): Error: Expected type
 tests/not-compilable/vars.duck(3:1): Error: Cannot access members of number
 tests/not-compilable/vars.duck(5:1): Error: Cannot call something with type number
 ---

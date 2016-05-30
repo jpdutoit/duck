@@ -1,0 +1,18 @@
+extern function operator+(float, float) -> float;
+extern struct bool;
+extern struct void;
+extern function assertEquals(float, float) -> void;
+
+function add(float a, float b) -> float {
+  return a + b;
+}
+
+add((2 >> float c), (2 >> float d)) >> float e;
+assertEquals(e, 6);
+
+/*
+OUTPUT:
+---
+tests/runnable/func.duck(11): Assertion failed: 4.000000 != 6.000000
+---
+*/

@@ -7,6 +7,8 @@ import duck.compiler.ast;
 import duck.compiler.types;
 import duck.compiler.lexer.tokens;
 
+import duck.compiler.dbg;
+
 import std.stdio;
 
 struct ImportPaths
@@ -50,6 +52,7 @@ CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, 
 
     //FunctionType type = cast(FunctionType)decl.declType;
     debug(Semantic) log("Checking", decl, args.exprType,  ((cast(TupleType)args.exprType).elementTypes));
+    assert(cast(TupleType)args.exprType !is null, "Internal error: Expected args to have tuple type");
     int score = ((cast(TupleType)args.exprType).elementTypes).matchScore(contextExpr ? contextExpr.exprType : null, decl);
     debug(Semantic) log("=> check", args.exprType.describe, decl);
     if (score >= bestScore) {

@@ -25,7 +25,7 @@ string annot(string whatever, Type type) {
 }
 
 struct TreeLogger {
-  enum string PAD = "                                                                                         ";
+  enum string PAD = "                                                                                                                                           ";
   int logDepth;
   static string logPadding(int __depth) { return PAD[0..__depth*4]; }
   void _log(string what) {

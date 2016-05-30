@@ -205,6 +205,7 @@ struct Lexer {
       if (str == "module") front.type = Tok!"module";
       if (str == "struct") front.type = Tok!"struct";
       if (str == "import") front.type = Tok!"import";
+      if (str == "return") front.type = Tok!"return";
     }
   }
 }

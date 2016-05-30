@@ -391,6 +391,14 @@ struct Parser {
     return new ImportStmt(ident);
   }
 
+  Stmt parseReturnStmt() {
+    lexer.expect(Tok!"return", "Expected return");
+    auto expr = parseExpression();
+    lexer.expect(Tok!";", "Expected ';'");
+    auto r = new ReturnStmt(expr);
+    return r;
+  }
+
   Stmt parseStatement() {
     switch (lexer.front.type) {
       case Tok!"import":
@@ -415,6 +423,8 @@ struct Parser {
           } 
           return null;
         }
+      case Tok!"return":
+        return parseReturnStmt();
       case Tok!"struct":
         return parseStruct();
       case Tok!"module":

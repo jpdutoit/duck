@@ -232,6 +232,9 @@ struct LineNumber {
   Slice visit(CallExpr expr) {
     return expr.expr.accept(this) + expr.arguments.accept(this);
   }
+  Slice visit(ReturnStmt stmt) {
+    return stmt.expr.accept(this);
+  }
   Slice visit(ExprStmt stmt) {
     return stmt.expr.accept(this);
   }

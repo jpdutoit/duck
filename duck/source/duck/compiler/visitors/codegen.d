@@ -379,15 +379,38 @@ struct CodeGen {
   void visit(MacroDecl aliasDecl) {
   }
 
+  void visit(ReturnStmt returnStmt) {
+    emit("return ");
+    accept(returnStmt.expr);
+    emit(";\n");
+  }
+
   void visit(FunctionDecl funcDecl) {
     debug(CodeGen) log("FunctionDecl", funcDecl.name.value);
     if (!funcDecl.external) {
-
+      if (funcDecl.returnType)
+        accept(funcDecl.returnType);
+      else
+        emit("void");
+      emit(" ");
+      emit(funcDecl.name.value);
+      emit("(");
+      for (int i = 0; i < funcDecl.parameterTypes.length; ++i) {
+        accept(funcDecl.parameterTypes[i]);
+        emit(" ");
+        emit(funcDecl.parameterIdentifiers[i]);
+        if (i + 1 < funcDecl.parameterTypes.length) {
+          emit(", ");
+        }
+      }
+      emit(") ");
+      //emit("{");
+      accept(funcDecl.functionBody);
     }
   }
 
   void visit(StructDecl structDecl) {
-   debug(CodeGen) log("StructDecl", structDecl.name.value); 
+   debug(CodeGen) log("StructDecl", structDecl.name.value);
    if (!structDecl.external) {
      assert(false, "Structs not yet supported");
    }

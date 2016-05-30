@@ -30,6 +30,7 @@ alias NodeTypes = AliasSeq!(
   TypeDeclStmt,
   ScopeStmt,
   ImportStmt,
+  ReturnStmt,
   Stmts,
 
   Decl,
@@ -362,6 +363,15 @@ class ErrorExpr : Expr {
 }
 
 class ExprStmt : Stmt {
+  mixin NodeMixin;
+
+  Expr expr;
+  this(Expr expr) {
+    this.expr = expr;
+  }
+}
+
+class ReturnStmt : Stmt {
   mixin NodeMixin;
 
   Expr expr;

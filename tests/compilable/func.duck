@@ -8,6 +8,7 @@ extern function hz(float) -> frequency;
 extern function hz(duration) -> frequency;
 
 extern function operator+(frequency, frequency) -> frequency;
+extern function operator+(float, float) -> frequency;
 
 extern function test3() -> frequency;
 
@@ -16,11 +17,20 @@ float f = 1 hz + test3;
 duration a = test2(1, 1 seconds);
 
 module A {
+  float input;
   float output;
 }
 
+
 function testfn1() {}
+// TODO: Must check that a float is actually returned
 function testfn2(float f) -> float {}
-function testfn2(float a, float b) {}
+function testfn2(float a, float b) {
+	a;
+}
+
+function testfn2(float a, float b) -> float {
+	return A a >> A b >> A c;
+}
 
 duration c = hz(A);

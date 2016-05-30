@@ -43,6 +43,10 @@ struct SemanticAnalysis {
   Stmt[] splitStatements;
   int pipeDepth = 0;
 
+  void splitStatement(Stmt stmt) {
+    splitStatements ~= stmt;
+  }
+
   void error(Expr expr, string message) {
     context.error(expr.accept(LineNumber()), message);
   }
@@ -110,7 +114,8 @@ struct SemanticAnalysis {
     debug(Semantic) log("InlineDeclExpr", expr);
     accept(expr.declStmt);
 
-    splitStatements ~= expr.declStmt;
+    splitStatement(expr.declStmt);
+    debug(Semantic) log("=> Split", expr.declStmt);
     Expr ident = new IdentifierExpr(expr.token);
     accept(ident);
     debug(Semantic) log("=>", ident);
@@ -125,12 +130,13 @@ struct SemanticAnalysis {
       return declExpr.declStmt;
     }
 
-    splitStatements = [];
     accept(stmt.expr);
-    debug(Semantic) log("=>", stmt.expr);
-    if (splitStatements.length > 0) {
-      return new Stmts(splitStatements ~ stmt);
-    }
+
+    return stmt;
+  }
+
+  Node visit(ReturnStmt stmt) {
+    accept(stmt.expr);
     return stmt;
   }
 
@@ -151,7 +157,7 @@ struct SemanticAnalysis {
   }
 
   Node visit(PipeExpr expr) {
-    debug(Semantic) log("PipeExpr");
+    debug(Semantic) log("PipeExpr", "depth =",pipeDepth);
     debug(Semantic) log("=>", expr);
     pipeDepth++;
     accept(expr.left);
@@ -164,19 +170,11 @@ struct SemanticAnalysis {
 
     debug(Semantic) log("=>", expr);
 
-    if (pipeDepth > 0) {
-      auto pd = pipeDepth;
-      pipeDepth = 0;
-      Expr r = expr.right;
-      accept(expr);
-      Stmt stmt = new ExprStmt(expr);
-      splitStatements ~= stmt;
-      pipeDepth = pd;
-      return r;
-    }
+    Expr originalRHS = expr.right;
+
 
     while (true) {
-      if (isModule(expr.right) && isLValue(expr.right)) {
+      if (expr.right.isModule && expr.right.isLValue) {
         expr.exprType = expr.right.exprType;
         expr.right = new MemberExpr(expr.right, context.token(Identifier, "input"));
         accept(expr.right);
@@ -206,10 +204,21 @@ struct SemanticAnalysis {
         if (!expr.exprTypeSet)
            expr.exprType = expr.right.exprType;
 
-        debug(Semantic) log("=>", expr);
-        return expr;
+        break;
       }
     }
+
+    if (pipeDepth > 0) {
+      Stmt stmt = new ExprStmt(expr);
+      debug(Semantic) log("=> Split", expr);
+      splitStatement(stmt);
+      //pipeDepth = pd;
+      debug(Semantic) log("=>", originalRHS);
+      return originalRHS;
+    }
+
+    debug(Semantic) log("=>", expr);
+    return expr;
   }
 
   Node visit(BinaryExpr expr) {
@@ -240,19 +249,22 @@ struct SemanticAnalysis {
         if (os) {
           TupleExpr args = new TupleExpr([expr.left, expr.right]);
           accept(args);
-          CallableDecl[] viable;
-          auto best = findBestOverload(os, null, args, &viable);
 
-          if (best) {
-            if (!best.external) {
-              Expr e = new CallExpr(new RefExpr(expr.operator, best), args);
-              accept(e);
-              debug(Semantic) log("=>", e);
-              return e;
+          if (!args.hasError) {
+            CallableDecl[] viable;
+            auto best = findBestOverload(os, null, args, &viable);
+
+            if (best) {
+              if (!best.external) {
+                Expr e = new CallExpr(new RefExpr(expr.operator, best), args);
+                accept(e);
+                debug(Semantic) log("=>", e);
+                return e;
+              }
+              expr.exprType = best.getResultType();
+              debug(Semantic) log("=>", expr);
+              return expr;
             }
-            expr.exprType = best.getResultType();
-            debug(Semantic) log("=>", expr);
-            return expr;
           }
         }
 
@@ -296,7 +308,7 @@ struct SemanticAnalysis {
     Expr expansion = macroDecl.expansion.dupl();
     debug(Semantic) log("=> expansion", expansion);
     accept(expansion);
-  
+
     debug(Semantic) log("=>", expansion);
 
     symbolTable.popScope();
@@ -514,8 +526,15 @@ struct SemanticAnalysis {
   Node visit(Stmts stmts) {
     foreach(ref stmt ; stmts.stmts) {
       debug(Semantic) log("");
-      debug(Semantic) log("Stmt");
+      debug(Semantic) log("Stmt", stmt);
+
+      splitStatements = [];
       accept(stmt);
+      debug(Semantic) log("=>", stmt);
+      if (splitStatements.length > 0) {
+        stmt = new Stmts(splitStatements ~ stmt);
+      }
+      splitStatements = null;
     }
     return stmts;
   }
@@ -526,9 +545,7 @@ struct SemanticAnalysis {
 
   Node visit(MacroDecl decl) {
     debug (Semantic) log("MacroDecl");
-    //log("=> type", decl.expansion);
     accept(decl.typeExpr);
-    //log("=> returnType", decl.expansion);
     accept(decl.returnType);
 
     if (decl.contextType)
@@ -564,10 +581,17 @@ struct SemanticAnalysis {
     if (decl.returnType)
       accept(decl.returnType);
 
+    auto funcScope = new DeclTable();
     Type[] paramTypes;
     for (int i = 0; i < decl.parameterTypes.length; ++i) {
       accept(decl.parameterTypes[i]);
-      paramTypes ~= decl.parameterTypes[i].decl.declType;
+      Type paramType = decl.parameterTypes[i].decl.declType;
+      paramTypes ~= paramType;
+
+      if (!decl.external) {
+        Token name = decl.parameterIdentifiers[i];
+        funcScope.define(name.value, new UnboundDecl(paramType, name));
+      }
     }
     debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnType);
 
@@ -575,6 +599,13 @@ struct SemanticAnalysis {
     auto type = FunctionType.create(decl.returnType ? decl.returnType.decl.declType : VoidType.create, TupleType.create(paramTypes));
     type.decl = decl;
     decl.declType = type;
+
+    if (!decl.external) {
+      symbolTable.pushScope(funcScope);
+      accept(decl.functionBody);
+      symbolTable.popScope();
+    }
+
 
     debug(Semantic) log("=>", decl.declType.describe);
     return decl;
@@ -631,7 +662,8 @@ struct SemanticAnalysis {
     }
     if (!decl.declType) {
       decl.taint();
-      error(decl.typeExpr, "Expected type");
+      if (!decl.typeExpr.hasError)
+        error(decl.typeExpr, "Expected type");
     }
     return decl;
   }

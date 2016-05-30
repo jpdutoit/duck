@@ -414,15 +414,17 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Assert {
-  this(float[] expected, int line = __LINE__) {
+  this(float[] expected, string file = __FILE__, int line = __LINE__) {
     this.expected = expected;
     this.received.length = expected.length;
+    this.file = file;
     this.line = line;
   }
 
-  this(float expected, int line = __LINE__) {
+  this(float expected, string file = __FILE__, int line = __LINE__) {
     this.expected = [expected];
     this.received.length = this.expected.length;
+    this.file = file;
     this.line = line;
   }
 
@@ -436,7 +438,8 @@ struct Assert {
     if (index % expected.length == 0) {
       for (int i = 0; i < expected.length; ++i) {
         if (fabs(expected[i] - received[i]) > 1e-5) {
-          print("(", line, ") \033[0;31mExpected ");
+          print(file);
+          print("(", line, "): \033[0;31mExpected ");
           print(this.expected, ", got ", this.received, " at index ", index - expected.length, "\033[0m\n");
             //writefln("(%d) \033[0;31mExpected %s, got %s at index %d\033[0m", line, this.expected, this.received, index - expected.length);
             failed = true;
@@ -455,6 +458,7 @@ private:
   float[] received;
   int line;
   int index = 0;
+  string file;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
