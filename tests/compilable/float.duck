@@ -1,3 +1,5 @@
+extern function operator+(float) -> float;
+extern function operator-(float) -> float;
 extern function operator+(float, float) -> float;
 extern function operator-(float, float) -> float;
 extern function operator/(float, float) -> float;

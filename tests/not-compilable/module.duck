@@ -10,7 +10,7 @@ AA.c;
 /**
 OUTPUT:
 ---
-tests/not-compilable/module.duck(6:13): Error: Expression expected
+tests/not-compilable/module.duck(6:13): Error: Expected expression.
 tests/not-compilable/module.duck(2:13-19): Error: Expected default value to be of type number not of type string.
 tests/not-compilable/module.duck(3:3-9): Error: Undefined identifier unknown
 tests/not-compilable/module.duck(3:3-9): Error: Expected type

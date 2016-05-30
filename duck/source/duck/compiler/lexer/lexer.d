@@ -75,6 +75,15 @@ struct Lexer {
         input.consume();
         tokenType = Tok!"*";
         break;
+      case '!': {
+        input.consume();
+        if (input.consume('=')) {
+          tokenType = Tok!"!=";
+          break;
+        }
+        tokenType = Tok!"!";
+        break;
+      }
       case '(': input.consume(); tokenType = Tok!"("; break;
       case ')': input.consume(); tokenType = Tok!")"; break;
       case '[': input.consume(); tokenType = Tok!"["; break;
@@ -82,10 +91,20 @@ struct Lexer {
       case '{': input.consume(); tokenType = Tok!"{"; break;
       case '}': input.consume(); tokenType = Tok!"}"; break;
       case ';': input.consume(); tokenType = Tok!";"; break;
+      case '<':
+        input.consume();
+        if (input.consume('=')) {
+          tokenType = Tok!"<="; break;
+        }
+        tokenType = Tok!"<";
+        break;
       case '>':
         input.consume();
         if (input.consume('>')) {
           tokenType = Tok!">>"; break;
+        }
+        if (input.consume('=')) {
+          tokenType = Tok!">="; break;
         }
         tokenType = Tok!">";
         break;

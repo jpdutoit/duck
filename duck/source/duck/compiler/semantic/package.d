@@ -396,9 +396,45 @@ struct SemanticAnalysis {
   Node visit(UnaryExpr expr) {
     debug(Semantic) log("UnaryExpr", expr);
     accept(expr.operand);
-    expr.exprType = expr.operand.exprType;
     debug(Semantic) log("=>", expr);
-    return expr;
+    implicitConstructCall(expr.operand);
+    debug(Semantic) log("=>", expr);
+
+    while(true) {
+      if (isModule(expr.operand)) {
+        expr.operand = new MemberExpr(expr.operand, context.token(Identifier, "output"));
+        accept(expr.operand);
+        implicitCall(expr.operand);
+      }
+      else {
+        auto os = cast(OverloadSet)symbolTable.lookup(expr.operator.value);
+        if (os) {
+          TupleExpr args = new TupleExpr([expr.operand]);
+          accept(args);
+
+          if (!args.hasError) {
+            CallableDecl[] viable;
+            auto best = findBestOverload(os, null, args, &viable);
+
+            if (best) {
+              if (!best.external) {
+                Expr e = new CallExpr(new RefExpr(expr.operator, best), args);
+                accept(e);
+                debug(Semantic) log("=>", e);
+                return e;
+              }
+              expr.exprType = best.getResultType();
+              debug(Semantic) log("=>", expr);
+              return expr;
+            }
+          }
+        }
+
+        if (!expr.operand.hasError)
+          error(expr.operand, "Operation " ~ expr.operator.value.idup ~ " " ~ mangled(expr.operand.exprType) ~ " is not defined.");
+        return expr.taint();
+      }
+    }
   }
 
   Node visit(IdentifierExpr expr) {
@@ -767,7 +803,7 @@ struct SemanticAnalysis {
     symbolTable.pushScope(library.imports);
     symbolTable.pushScope(new DeclTable());
     globalScope = symbolTable.scopes[1];
-    
+
     globalScope.define("mono", new TypeDecl(NumberType.create, context.token(Identifier, "mono")));
     globalScope.define("float", new TypeDecl(NumberType.create, context.token(Identifier, "float")));
     globalScope.define("string", new TypeDecl(StringType.create, context.token(Identifier, "string")));

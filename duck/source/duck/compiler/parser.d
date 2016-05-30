@@ -12,6 +12,7 @@ enum Precedence {
   Unary = 120,
   Multiplicative = 110,
   Additive = 100,
+  Comparison = 60,
   Assignment = 30,
   Pipe  = 20
 };
@@ -38,15 +39,27 @@ struct Parser {
     switch (t.type) {
       case Identifier: return Precedence.Call;
       case Tok!"(": return Precedence.Call;
+
       case Tok!".": return Precedence.MemberAccess;
-      case Tok!"*": return Precedence.Multiplicative;
-      case Tok!"/": return Precedence.Multiplicative;
+
+      case Tok!"*":
+      case Tok!"/":
       case Tok!"%": return Precedence.Multiplicative;
-      case Tok!"+": return Precedence.Additive;
+
+      case Tok!"+":
       case Tok!"-": return Precedence.Additive;
+
       case Tok!">>": return Precedence.Pipe;
-      case Tok!"=": return Precedence.Assignment;
+
+      case Tok!"=":
       case Tok!"+=": return Precedence.Assignment;
+
+      case Tok!"==":
+      case Tok!"!=":
+      case Tok!">=":
+      case Tok!"<=":
+      case Tok!">":
+      case Tok!"<": return Precedence.Comparison;
       default:
       return -1;
     }
@@ -87,9 +100,9 @@ struct Parser {
     if (lexer.consume(Tok!"[")) {
       Expr[] exprs;
       if (lexer.front.type != Tok!"]") {
-        exprs ~= expect(parseExpression(), "Expression expected");
+        exprs ~= expect(parseExpression(), "Expected expression.");
         while (lexer.consume(Tok!",")) {
-          exprs ~= expect(parseExpression(), "Expression expected");
+          exprs ~= expect(parseExpression(), "Expected expression.");
         }
       }
       expect(Tok!"]", "Expected ']'");
@@ -124,14 +137,15 @@ struct Parser {
       case Tok!"(": {
         lexer.consume;
         // Grouping parentheses
-        Expr expr = parseExpression();
+        Expr expr = expect(parseExpression(), "Expected expression.");
         expect(Tok!")", "Expected ')'");
         return expr;
       }
+      case Tok!"!":
       case Tok!"+":
       case Tok!"-":
         lexer.consume;
-        return new UnaryExpr(token, parseExpression(Precedence.Unary - 1));
+        return new UnaryExpr(token, expect(parseExpression(Precedence.Unary - 1), "Expected expression."));
       default: break;
     }
     return null;
@@ -141,9 +155,9 @@ struct Parser {
   CallExpr parseCall(Expr target) {
     Expr[] arguments;
     if (lexer.front.type != Tok!")") {
-      arguments ~= parseExpression();
+      arguments ~= expect(parseExpression(), "Expected function paramter.");
       while (lexer.consume(Tok!",")) {
-        arguments ~= parseExpression();
+        arguments ~= expect(parseExpression(), "Expected function parameter.");
       }
     }
     expect(Tok!")", "Expected ')'");
@@ -182,18 +196,23 @@ struct Parser {
       case Tok!"=":
       case Tok!"+=":
         lexer.consume;
-        return new AssignExpr(token, left, parseExpression(prec));
+        return new AssignExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of assignment operator."));
       case Tok!">>":
         lexer.consume;
-        return new PipeExpr(token, left, parseExpression(prec));
+        return new PipeExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of pipe operator."));
+      case Tok!"==":
+      case Tok!"!=":
+      case Tok!">=":
+      case Tok!"<=":
+      case Tok!">":
+      case Tok!"<":
       case Tok!"+":
       case Tok!"-":
       case Tok!"*":
       case Tok!"/":
       case Tok!"%":
         lexer.consume;
-        return new BinaryExpr(token, left, parseExpression(prec));
-        //return factory.binaryOp(token, left, parseExpression(prec));
+        return new BinaryExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of binary operator."));
       default: break;
     }
 
@@ -233,11 +252,11 @@ struct Parser {
     if (!type && !name) return null;
     if (!structDecl.external && lexer.consume(Tok!"=")) {
       // Handle init values
-      Expr value = expect(parseExpression(), "Expression expected");
+      Expr value = expect(parseExpression(), "Expected expression.");
       return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, value, structDecl);
     }
     else if (lexer.consume(Tok!":")) {
-      Expr target = expect(parseExpression(), "Expression expected");
+      Expr target = expect(parseExpression(), "Expected expression.");
       Token thisToken = context.token(Identifier, "this");
       TypeExpr contextType = new TypeExpr(new RefExpr(thisToken, structDecl));
       return new MacroDecl(new TypeExpr(new IdentifierExpr(type)), name, contextType, [], [], target, structDecl);
@@ -279,6 +298,13 @@ struct Parser {
         case Tok!"*":
         case Tok!"/":
         case Tok!"%":
+        case Tok!"!":
+        case Tok!"==":
+        case Tok!"!=":
+        case Tok!">=":
+        case Tok!"<=":
+        case Tok!">":
+        case Tok!"<":
           ident = lexer.consume();
           break;
         default:
@@ -303,10 +329,10 @@ struct Parser {
 
     if (isExtern) {
       expect(Tok!"->", "Expected '->'");
-      func.returnType = new TypeExpr(parseExpression());
+      func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
       lexer.expect(Tok!";", "Expected ';'");
     } else if (lexer.consume(Tok!"->")) {
-      func.returnType = new TypeExpr(parseExpression());
+      func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
     }
 
     if (!isExtern) {
@@ -393,7 +419,7 @@ struct Parser {
 
   Stmt parseReturnStmt() {
     lexer.expect(Tok!"return", "Expected return");
-    auto expr = parseExpression();
+    auto expr = expect(parseExpression(), "Expected expression.");
     lexer.expect(Tok!";", "Expected ';'");
     auto r = new ReturnStmt(expr);
     return r;
@@ -420,7 +446,8 @@ struct Parser {
             VarDecl varDecl = (cast(VarDecl)(inlineDeclExpr.declStmt.decl));
             varDecl.external = true;
             return inlineDeclExpr.declStmt;
-          } 
+          }
+          expect(inlineDeclExpr, "Expected declaration.");
           return null;
         }
       case Tok!"return":
