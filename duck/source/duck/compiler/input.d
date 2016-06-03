@@ -47,6 +47,11 @@ struct Input {
     return t;
   }
 
+  Slice sliceFrom(Slice slice) {
+    if (!slice) return Slice();
+    return this.buffer[slice.start .. index];
+  }
+
   auto save() {
     Input input;
     input.buffer = buffer;

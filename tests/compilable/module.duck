@@ -1,0 +1,7 @@
+extern module A {
+  constructor(float);
+  constructor(float[]);
+}
+
+A(2);
+A([2, 3, 4]);

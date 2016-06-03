@@ -8,12 +8,14 @@ import duck.compiler.buffer;
 
 enum Precedence {
   Call = 140,
+  Index = 140,
   MemberAccess = 140,
   Unary = 120,
   Multiplicative = 110,
   Additive = 100,
   Comparison = 60,
   Assignment = 30,
+  InlineDecl = 25,
   Pipe  = 20
 };
 
@@ -37,9 +39,10 @@ struct Parser {
 
   int precedence(Token t) {
     switch (t.type) {
-      case Identifier: return Precedence.Call;
+      case Identifier: return Precedence.InlineDecl;
       case Tok!"(": return Precedence.Call;
 
+      case Tok!"[": return Precedence.Index;
       case Tok!".": return Precedence.MemberAccess;
 
       case Tok!"*":
@@ -110,15 +113,12 @@ struct Parser {
     }
     return null;
   }
-  Expr parsePrefix() {
-    switch (lexer.front.type) {
-        case Tok!"[":
-          return expect(parseArrayLiteral(), "Expected array literal.");
-        default: break;
-    }
 
+  Expr parsePrefix() {
     Token token = lexer.front;
     switch(token.type) {
+      case Tok!"[":
+        return expect(parseArrayLiteral(), "Expected array literal.");
       case Number: {
         lexer.consume;
         Expr literal = new LiteralExpr(token);
@@ -151,17 +151,30 @@ struct Parser {
     return null;
   }
 
-
-  CallExpr parseCall(Expr target) {
+  Expr[] parseExpressionTuple(Token.Type untilToken, string errorMessage) {
     Expr[] arguments;
-    if (lexer.front.type != Tok!")") {
-      arguments ~= expect(parseExpression(), "Expected function paramter.");
+    if (lexer.front.type != untilToken) {
+      arguments ~= expect(parseExpression(), errorMessage);
       while (lexer.consume(Tok!",")) {
-        arguments ~= expect(parseExpression(), "Expected function parameter.");
+        arguments ~= expect(parseExpression(), errorMessage);
       }
     }
+    return arguments;
+  }
+
+  CallExpr parseCall(Expr target) {
+    Expr[] arguments = parseExpressionTuple(Tok!")", "Expected function parameter");
     expect(Tok!")", "Expected ')'");
-    return new CallExpr(target, new TupleExpr(arguments));
+    auto call = new CallExpr(target, new TupleExpr(arguments));
+    return call;
+  }
+
+  IndexExpr parseIndex(Expr target) {
+    lexer.expect(Tok!"[", "Expected '['");
+    Expr[] arguments = parseExpressionTuple(Tok!"]", "Expected index");
+    expect(Tok!"]", "Expected ']'");
+    auto call = new IndexExpr(target, new TupleExpr(arguments));
+    return call;
   }
 
   Expr parsePostfix(Expr left) {
@@ -187,6 +200,8 @@ struct Parser {
         lexer.consume;
         // Call parenthesis
         return parseCall(left);
+      case Tok!"[":
+        return parseIndex(left);
       case Tok!".": {
         lexer.consume;
         //writefln("%s %s", Identifier, Identifier);
@@ -269,20 +284,42 @@ struct Parser {
 
   MethodDecl parseMethod(StructDecl structDecl)
   {
-    if (!expect(Tok!"function", "Expected keyword function"))
-      return null;
-    Token name = expect(Identifier, "Expected identifier");
+    bool isCtor = false;
+    MethodDecl decl;
+    if (lexer.front.type == Tok!"constructor") {
+      isCtor = true;
+      decl = new MethodDecl(lexer.front);
+      lexer.consume();
+    }
+    else {
+      if (!expect(Tok!"function", "Expected keyword function"))
+        return null;
+      auto name = expect(Identifier, "Expected identifier");
+      decl = new MethodDecl(name);
+    }
+
     expect(Tok!"(", "Expected '('");
+    if (lexer.front.type != Tok!")") {
+      do {
+        decl.parameterTypes ~= new TypeExpr(parseExpression(Precedence.InlineDecl));
+        if (structDecl.external)
+          lexer.consume(Identifier);
+        else
+          decl.parameterIdentifiers ~= expect(Identifier, "Expected parameter name");
+
+      } while (lexer.consume(Tok!","));
+    }
     expect(Tok!")", "Expected ')'");
+
     Stmt methodBody;
     if (structDecl.external) {
       expect(Tok!";", "Expected ';'");
     } else {
       methodBody = expect(parseBlock(), "Expected function body");
     }
-    auto type = FunctionType.create(VoidType.create, TupleType.create([]));
-    auto decl = new MethodDecl(type, name, methodBody, structDecl);
-    type.decl = decl;
+
+    decl.methodBody = methodBody;
+    decl.parentDecl = structDecl;
     return decl;
 
   }
@@ -389,9 +426,13 @@ struct Parser {
     structDecl.external = isExtern;
 
     while (lexer.front.type != Tok!"}") {
-      if (lexer.front.type == Tok!"function") {
+      if (lexer.front.type == Tok!"constructor" || lexer.front.type == Tok!"function") {
         MethodDecl method = parseMethod(structDecl);
-        structDecl.decls.define(method.name, method);
+        if (method.name == "constructor") {
+            structDecl.ctors.add(method);
+        }
+        else
+          structDecl.decls.define(method.name, method);
       } else {
         Decl field = parseField(structDecl);
         if (!field) break;

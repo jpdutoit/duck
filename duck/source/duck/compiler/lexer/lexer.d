@@ -16,6 +16,10 @@ struct Lexer {
     consume();
   }
 
+  Slice sliceFrom(Slice slice) {
+    return input.sliceFrom(slice);
+  }
+
   void expect(Token.Type type, string message) {
     if (!consume(type)) {
       context.error(front, "%s not '%s'", message, front.value);
@@ -225,6 +229,7 @@ struct Lexer {
       if (str == "struct") front.type = Tok!"struct";
       if (str == "import") front.type = Tok!"import";
       if (str == "return") front.type = Tok!"return";
+      if (str == "constructor") front.type = Tok!"constructor";
     }
   }
 }

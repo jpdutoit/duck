@@ -20,6 +20,7 @@ struct Slice {
 
   LineColumn getStartLocation() const {
     LineColumn r = LineColumn(1, 1);
+    if (!(cast(bool)this)) return r;
     for (int i = 0; i < start; ++i) {
       if (buffer.contents[i] == '\n') {
         r.col = 0;
@@ -34,6 +35,7 @@ struct Slice {
 
   LineColumn[2] getLocation() const {
     LineColumn[2] r = getStartLocation();
+    if (!(cast(bool)this)) return r;
     //r[0] = getStart();
     r[1] = r[0];
     for (uint i = start; i < end; ++i) {

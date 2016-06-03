@@ -11,6 +11,7 @@ auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import std.stdio;
   auto msg = "Internal compiler error: " ~ message ~ " at " ~ file ~ "(" ~ line.to!string ~ ") ";
   stderr.writeln(msg);
+  asm {hlt;}
   return new AssertError(msg);
 }
 
@@ -58,7 +59,7 @@ struct ExprToString {
     return expr.expr.accept(this);
   }
   string visit(RefExpr expr) {
-    return "(" ~ expr.identifier.value.annot(expr._exprType) ~ ")";
+    return "(" ~ expr.decl.declType.describe.annot(expr._exprType) ~ ")";
   }
   string visit(MemberExpr expr) {
     return "(" ~ expr.left.accept(this) ~ "." ~ expr.right.accept(this).annot(expr._exprType) ~ ")";
@@ -87,7 +88,11 @@ struct ExprToString {
     return s ~ ")".annot(expr._exprType);
   }
   string visit(CallExpr expr) {
-    string s = "(" ~ expr.expr.accept(this) ~ " " ~ expr.arguments.accept(this);
+    string s = "(call " ~ expr.expr.accept(this) ~ " " ~ expr.arguments.accept(this);
+    return s ~ ")".annot(expr._exprType);
+  }
+  string visit(IndexExpr expr) {
+    string s = "(index " ~ expr.expr.accept(this) ~ " " ~ expr.arguments.accept(this);
     return s ~ ")".annot(expr._exprType);
   }
 }

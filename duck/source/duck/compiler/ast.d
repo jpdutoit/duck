@@ -23,7 +23,9 @@ alias NodeTypes = AliasSeq!(
   PipeExpr,
   MemberExpr,
   CallExpr,
+  ConstructExpr,
   TupleExpr,
+  IndexExpr,
 
   ExprStmt,
   VarDeclStmt,
@@ -39,6 +41,7 @@ alias NodeTypes = AliasSeq!(
   FunctionDecl,
   VarDecl,
   TypeDecl,
+  ArrayDecl,
   ConstDecl,
   FieldDecl,
   MethodDecl,
@@ -206,27 +209,34 @@ class MethodDecl : CallableDecl {
   mixin NodeMixin;
 
   alias methodBody = callableBody;
-  Decl parentDecl;
+  StructDecl parentDecl;
 
-  this(Type type, Token identifier, Stmt methodBody, Decl parent) {
+  this(Token identifier) {
     super(identifier);
-    this.declType = type;
-    this.methodBody = methodBody;
-    this.parentDecl = parent;
+  }
+}
+
+class ArrayDecl : TypeDecl {
+  mixin NodeMixin;
+
+  Type elementType;
+
+  this(Type elementType) {
+    this.elementType = elementType;
+    super(ArrayType.create(elementType), Token());
   }
 }
 
 class StructDecl : TypeDecl {
   mixin NodeMixin;
 
-  /// Testing
   DeclTable decls;
-  //alias decls this;
-
+  OverloadSet ctors;
 
   bool external;
 
   this(Type type, Token name) {
+    ctors = new OverloadSet(name);
     super(type, name);
     decls = new DeclTable();
   }
@@ -234,8 +244,6 @@ class StructDecl : TypeDecl {
 
 class ModuleDecl : StructDecl {
   mixin NodeMixin;
-
-  //alias decls this;
 
   this(Type type, Token name) {
     super(type, name);
@@ -545,5 +553,26 @@ class CallExpr : Expr {
   this(Expr expr, TupleExpr arguments) {
     this.expr = expr;
     this.arguments = arguments;
+  }
+}
+
+class IndexExpr : Expr {
+  mixin NodeMixin;
+
+  Expr expr;
+  TupleExpr arguments;
+
+  this(Expr expr, TupleExpr arguments) {
+    this.expr = expr;
+    this.arguments = arguments;
+  }
+}
+
+
+class ConstructExpr : CallExpr {
+  mixin NodeMixin;
+  
+  this(Expr expr, TupleExpr arguments) {
+    super(expr, arguments);
   }
 }

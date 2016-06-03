@@ -6,7 +6,7 @@ enum TokenSpecial  = AliasSeq!(
   "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown"
 );
 enum TokenReservedWords = AliasSeq!(
-  "function", "module", "extern", "import", "struct", "return"
+  "function", "module", "extern", "import", "struct", "return", "constructor"
 );
 enum TokenSymbols = AliasSeq!(
   " ", "\n",

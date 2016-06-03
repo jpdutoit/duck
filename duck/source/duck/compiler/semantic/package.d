@@ -22,7 +22,7 @@ struct SemanticAnalysis {
     debug(Semantic) logOutdent();
 
     if (!cast(Target)obj)
-     throw __ICE("expected " ~ typeof(this).stringof ~ ".visit(" ~ Target.stringof ~ ") to return a " ~ Target.stringof);
+     throw __ICE("expected " ~ typeof(this).stringof ~ ".visit(" ~ Target.stringof ~ ") to return a " ~ Target.stringof ~ " and not a " ~ typeid(obj).toString());
     target = cast(Target)obj;
     //return obj;
   }
@@ -193,9 +193,14 @@ struct SemanticAnalysis {
             expr.taint;
             error(expr.left, "expected a value expression");
           }
-          if (expr.right.exprType.kind == TypeType.Kind || !isLValue(expr.right)) {
+          if (expr.right.exprType.kind == TypeType.Kind) {
             expr.taint;
-            error(expr.right, "not a valid connection target");
+            Decl decl = expr.right.getTypeDecl;
+            error(expr.right, "Type " ~ mangled(decl ? decl.declType : expr.right.exprType) ~ " is not a valid connection target");
+          }
+          if (!isLValue(expr.right)) {
+            expr.taint;
+            error(expr.right, "Cannot connect to an expression");
           }
           if (expr.left.exprType != expr.right.exprType && !expr.hasError) {
             error(expr, "cannot connect a " ~ mangled(expr.left.exprType) ~ " to a " ~ mangled(expr.right.exprType) ~ " input");
@@ -316,6 +321,104 @@ struct SemanticAnalysis {
     return expansion;
   }
 
+  Node visit(ConstructExpr expr) {
+    debug(Semantic) log("ConstructExpr");
+    debug(Semantic) log("=>", expr);
+    accept(expr.expr);
+    accept(expr.arguments);
+    debug(Semantic) log("=>", expr);
+
+    Decl decl = expr.expr.getTypeDecl();
+
+    debug(Semantic) log("=> decl", decl);
+    if (expr.expr.hasError || expr.arguments.hasError) {
+      return expr.taint;
+    }
+
+    //TODO: Generate default constructor if no constructors are defined.
+    if (expr.arguments.length == 0) {
+      expr.exprType = expr.expr.getTypeDecl().declType;
+      return expr;
+    }
+
+    return expr.expr.exprType.visit!(
+      delegate(TypeType type) {
+        if (expr.arguments.length == 1 && expr.arguments[0].exprType == decl.declType) {
+          return expr.arguments[0];
+        }
+
+        return decl.visit!(
+          (StructDecl structDecl) {
+            //log("=>", expr.arguments.length);
+
+            OverloadSet os = structDecl.ctors;
+
+
+            Expr contextExpr = new RefExpr(structDecl.name, decl);
+            accept(contextExpr);
+            CallableDecl[] viable;
+            CallableDecl best = findBestOverload(os, contextExpr, expr.arguments, &viable);
+
+            if (viable.length > 0) {
+              error(expr, "Ambigious call.");
+              expr.taint;
+              return expr;
+            }
+            else if (best) {
+              expr.exprType = decl.declType;
+              debug(Semantic) log("=> best overload", best);
+
+              // Expand macros immediately
+              if (auto macroDecl = cast(MacroDecl)best) {
+                return expandMacro(macroDecl, contextExpr);
+              }
+
+              return expr;
+            }
+            else {
+              error(expr, "No constructor matches argument types " ~ expr.arguments.exprType.describe());
+              expr.taint();
+              return expr;
+            }
+          },
+          (TypeDecl typeDecl) {
+            return expr;
+          }
+        );
+      },
+      (Node node) {
+        return null;
+      }
+    );
+  }
+
+  Node visit(IndexExpr expr) {
+    debug(Semantic) log("IndexExpr");
+    debug(Semantic) log("=>", expr);
+    accept(expr.expr);
+    accept(expr.arguments);
+    debug(Semantic) log("=>", expr);
+
+    if (expr.expr.hasError || expr.arguments.hasError) {
+      return expr.taint;
+    }
+
+
+      return expr.expr.exprType.visit!(
+        (TypeType t) {
+          Decl decl = expr.expr.getTypeDecl;
+          debug(Semantic) log ("=>", decl);
+          ArrayDecl arrayDecl = new ArrayDecl(decl.declType);
+          //accept(arrayDecl);
+
+          auto re = new RefExpr(context.token(Identifier, "this"), arrayDecl);
+          accept(re);
+          return re;
+        }
+      );
+
+  }
+
   Node visit(CallExpr expr) {
     debug(Semantic) log("CallExpr");
     debug(Semantic) log("=>", expr);
@@ -366,11 +469,19 @@ struct SemanticAnalysis {
         }
       },
       delegate (TypeType tt) {
+        Expr e = new ConstructExpr(expr.expr, expr.arguments);
+        accept(e);
+        return e;
+
+        /*Node n = new MemberExpr(expr.expr, context.token(Identifier, "constructor"));
+        accept(n);
+        return n;*/
+
         // Call constructor
-        if (auto refExpr = cast(RefExpr)expr.expr) {
+        /*if (auto refExpr = cast(RefExpr)expr.expr) {
           expr.exprType = refExpr.decl.declType;
         }
-        return expr;
+        return expr;*/
       },
       delegate (Type tt) {
         if (!expr.expr.hasError)
@@ -612,36 +723,44 @@ struct SemanticAnalysis {
     return decl;
   }
 
-  FunctionDecl visit(FunctionDecl decl) {
-    debug(Semantic) log("FunctionDecl", decl.name, decl.parameterTypes, "->", decl.returnType);
-    if (decl.returnType)
-      accept(decl.returnType);
-
-    auto funcScope = new DeclTable();
+  DeclTable analyzeCallableParams(CallableDecl decl) {
+    auto paramScope = new DeclTable();
     Type[] paramTypes;
+
+    bool parentIsExternal = false;
+    if (auto md = cast(MethodDecl)decl) {
+      if (md.parentDecl.external) parentIsExternal = true;
+    }
+
     for (int i = 0; i < decl.parameterTypes.length; ++i) {
       accept(decl.parameterTypes[i]);
       Type paramType = decl.parameterTypes[i].decl.declType;
       paramTypes ~= paramType;
 
-      if (!decl.external) {
+      if (!decl.external && !parentIsExternal) {
         Token name = decl.parameterIdentifiers[i];
-        funcScope.define(name.value, new UnboundDecl(paramType, name));
+        paramScope.define(name.value, new UnboundDecl(paramType, name));
       }
     }
     debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnType);
-
-
     auto type = FunctionType.create(decl.returnType ? decl.returnType.decl.declType : VoidType.create, TupleType.create(paramTypes));
     type.decl = decl;
     decl.declType = type;
+    return paramScope;
+  }
 
-    if (!decl.external) {
-      symbolTable.pushScope(funcScope);
+  FunctionDecl visit(FunctionDecl decl) {
+    debug(Semantic) log("FunctionDecl", decl.name, decl.parameterTypes, "->", decl.returnType);
+    if (decl.returnType)
+      accept(decl.returnType);
+
+    DeclTable paramScope = analyzeCallableParams(decl);
+
+    if (decl.functionBody) {
+      symbolTable.pushScope(paramScope);
       accept(decl.functionBody);
       symbolTable.popScope();
     }
-
 
     debug(Semantic) log("=>", decl.declType.describe);
     return decl;
@@ -649,14 +768,16 @@ struct SemanticAnalysis {
 
    Node visit(MethodDecl decl) {
     debug(Semantic) log("MethodDecl");
-    if (decl.methodBody) {
-      DeclTable funcScope = new DeclTable();
 
+    if (decl.returnType)
+      accept(decl.returnType);
+
+    DeclTable paramScope = analyzeCallableParams(decl);
+    if (decl.methodBody) {
       auto thisToken = context.token(Identifier, "this");
-      Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
-      thisVar.accept(this);
-      funcScope.define("this", thisVar);
-      symbolTable.pushScope(funcScope);
+      paramScope.define("this", new UnboundDecl(decl.parentDecl.declType, thisToken));
+
+      symbolTable.pushScope(paramScope);
       accept(decl.methodBody);
       symbolTable.popScope();
     }
@@ -715,6 +836,8 @@ struct SemanticAnalysis {
       if (cast(MacroDecl)decl)accept(decl);
     }
     foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder)
+      if (cast(MethodDecl)decl)accept(decl);
+    foreach(name, ref decl; structDecl.ctors.decls)
       if (cast(MethodDecl)decl)accept(decl);
     symbolTable.popScope();
     return structDecl;

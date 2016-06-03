@@ -65,6 +65,9 @@ abstract class Type {
     return this.kind == T.Kind;
   }
 
+  bool isSameType(Type other) {
+    return (this is other);
+  }
 };
 
 final class TupleType : Type {
@@ -74,7 +77,7 @@ final class TupleType : Type {
 
   override string describe() const {
     import std.conv : to;
-    string s = "tuple(";
+    string s = "(";
     foreach (i, e ; elementTypes) {
       if (i != 0) s ~= ", ";
       s ~= e.describe();
@@ -121,11 +124,17 @@ final class ArrayType : Type {
   Type elementType;
 
   override string describe() const {
-    return "array with elements of type " ~ elementType.describe;// ~ "[]";
+    return elementType.describe() ~ "[]";
   }
 
   static auto create(Type elementType) {
     return new ArrayType().init(elementType);
+  }
+
+  override
+  bool isSameType(Type other) {
+    ArrayType a = cast(ArrayType)other;
+    return a && a.elementType.isSameType((elementType));
   }
 
   auto init(Type elementType) {

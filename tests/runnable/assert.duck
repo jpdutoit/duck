@@ -1,6 +1,10 @@
 extern module Assert {
   mono input;
   mono output;
+
+  constructor(float f);
+  constructor(float[] f);
+
 }
 
 /**

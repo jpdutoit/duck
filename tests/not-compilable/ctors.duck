@@ -1,0 +1,22 @@
+extern module A {
+  constructor(float, float);
+  constructor(string, float);
+}
+
+A(2, 3);
+A("hello", 3);
+A(3, "hello");
+A(2);
+A a;
+A(a);
+A([1, 2, 3]);
+
+
+/*
+OUTPUT:
+---
+tests/not-compilable/ctors.duck(8:1-12): Error: No constructor matches argument types (number, string)
+tests/not-compilable/ctors.duck(9:1-3): Error: No constructor matches argument types (number)
+tests/not-compilable/ctors.duck(12:1): Error: No constructor matches argument types (number[])
+---
+*/

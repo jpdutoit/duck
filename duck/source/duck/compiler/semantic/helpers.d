@@ -51,7 +51,7 @@ CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, 
   foreach(decl; os.decls) {
 
     //FunctionType type = cast(FunctionType)decl.declType;
-    debug(Semantic) log("Checking", decl, args.exprType,  ((cast(TupleType)args.exprType).elementTypes));
+    debug(Semantic) log("Checking", decl, args.exprType.describe(),  ((cast(TupleType)args.exprType).describe));
     assert(cast(TupleType)args.exprType !is null, "Internal error: Expected args to have tuple type");
     int score = ((cast(TupleType)args.exprType).elementTypes).matchScore(contextExpr ? contextExpr.exprType : null, decl);
     debug(Semantic) log("=> check", args.exprType.describe, decl);
@@ -145,7 +145,7 @@ int matchScore(Type[] args, Type contextType, CallableDecl F) {
     Type paramType = F.parameterTypes[i].getTypeDecl.declType;
     Type argType = args[i];
 
-    if (paramType == argType) {
+    if (paramType.isSameType(argType)) {
       score += 10;
     } else {
       if (auto mt = cast(ModuleType)argType)
