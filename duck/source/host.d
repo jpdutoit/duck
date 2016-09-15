@@ -117,6 +117,6 @@ int main(string[] args) {
       context.dcode;
       return context.errors;
     }
+    return 0;
   }
-  return 0;
 }

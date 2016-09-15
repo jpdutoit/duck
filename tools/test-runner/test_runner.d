@@ -25,9 +25,9 @@ struct Proc {
     int result;
     Pid pid;
 
-    this(string filename, string method, string options) {
+    this(string filename, string options) {
         this.filename = filename;
-        auto command = [duckExecutable, method, this.filename];
+        auto command = [duckExecutable, this.filename];
         if (options)
           command ~= options.split(" ");
         this.pipes = pipeProcess(command);//, Redirect.stderr);
@@ -183,7 +183,10 @@ auto test(string file, bool expectProcessSuccess, bool run = false)
 {
   total++;
   TestCase testCase = TestCase(file);
-  Proc proc = Proc(file, run ? "run" : "check", testCase.options ? "-b " ~ testCase.options : "-b");
+  string options = (testCase.options ? testCase.options : "") ~ " -b";
+  if (!run) options ~= " -c";
+
+  auto proc = Proc(file, options);
   auto output = proc.wait();
   if (output == testCase.output.stderr &&
   ((expectProcessSuccess && proc.result == 0)||(!expectProcessSuccess && proc.result != 0))) {
