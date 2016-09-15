@@ -20,6 +20,7 @@ void printHelp() {
       writefln("""duck
 
 Usage:
+duck exec ...duck-code...
 duck run [--no-port-audio] file
 duck check file
 """);
@@ -51,7 +52,7 @@ int main(string[] args) {
       printHelp();
       return 0;
     }
-    else 
+    else
     if ((command == "exec" || command == "run") && args[index] == "--no-port-audio") {
       usePortAudio = false;
     }
@@ -97,6 +98,7 @@ int main(string[] args) {
         dfile.options.merge(DCompilerOptions.PortAudio);
 
       auto proc = dfile.compile.execute();
+      proc.wait();
     }
     else if (command == "check") {
       Context context = Duck.contextForFile(target);
@@ -119,9 +121,9 @@ int main(string[] args) {
 
       if (!useStdLib)
         context.includePrelude = false;
-      
+
       context.library;
-      
+
       if (context.errors > 0) return context.errors;
 
       DFile dfile = context.dfile;
