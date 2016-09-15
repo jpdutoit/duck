@@ -183,7 +183,7 @@ auto test(string file, bool expectProcessSuccess, bool run = false)
 {
   total++;
   TestCase testCase = TestCase(file);
-  Proc proc = Proc(file, run ? "run" : "check", testCase.options ? "--no-stdlib " ~ testCase.options : "--no-stdlib");
+  Proc proc = Proc(file, run ? "run" : "check", testCase.options ? "-b " ~ testCase.options : "-b");
   auto output = proc.wait();
   if (output == testCase.output.stderr &&
   ((expectProcessSuccess && proc.result == 0)||(!expectProcessSuccess && proc.result != 0))) {

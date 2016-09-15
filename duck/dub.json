@@ -29,6 +29,9 @@
     "source/duck/compiler/dbg.d",
     "source/duck/host/package.d"
   ],
+  "stringImportPaths": [
+    "source"
+  ],
   "configurations": [{
     "name": "default",
     "targetName": "duck",

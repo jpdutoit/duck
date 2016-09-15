@@ -35,7 +35,7 @@ class Context {
     return token(Identifier, "__tmp" ~ (++temporaries).to!string);
   }
 
-  
+
   @property
   Library library() {
     if (_library) {
@@ -67,7 +67,7 @@ class Context {
     auto code = library.generateCode(this);
 
     if (this.errors > 0) return DCode(null);
-    
+
     auto s =
     "import duck.runtime, duck.stdlib, core.stdc.stdio : printf;\n\n" ~
     code ~
@@ -102,8 +102,8 @@ class Context {
     }
     dst.close();
 
-    //debug(verbose)
-      writeln("SAVED: ", _dfile.filename, " (", buffer.path, ")");
+    if (verbose)
+      stderr.writeln("Compiled: ", buffer.path, " to ", _dfile.filename);
 
     _dfile.options.sourceFiles ~= _dfile.filename;
     for (int i = 0; i < dependencies.length; ++i) {
@@ -125,7 +125,7 @@ class Context {
 
     return _moduleName;
   }
- 
+
   void error(Args...)(Slice slice, string format, Args args)
   {
     errors++;
@@ -159,6 +159,7 @@ class Context {
 
   DCompilerOptions compilerOptions;
   bool includePrelude;
+  bool verbose = false;
   Context[] dependencies;
   Buffer buffer;
 

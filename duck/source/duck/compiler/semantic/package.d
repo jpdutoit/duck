@@ -902,6 +902,8 @@ struct SemanticAnalysis {
         if (i == 0)
           context.includePrelude = false;
 
+        context.verbose = this.context.verbose;
+
         auto library = context.library;
 
         if (library) {

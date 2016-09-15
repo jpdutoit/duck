@@ -1,5 +1,7 @@
 module host;
 
+immutable VERSION = import("VERSION");
+
 import duck.compiler;
 import duck.host;
 import std.file : getcwd;
@@ -7,6 +9,8 @@ import std.path : buildPath, dirName;
 import std.stdio;
 import std.algorithm.searching;
 import duck.compiler.context;
+import std.getopt, std.array;
+import std.c.stdlib : exit;
 
 import duck;
 
@@ -16,14 +20,30 @@ version (D_Coverage) {
   extern (C) void dmd_coverSetMerge(bool);
 }
 
-void printHelp() {
-      writefln("""duck
+void printHelp(GetoptResult result, string error = null) {
+  defaultGetoptPrinter(
+    "Duck " ~ VERSION ~ "\n"
+    "Usage:\n"
+    "  duck { options } target.duck\n"
+    "or\n"
+    "  duck { options } -- \"duck code\"\n",
+    result.options);
+  if (error) {
+    stderr.writeln("\nError: ",error);
+  }
+  exit(1);
+}
 
-Usage:
-duck exec ...duck-code...
-duck run [--no-port-audio] file
-duck check file
-""");
+GetoptResult getopt(T...)(ref string[] args, T opts) {
+  try {
+    return std.getopt.getopt(args, opts);
+  }
+  catch(GetOptException e) {
+    string[] tmp = [args[0]];
+    auto result = std.getopt.getopt(tmp, opts);
+    printHelp(result, e.msg);
+    return result;
+  }
 }
 
 int main(string[] args) {
@@ -37,111 +57,66 @@ int main(string[] args) {
   }
   else {
 
-  bool usePortAudio = true;
-  bool useStdLib = true;
+    bool verbose = false;
+    bool compileOnly = false;
+    //bool forever = false;
+    bool noStdLib = false;
+    string[] engines = [];
 
-  int index = 1;
-  string command;
-  string target;
+    auto result = getopt(
+      args,
+      std.getopt.config.bundling,
+      std.getopt.config.keepEndOfOptions,
+      "nostdlib|b|bare", "Do not automatically import the standard library", &noStdLib,
+      "engine|e", "Audio engines: null, port-audio", &engines,
+      //"forever|f", "Run forever", &forever,
+      "compile|c", "Compile only / do not run", &compileOnly,
+      "verbose|v", "Verbose output", &verbose
+    );
 
-  for (;index < args.length; ++index) {
-    if ((command == "exec" || command == "run" || command == "check") && args[index] == "--no-stdlib") {
-      useStdLib = false;
-    }
-    else if (!command && (args[index] == "--help" || args[index] == "-h")) {
-      printHelp();
-      return 0;
-    }
-    else
-    if ((command == "exec" || command == "run") && args[index] == "--no-port-audio") {
-      usePortAudio = false;
-    }
-    else
-    if (args[index].startsWith("-")) {
-      stderr.writeln("Unrecognized option: ", args[index]);
-      return 1;
-    }
-    else {
-      if (command) {
-        if (target) {
-          stderr.writeln("Unrecognized parameter: ", args[index]);
-          return 1;
-        } else {
-          target = args[index];
-        }
-      }
-      else {
-        command = args[index];
-      }
-    }
-  }
-  if (command) {
-    if (!target) {
-      writeln("No target");
-      return 1;
+    // Set default audio engines
+    if (engines.length == 0) {
+      engines = ["port-audio"];
     }
 
-    if (command == "exec") {
-      Context context = Duck.contextForString(target);
-      if (!useStdLib)
-        context.includePrelude = false;
+    if (result.helpWanted || args.length == 1) {
+      printHelp(result);
+    }
 
-      if (context.errors > 0) return context.errors;
+    if (args.length < 2) {
+        printHelp(result, "No target");
+    }
 
-      context.library;
-      if (context.errors > 0) return context.errors;
+    Context context;
+    if (args[1] == "--") {
+      context = Duck.contextForString(args[2..$].join(" "));
+    } else {
+      context = Duck.contextForFile(args[1]);
+    }
+    if (context.errors > 0) return context.errors;
 
+    context.verbose = verbose;
+    context.includePrelude = !noStdLib;
+
+    context.library;
+    if (context.errors > 0) return context.errors;
+
+    if (!compileOnly) {
       auto dfile = context.dfile();
       if (context.errors > 0) return context.errors;
 
-      if (usePortAudio)
+      if (engines.canFind("port-audio"))
         dfile.options.merge(DCompilerOptions.PortAudio);
 
-      auto proc = dfile.compile.execute();
+      auto compiled = dfile.compile;
+      if (context.errors > 0) return context.errors;
+
+      auto proc = compiled.execute();
       proc.wait();
-    }
-    else if (command == "check") {
-      Context context = Duck.contextForFile(target);
-
-      if (context.errors > 0) return context.errors;
-
-      if (!useStdLib)
-        context.includePrelude = false;
-
-      context.library;
-      if (context.errors > 0) return context.errors;
-
+    } else {
       context.dcode;
       return context.errors;
     }
-    else if (command == "run") {
-      Context context = Duck.contextForFile(target);
-
-      if (context.errors > 0) return context.errors;
-
-      if (!useStdLib)
-        context.includePrelude = false;
-
-      context.library;
-
-      if (context.errors > 0) return context.errors;
-
-      DFile dfile = context.dfile;
-
-      if (usePortAudio)
-        dfile.options.merge(DCompilerOptions.PortAudio);
-
-      auto proc = dfile.compile.execute();
-      proc.wait();
-    }
-    else {
-      writeln("Unexpected command: ", command);
-      return 1;
-    }
-  }
-  if (!command) {
-    printHelp();
   }
   return 0;
-  }
 }

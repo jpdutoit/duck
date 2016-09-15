@@ -8,5 +8,5 @@ extern module Assert {
 }
 
 /**
-OPTIONS: --no-port-audio
+OPTIONS: --engine=null
 */

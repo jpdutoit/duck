@@ -30,7 +30,7 @@ B >> Assert([1,2,3,4,0]);
 now += 10 samples;
 
 /*
-OPTIONS: --no-port-audio
+OPTIONS: --engine=null
 OUTPUT:
 ---
 tests/runnable/assert-works.duck(17): Expected [20.000000], got [10.000000] at index 0
