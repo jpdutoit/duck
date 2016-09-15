@@ -2,3 +2,5 @@ import "prelude";
 
 
 float a = sin(2);
+
+now += 1 samples;

@@ -114,6 +114,10 @@ module SawTooth {
   }
 }
 
+extern module ADC {
+  mono output;
+}
+
 extern module DAC {
   mono input;
   mono left;
@@ -173,6 +177,8 @@ extern module AR {
 }
 
 extern module Echo {
+  constructor(duration);
+  
   mono input;
   mono output;
   mono gain;
@@ -183,6 +189,7 @@ extern module OSCValue {
 }
 
 extern module Delay {
+  constructor(duration);
   mono input;
   mono output;
 }

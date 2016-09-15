@@ -346,9 +346,10 @@ struct AR {
 
 struct Delay {
   mixin UGEN!Delay;
-  this(ulong samples) {
-    this.buffer.length = samples;
-    for (size_t i = 0; i < samples; ++i) {
+  this(duration samples) {
+    ulong s = cast(ulong)(samples.value);
+    this.buffer.length = s;
+    for (size_t i = 0; i < s; ++i) {
       this.buffer[i] = 0;
     }
     index = 0;
@@ -372,7 +373,7 @@ private:
 struct Echo {
   mixin UGEN!Echo;
 
-  this(ulong samples) {
+  this(duration samples) {
     delay = Delay(samples);
   }
 

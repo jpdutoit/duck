@@ -860,6 +860,10 @@ struct SemanticAnalysis {
       symbolTable.define(stmt.identifier.value, stmt.decl);
     }
 
+    if (stmt.decl.declType.kind != ErrorType.Kind) {
+      library.exports ~= stmt.decl;
+    }
+
     return stmt;
   }
 
