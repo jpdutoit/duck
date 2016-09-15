@@ -19,7 +19,7 @@ class Context {
     temp = new TempBuffer("");
     import core.runtime;
     this.packageRoots ~=  buildPath(Runtime.args[0].dirName(), "../lib");
-    this.instrument = true;
+    this.instrument = false;
   }
 
   this(Buffer buffer) {
