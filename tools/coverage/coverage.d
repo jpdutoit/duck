@@ -100,10 +100,15 @@ int main(string[] args) {
             cov = count.to!string;
             coverable++;
           }
+
+          auto linestr = s[pipe+1..$];
+          auto undented = linestr.stripLeft;
+          auto indent = linestr[0..linestr.length-undented.length];
           return sourceLineTemplate.expand([
             "CLASS": cov.length ? (count > 0 ? "non-zero": "zero") : "not-code",
             "COV": cov,
-            "LINE": s[pipe+1..$].to!string,
+            "INDENT": indent.to!string,
+            "LINE": undented.to!string,
             "LINENUMBER": line.to!string
           ]);
         } else {

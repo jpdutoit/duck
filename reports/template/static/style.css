@@ -2,7 +2,7 @@
   line-height: 80%;
 }
 .zero {
-  color: red;
+  color: #FF6961;
 }
 .not-code {
   color: gray;
@@ -10,6 +10,15 @@
 }
 .non-zero {
   font-size: 60%;
+}
+
+.indent {
+  font-size:60%;
+}
+
+
+pre {
+  display: inline;
 }
 
 .good {
