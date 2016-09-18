@@ -101,8 +101,8 @@ void describe(ref Process[] list) {
 void interactiveMode() {
     while(true) {
         write(">");
-        auto s = std.stdio.readln();
         stdout.flush();
+        auto s = std.stdio.readln();
         auto cmd = parseCommand(s[0..$-1]);
         //writefln("Command %s", cmd);
         if (cmd.name) {
@@ -131,8 +131,8 @@ void interactiveMode() {
                         dfile.options.merge(DCompilerOptions.PortAudio);
 
                     auto process = dfile.compile.execute();
+                    process.describe();
                     procList ~= process;
-                    procList.describe();
                     stdout.flush();
                 }
             }
@@ -142,11 +142,11 @@ void interactiveMode() {
                     int pid = pidString.to!int;
                     foreach(process; procList) {
                         if (process.pid.processID() == pid) {
+                          process.describe();
                             process.stop();
                         }
                     }
                 }
-                procList.describe();
                 stdout.flush();
             }
             else if (cmd.name == "list") {
