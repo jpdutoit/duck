@@ -3,11 +3,11 @@ extern struct something;
 extern function operator+(something, something) -> float;
 extern function operator+(float, float) -> float;
 
-something a;
-something b;
+a:something;
+b:something;
 a + b;
 1 + 2;
 
 extern struct Now;
-extern Now now;
+extern now: Now;
 now += 1;

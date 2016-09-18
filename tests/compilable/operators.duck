@@ -15,7 +15,7 @@ extern function operator<(T, T) -> B;
 extern function operator!(T) -> B;
 
 
-T a;
+a: T;
 
 a + a > a;
 a * a == a;

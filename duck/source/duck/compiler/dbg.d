@@ -88,7 +88,7 @@ struct ExprToString {
     return s ~ ")".annot(expr._exprType);
   }
   string visit(CallExpr expr) {
-    string s = "(call " ~ expr.expr.accept(this) ~ " " ~ expr.arguments.accept(this);
+    string s = "(call " ~ expr.expr.accept(this) ~ " args: " ~ expr.arguments.accept(this);
     return s ~ ")".annot(expr._exprType);
   }
   string visit(IndexExpr expr) {

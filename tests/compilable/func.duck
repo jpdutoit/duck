@@ -12,25 +12,25 @@ extern function operator+(float, float) -> frequency;
 
 extern function test3() -> frequency;
 
-float f = 1 hz + test3;
+f:float = 1 hz + test3;
 
-duration a = test2(1, 1 seconds);
+a:duration = test2(1, 1 seconds);
 
 module A {
-  float input;
-  float output;
+  input: float;
+  output: float;
 }
 
 
 function testfn1() {}
 // TODO: Must check that a float is actually returned
-function testfn2(float f) -> float {}
-function testfn2(float a, float b) {
-	a;
+function testfn2(f: float) -> float {}
+function testfn2(a: float, b: float) {
+	tmp : float = a;
 }
 
-function testfn2(float a, float b) -> float {
-	return A a >> A b >> A c;
+function testfn2(a: float, b: float) -> float {
+	return a:A >> b:A >> c:A;
 }
 
-duration c = hz(A);
+c:duration = hz(A);

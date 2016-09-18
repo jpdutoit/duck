@@ -1,6 +1,6 @@
 extern struct duration;
 extern struct Now;
-extern Now now;
+extern now: Now;
 
 extern function samples(float) -> duration;
 

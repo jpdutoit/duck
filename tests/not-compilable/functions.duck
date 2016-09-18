@@ -3,7 +3,7 @@ extern struct frequency;
 extern function hz(float) -> frequency;
 
 module AA {
-  frequency output;
+  output: frequency;
 }
 
 hz(10, 20);

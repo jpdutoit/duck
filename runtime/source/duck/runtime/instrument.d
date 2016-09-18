@@ -9,7 +9,7 @@ short[size_t] codeForAddr;
 
 void instrumentNextSample() {
 	//return;
-	rawWrite3(cast(short)0);
+	//rawWrite3(cast(short)0);
 }
 
 short instrumentationCode(string id, void* address) {

@@ -16,6 +16,18 @@ class DeclTable : Scope {
   Decl[string] symbols;
   Decl[] symbolsInDefinitionOrder;
 
+  void replace(string identifier, Decl decl) {
+    Decl* existing = identifier in symbols;
+    if (existing) {
+      if (auto cd = cast(CallableDecl)decl) {
+        OverloadSet os = new OverloadSet(decl.name);
+        os.add(cd);
+        decl = os;
+      }
+      symbols[identifier] = decl;
+    }
+  }
+
   void define(string identifier, Decl decl) {
     Decl* existing = identifier in symbols;
     if (existing) {

@@ -1,7 +1,7 @@
 extern struct frequency;
 
 module AA {
-  frequency input;
+  input: frequency;
 }
 
 10 >> AA.input;

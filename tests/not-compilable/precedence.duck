@@ -23,7 +23,7 @@ extern function operator<(T, T) -> B;
 extern function operator!(T) -> B;
 */
 
-A a;
+a: A;
 
 a + a + a;
 

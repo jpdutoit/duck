@@ -2,9 +2,9 @@ extern struct frequency;
 extern struct Time;
 extern struct duration;
 
-extern frequency SAMPLE_RATE;
+extern SAMPLE_RATE: frequency;
 extern struct Now;
-extern Now now;
+extern now: Now;
 
 extern function operator+(float, float) -> float;
 extern function operator*(float, float) -> float;
@@ -38,10 +38,10 @@ extern function seconds(float) -> duration;
 extern function samples(float) -> duration;
 
 module Phasor {
-  frequency freq = 440 hz;
-  mono phase = 0;
-  mono output = 0;
-  frequency input : freq;
+  freq: frequency = 440 hz;
+  phase: mono = 0;
+  output: mono = 0;
+  input: freq;
 
   function tick() {
     output = phase;
@@ -50,23 +50,23 @@ module Phasor {
 }
 
 extern module Clock {
-  frequency freq;
-  float phase;
-  float output;
-  frequency input;
+  freq: frequency;
+  phase: float;
+  output: float;
+  input: frequency;
 }
 
 /*
 module Clock {
-  frequency freq = 440 hz;
-  mono phase = 1.0;
-  mono output = 0;
-  frequency input : this.freq;
+  freq: frequency = 440 hz;
+  phase: mono = 1.0;
+  output: mono = 0;
+  input: frequency : this.freq;
 
   function tick() {
     phase = (phase + (freq / SAMPLE_RATE));
     //TODO: Implement if statements
-    
+
     //if (phase >= 1.0) {
      // phase = phase % 1.0;
      // output = 1;
@@ -78,13 +78,13 @@ module Clock {
 }
 */
 module SinOsc {
-  Phasor phasor;
-  frequency freq : this.phasor.freq;
-  frequency input : this.phasor.freq;
-  mono output;
+  phasor: Phasor;
+  freq: this.phasor.freq;
+  input: this.phasor.freq;
+  output: mono;
 
   //TODO: Implement pipes in definition
-  //sin(phasor * 2 * 3.141592) >> mono output;
+  //sin(phasor * 2 * 3.141592) >> output: mono;
 
   function tick() {
     output = sin(phasor * 2 * 3.141592);
@@ -93,10 +93,10 @@ module SinOsc {
 
 
 module Triangle {
-  Phasor phasor;
-  frequency freq : this.phasor.freq;
-  frequency input : this.phasor.freq;
-  mono output;
+  phasor: Phasor;
+  freq: this.phasor.freq;
+  input: this.phasor.freq;
+  output: mono;
 
   function tick() {
     output = abs(phasor * 2 - 1.0) * 2 - 1;
@@ -104,10 +104,10 @@ module Triangle {
 }
 
 module SawTooth {
-  Phasor phasor;
-  frequency freq : this.phasor.freq;
-  frequency input : this.phasor.freq;
-  mono output;
+  phasor: Phasor;
+  freq: this.phasor.freq;
+  input: this.phasor.freq;
+  output: mono;
 
   function tick() {
     output = phasor * 2 - 1;
@@ -115,85 +115,86 @@ module SawTooth {
 }
 
 extern module ADC {
-  mono output;
+  output: mono;
 }
 
 extern module DAC {
-  mono input;
-  mono left;
-  mono right;
+  input: mono;
+  left: mono;
+  right: mono;
 }
 
 extern module Mono {
-  mono output;
-  mono input;
+  output: mono;
+  input: mono;
 }
 
 extern module Frequency {
-  frequency output;
-  frequency input;
+  output: frequency;
+  input: frequency;
 }
 
 extern module Assert {
-  mono input;
-  mono output;
+  input: mono;
+  output: mono;
 }
 
 
 extern module Pat {
-  mono input;
-  mono output;
+  constructor(string);
+  input: mono;
+  output: mono;
 }
 
 extern module ScaleQuant {
-  mono input;
-  mono key;
-  mono output;
+  input: mono;
+  key: mono;
+  output: mono;
 }
 
 extern module SAH {
-  mono trigger;
-  mono input;
-  mono output;
+  trigger: mono;
+  input: mono;
+  output: mono;
 }
 
 extern module Pitch {
-  mono input;
-  frequency output;
+  input: mono;
+  output: frequency;
 }
 
 
 extern module Square {
-  frequency freq;
-  frequency input;
-  mono output;
+  freq: frequency;
+  input: frequency;
+  output: mono;
 }
 
 extern module AR {
-  duration attack;
-  duration release;
-  mono input;
-  mono output;
+  attack: duration;
+  release: duration;
+  input: mono;
+  output: mono;
 }
 
 extern module Echo {
   constructor(duration);
-  
-  mono input;
-  mono output;
-  mono gain;
+
+  input: mono;
+  output: mono;
+  gain: mono;
 }
 
 extern module OSCValue {
-  mono output;
+  output: mono;
 }
 
 extern module Delay {
   constructor(duration);
-  mono input;
-  mono output;
+  input: mono;
+  output: mono;
 }
 
 extern module WhiteNoise {
-  mono output;
+  output: mono;
 }

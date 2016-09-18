@@ -1,10 +1,10 @@
 extern function operator+(float, float) -> float;
 
 module B {
-  float input;
-  float output;
+  input: float;
+  output: float;
 }
-B b;
+b: B;
 float >> b;
 b >> float;
 b >> b;

@@ -1,11 +1,11 @@
 module AA {}
 module AA {}
-float aa;
-float aa;
+aa: float;
+aa: float;
 /*
 OUTPUT:
 ---
 tests/not-compilable/redefine-var.duck(2:8-9): Error: Cannot redefine AA
-tests/not-compilable/redefine-var.duck(4:7-8): Error: Cannot redefine aa
+tests/not-compilable/redefine-var.duck(4:1-2): Error: Cannot redefine aa
 ---
 */

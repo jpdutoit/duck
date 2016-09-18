@@ -149,13 +149,12 @@ class MacroDecl : CallableDecl {
   Expr expansion;
   alias argTypes = parameterTypes;
   alias argNames = parameterIdentifiers;
-  alias typeExpr = returnType;
   StructDecl parentDecl;
 
-  this(TypeExpr typeExpr, Token identifier, TypeExpr contextType, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
+  this(Token identifier, TypeExpr contextType, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
     super(identifier);
     this.contextType = contextType;
-    this.typeExpr = typeExpr;
+    this.returnType = null;
     this.argTypes = argTypes;
     this.argNames = argNames;
     this.expansion = expansion;
@@ -167,12 +166,12 @@ class MacroDecl : CallableDecl {
 class FieldDecl : Decl {
   mixin NodeMixin;
 
-  TypeExpr typeExpr;
+  Expr typeExpr;
   alias identifier = name;
   Expr valueExpr;
   StructDecl parentDecl;
 
-  this(TypeExpr typeExpr, Token identifier, Expr valueExpr, StructDecl parent) {
+  this(Expr typeExpr, Token identifier, Expr valueExpr, StructDecl parent) {
     super(null, identifier);
     this.typeExpr = typeExpr;
     this.valueExpr = valueExpr;
@@ -254,12 +253,12 @@ class VarDecl : Decl {
   mixin NodeMixin;
 
   bool external;
-  Expr typeExpr;
+  TypeExpr typeExpr;
 
   this(Type type, Token name) {
     super(type, name);
   }
-  this(Expr typeExpr, Token identifier) {
+  this(TypeExpr typeExpr, Token identifier) {
     super(null, identifier);
     this.typeExpr = typeExpr;
   }
@@ -343,9 +342,9 @@ abstract class Expr : Node {
     return _exprType !is null;
   }
 
-  @property Type exprType() {
+  @property Type exprType(string file = __FILE__, int line = __LINE__) {
     if (!_exprType) {
-      throw __ICE("Trying to use expression type before it is calculated");
+      throw __ICE("Trying to use expression type before it is calculated", line, file);
     }
     return _exprType;
   }
@@ -571,7 +570,7 @@ class IndexExpr : Expr {
 
 class ConstructExpr : CallExpr {
   mixin NodeMixin;
-  
+
   this(Expr expr, TupleExpr arguments) {
     super(expr, arguments);
   }

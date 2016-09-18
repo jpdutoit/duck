@@ -1,12 +1,15 @@
-no_such_type a;
-float b;
+a: no_such_type;
+b: float;
 b.c;
 
 b();
+2: float;
 /*
 OUTPUT:
 ---
-tests/not-compilable/vars.duck(1:1-12): Error: Undefined identifier no_such_type
+tests/not-compilable/vars.duck(6:2): Error: Expected identifier.
+tests/not-compilable/vars.duck(6:4-8): Error: Expected ';' not 'float'
+tests/not-compilable/vars.duck(1:4-15): Error: Undefined identifier no_such_type
 tests/not-compilable/vars.duck(3:1): Error: Cannot access members of number
 tests/not-compilable/vars.duck(5:1): Error: Cannot call something with type number
 ---

@@ -1,6 +1,6 @@
 extern struct frequency;
 
-extern frequency SAMPLE_RATE;
+extern SAMPLE_RATE: frequency;
 
 extern function operator+(float, float) -> float;
 extern function hz(float) -> frequency;
@@ -8,10 +8,10 @@ extern function operator/(frequency, frequency) -> float;
 extern function operator%(float, float) -> float;
 
 module Phasor {
-  frequency freq = 440 hz;
-  mono phase = 0;
-  mono output = 0;
-  frequency input : this.freq;
+  freq: frequency = 440 hz;
+  phase: mono = 0;
+  output: mono = 0;
+  input: freq;
 
   function tick() {
     output = phase;
@@ -24,7 +24,7 @@ module Phasor {
 }
 
 
-Phasor p1;
+p1: Phasor;
 p1.freq >> Phasor;
 p1.freq >> Phasor.freq;
 

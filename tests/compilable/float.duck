@@ -6,10 +6,10 @@ extern function operator/(float, float) -> float;
 extern function operator*(float, float) -> float;
 extern function operator%(float, float) -> float;
 
-float a = 1;
-float b = +2;
-float c = -3;
-float cc = 123 + 234;
-float e = a + b * a / c % a;
-float f = ((1*2)+(3*4));
+a: float = 1;
+b: float = +2;
+c: float = -3;
+cc: float = 123 + 234;
+e: float = a + b * a / c % a;
+f: float = ((1*2)+(3*4));
 a += 2;

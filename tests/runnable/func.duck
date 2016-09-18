@@ -3,11 +3,11 @@ extern struct bool;
 extern struct void;
 extern function assertEquals(float, float) -> void;
 
-function add(float a, float b) -> float {
+function add(a: float, b: float) -> float {
   return a + b;
 }
 
-add((2 >> float c), (2 >> float d)) >> float e;
+add((2 >> c: float), (2 >> d: float)) >> e: float;
 assertEquals(e, 6);
 
 /*

@@ -1,6 +1,6 @@
 extern struct frequency;
 
-extern frequency SAMPLE_RATE;
+extern SAMPLE_RATE: frequency;
 
 extern function hz(float) -> frequency;
 extern function operator+(float, float) -> float;
@@ -10,10 +10,10 @@ extern function operator%(float, float) -> float;
 extern function operator*(float, float) -> float;
 
 module Phasor {
-  frequency freq = 440 hz;
-  mono phase = 0;
-  mono output = 0;
-  frequency input : freq;
+  freq: frequency = 440 hz;
+  phase: mono = 0;
+  output: mono = 0;
+  input: freq;
 
   function tick() {
     output = phase;
@@ -22,10 +22,10 @@ module Phasor {
 }
 
 module SinOsc {
-  Phasor phasor;
-  frequency freq : this.phasor.freq;
-  frequency input : this.phasor.input;
-  mono output;
+  phasor: Phasor;
+  freq: this.phasor.freq;
+  input: this.phasor.input;
+  output: mono;
 
   function tick() {
     output = sin(phasor * 2 * 3.141592);

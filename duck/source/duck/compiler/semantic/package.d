@@ -423,6 +423,7 @@ struct SemanticAnalysis {
     debug(Semantic) log("CallExpr");
     debug(Semantic) log("=>", expr);
     accept(expr.expr);
+    debug(Semantic) log("=>", expr);
     accept(expr.arguments);
     debug(Semantic) log("=>", expr);
 
@@ -692,8 +693,6 @@ struct SemanticAnalysis {
 
   Node visit(MacroDecl decl) {
     debug (Semantic) log("MacroDecl");
-    accept(decl.typeExpr);
-    accept(decl.returnType);
 
     if (decl.contextType)
       accept(decl.contextType);
@@ -702,22 +701,13 @@ struct SemanticAnalysis {
       accept(decl.parameterTypes[i]);
       paramTypes ~= decl.parameterTypes[i].decl.declType;
     }
-    debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnType);
-    auto type = FunctionType.create(decl.returnType.decl.declType, TupleType.create(paramTypes));
+    debug(Semantic) log("=>", decl.parameterTypes);
+    auto type = FunctionType.create(decl.expansion.exprType, TupleType.create(paramTypes));
     type.decl = decl;
     decl.declType = type;
     debug(Semantic) log("=>", decl.declType.describe);
 
 
-    DeclTable funcScope = new DeclTable();
-    auto thisToken = context.token(Identifier, "this");
-    Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
-    thisVar.accept(this);
-    funcScope.define("this", thisVar);
-    debug(Semantic) log("=> expansion", decl.expansion);
-    symbolTable.pushScope(funcScope);
-    accept(decl.expansion);
-    symbolTable.popScope();
     debug(Semantic) log("=> expansion", decl.expansion);
 
     return decl;
@@ -787,20 +777,46 @@ struct SemanticAnalysis {
 
   Node visit(FieldDecl decl) {
     debug(Semantic) log("FieldDecl");
+
+    // Have to define "this" as unbound because the exprType might actually be
+    // a macro value expression.
+    
+    DeclTable funcScope = new DeclTable();
+    Token thisToken = context.token(Identifier, "this");
+    debug(Semantic) log("=> expansion", decl.typeExpr);
+    Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
+    //thisVar.accept(this);
+    funcScope.define("this", thisVar);
+    symbolTable.pushScope(funcScope);
     accept(decl.typeExpr);
+    symbolTable.popScope();
+    debug(Semantic) log("=> expansion", decl.typeExpr);
+
     if (decl.valueExpr)
       accept(decl.valueExpr);
 
     if (decl.typeExpr.exprType.kind == TypeType.Kind) {
-      if (auto typeDecl = decl.typeExpr.decl) {
+      if (auto typeDecl = decl.typeExpr.getTypeDecl()) {
         decl.declType = typeDecl.declType;
         if (decl.valueExpr && decl.declType != decl.valueExpr.exprType && !decl.valueExpr.hasError) {
           error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.valueExpr.exprType) ~ ".");
           decl.valueExpr.taint();
         }
+
         return decl;
       }
+    } else {
+      //FIXME: Check that valueExpr is null
+      Expr target = decl.typeExpr;
+      TypeExpr contextType = new TypeExpr(new RefExpr(thisToken, decl.parentDecl));
+      auto mac = new MacroDecl(decl.name, contextType, [], [], target, decl.parentDecl);
+      // Think of a nicer solution than replacing it in decls table,
+      // perhaps the decls table should only be constructed after all the fields
+      // have been analyzed
+      decl.parentDecl.decls.replace(decl.name, mac);
+      return mac;
     }
+
     decl.taint();
     error(decl.typeExpr, "Expected type");
     return decl;
@@ -808,11 +824,13 @@ struct SemanticAnalysis {
 
   Node visit(VarDecl decl) {
     debug(Semantic) log("VarDecl", decl.name, decl.typeExpr);
+
     if (decl.typeExpr) {
       accept(decl.typeExpr);
-      if (auto typeExpr = cast(RefExpr)decl.typeExpr) {
-        if (auto typeDecl = cast(TypeDecl)typeExpr.decl) {
-          decl.declType = typeDecl.declType;
+
+      if (!decl.typeExpr.hasError) {
+        if (auto typeExpr = cast(TypeExpr)decl.typeExpr) {
+          decl.declType = typeExpr.decl.declType;
           return decl;
         }
       }
@@ -821,7 +839,7 @@ struct SemanticAnalysis {
       decl.taint();
       if (!decl.typeExpr.hasError)
         error(decl.typeExpr, "Expected type");
-    }
+      }
     return decl;
   }
 

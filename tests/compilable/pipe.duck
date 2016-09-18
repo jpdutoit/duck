@@ -1,8 +1,8 @@
 extern function operator+(float, float) -> float;
 
 extern module A {
-  float input;
-  float output;
+  input: float;
+  output: float;
 }
 
 
@@ -13,3 +13,5 @@ A.output >> A;
 
 A >> A >> A >> A;
 A + A >> A;
+
+a: A >> b: A ;

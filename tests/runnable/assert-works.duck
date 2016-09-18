@@ -3,14 +3,14 @@ import "./assert";
 extern struct duration;
 
 extern struct Now;
-extern Now now;
+extern now: Now;
 
 extern function operator+(float, float) -> float;
 
 extern function samples(float) -> duration;
 
 module A {
-  mono output = 10;
+  output: mono = 10;
 }
 
 A >> Assert(10);
@@ -18,7 +18,7 @@ A >> Assert(20);
 
 
 module B {
-  mono output = 0;
+  output: mono = 0;
   function tick() {
     output = output + 1;
   }

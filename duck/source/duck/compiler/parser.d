@@ -10,15 +10,14 @@ enum Precedence {
   Call = 140,
   Index = 140,
   MemberAccess = 140,
+  Declare = 130,
   Unary = 120,
   Multiplicative = 110,
   Additive = 100,
   Comparison = 60,
   Assignment = 30,
-  InlineDecl = 25,
   Pipe  = 20
 };
-
 
 struct Parser {
   @disable this();
@@ -39,7 +38,7 @@ struct Parser {
 
   int precedence(Token t) {
     switch (t.type) {
-      case Identifier: return Precedence.InlineDecl;
+      case Tok!":": return Precedence.Declare;
       case Tok!"(": return Precedence.Call;
 
       case Tok!"[": return Precedence.Index;
@@ -177,6 +176,37 @@ struct Parser {
     return call;
   }
 
+  VarDecl parseVarDecl() {
+    if (lexer.front.type == Identifier && lexer.peek(1).type == Tok!":") {
+      auto identifier = lexer.consume;
+      lexer.expect(Tok!":", "Expected ':'");
+      auto typeExpr = new TypeExpr(parseExpression(Precedence.Declare));
+      return new VarDecl(typeExpr, identifier);
+    }
+    return null;
+  }
+
+  void parseCallableArgumentList(CallableDecl callable, bool isExtern) {
+    expect(Tok!"(", "Expected '('");
+    if (lexer.front.type != Tok!")") {
+      do {
+        VarDecl decl = parseVarDecl();
+        if (decl) {
+          callable.parameterTypes ~= decl.typeExpr;
+          callable.parameterIdentifiers ~= decl.name;
+        }
+        else {
+          if (!isExtern) {
+            context.error(lexer.front, "Expected parameter name");
+            callable.parameterIdentifiers ~= context.temporary;
+          }
+          callable.parameterTypes ~= new TypeExpr(parseExpression(Precedence.Unary));
+        }
+      } while (lexer.consume(Tok!","));
+    }
+    expect(Tok!")", "Expected ')'");
+  }
+
   Expr parsePostfix(Expr left) {
     if (cast(InlineDeclExpr)left && lexer.front.type == Identifier) {
       return null;
@@ -185,17 +215,23 @@ struct Parser {
     //writefln("parseInfix: %s", token.value);
     int prec = precedence(token) + (rightAssociative(token) ? -1 : 0);
     switch (token.type) {
-      case Identifier: {
-        lexer.consume;
-        // Inline declaration
-        CallExpr ctor;
-        if (lexer.consume(Tok!"(")) {
-          ctor = parseCall(left);
+      case Tok!":":
+        IdentifierExpr identifier = cast(IdentifierExpr)left;
+        expect(identifier, "Expected identifier.");
+        lexer.consume(Tok!":");
+        if (!identifier) return null;
+
+        Expr ctor = expect(parseExpression(prec), "Expected constructor expression on right side of declaration opertaor");
+        Expr typeExpr;
+        CallExpr call = cast(CallExpr)ctor;
+        if (call) {
+          typeExpr = call.expr;
         } else {
-          ctor = new CallExpr(left, new TupleExpr([]));
+          typeExpr = ctor;
+          ctor = new CallExpr(ctor, new TupleExpr([]));
         }
-        return new InlineDeclExpr(token, new VarDeclStmt(token, new VarDecl(left, token), ctor));
-      }
+
+        return new InlineDeclExpr(identifier.token, new VarDeclStmt(identifier.token, new VarDecl(new TypeExpr(typeExpr), identifier.token), ctor));
       case Tok!"(":
         lexer.consume;
         // Call parenthesis
@@ -261,25 +297,19 @@ struct Parser {
 
   Decl parseField(StructDecl structDecl)
   {
-    Token type = expect(Identifier, "Identifier expected");
-    Token name = expect(Identifier, "Field name expected");
+    if (lexer.front.type == Identifier && lexer.peek(1).type == Tok!":") {
+      auto identifier = lexer.consume;
+      lexer.expect(Tok!":", "Expected ':'");
+      auto typeExpr = parseExpression(Precedence.Declare);
 
-    if (!type && !name) return null;
-    if (!structDecl.external && lexer.consume(Tok!"=")) {
-      // Handle init values
-      Expr value = expect(parseExpression(), "Expected expression.");
-      return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, value, structDecl);
-    }
-    else if (lexer.consume(Tok!":")) {
-      Expr target = expect(parseExpression(), "Expected expression.");
-      Token thisToken = context.token(Identifier, "this");
-      TypeExpr contextType = new TypeExpr(new RefExpr(thisToken, structDecl));
-      return new MacroDecl(new TypeExpr(new IdentifierExpr(type)), name, contextType, [], [], target, structDecl);
-      //return new AliasDecl(new IdentifierExpr(type), name, target, structDecl);
-    }
+      if (!structDecl.external && lexer.consume(Tok!"=")) {
+        Expr value = expect(parseExpression(), "Expected expression.");
+        return new FieldDecl(typeExpr, identifier, value, structDecl);
+      }
 
-    return new FieldDecl(new TypeExpr(new IdentifierExpr(type)), name, null, structDecl);
-    //return new FieldDecl(new NamedType(type.value.idup, new StructType(type)), name);
+      return new FieldDecl(typeExpr, identifier, null, structDecl);
+    }
+    return null;
   }
 
   MethodDecl parseMethod(StructDecl structDecl)
@@ -298,18 +328,7 @@ struct Parser {
       decl = new MethodDecl(name);
     }
 
-    expect(Tok!"(", "Expected '('");
-    if (lexer.front.type != Tok!")") {
-      do {
-        decl.parameterTypes ~= new TypeExpr(parseExpression(Precedence.InlineDecl));
-        if (structDecl.external)
-          lexer.consume(Identifier);
-        else
-          decl.parameterIdentifiers ~= expect(Identifier, "Expected parameter name");
-
-      } while (lexer.consume(Tok!","));
-    }
-    expect(Tok!")", "Expected ')'");
+    parseCallableArgumentList(decl, structDecl.external);
 
     Stmt methodBody;
     if (structDecl.external) {
@@ -351,18 +370,7 @@ struct Parser {
     func.name = ident;
     func.external = isExtern;
 
-    expect(Tok!"(", "Expected '('");
-    if (lexer.front.type != Tok!")") {
-      do {
-        func.parameterTypes ~= new TypeExpr(parsePrefix());
-        if (isExtern)
-          lexer.consume(Identifier);
-        else
-          func.parameterIdentifiers ~= expect(Identifier, "Expected parameter name");
-
-      } while (lexer.consume(Tok!","));
-    }
-    expect(Tok!")", "Expected ')'");
+    parseCallableArgumentList(func, isExtern);
 
     if (isExtern) {
       expect(Tok!"->", "Expected '->'");

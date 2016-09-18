@@ -1,7 +1,7 @@
 import "./assert";
 
 extern struct Now;
-extern Now now;
+extern now: Now;
 
 extern struct duration;
 extern function operator+(float, float) -> float;
@@ -10,23 +10,23 @@ extern function samples(float) -> duration;
 extern function sin(float) -> float;
 
 module A {
-  mono output = 0;
+  output: mono = 0;
   function tick() {
     output = output + 1;
   }
 }
 
 module B {
-  mono input = 0;
-  mono output = 0;
+  input: mono = 0;
+  output: mono = 0;
   function tick() {
     output = input * 2;
   }
 }
 
 module C {
-  mono input = 0;
-  mono output = 0;
+  input: mono = 0;
+  output: mono = 0;
   function tick() {
     output = input + 1;
   }
@@ -38,21 +38,21 @@ A >> B >> C >> Assert([3, 5, 7, 9, 11]);
 A.output >> B >> Assert([2, 4, 6, 8, 10]);
 A >> C >> Assert([2, 3, 4, 5, 6]).input;
 
-A >> C c1 >> Assert([1, 1, 1, 1, 1]).input;
+A >> c1: C >> Assert([1, 1, 1, 1, 1]).input;
 0 >> c1.input;
 
-A >> C c2 >> Assert([1, 1, 1, 1, 1]).input;
+A >> c2: C >> Assert([1, 1, 1, 1, 1]).input;
 c2.input = 0;
 
 now += 5 samples;
 
 
 extern module DAC {
-  mono input;
+  input: mono;
 }
 module D {
-  mono input;
-  DAC dac;
+  input: mono;
+  dac: DAC;
   function tick() {
     dac.input = input;
   }
