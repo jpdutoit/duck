@@ -43,3 +43,18 @@ alias Comment = Tok!"__Comment";
 alias Unknown = Tok!"__Unknown";
 
 enum None = Token();
+
+
+immutable Token.Type[string] reservedWords;
+shared static this()
+{
+  reservedWords = [
+    "function": Tok!"function",
+    "module": Tok!"module",
+    "extern": Tok!"extern",
+    "import": Tok!"import",
+    "struct": Tok!"struct",
+    "return": Tok!"return",
+    "constructor": Tok!"constructor"
+  ];
+}

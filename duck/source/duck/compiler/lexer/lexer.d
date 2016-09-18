@@ -5,15 +5,29 @@ import duck.compiler.lexer.tokens;
 import duck.compiler.input;
 import duck.compiler.context;
 
+enum LOOKAHEAD = 2;
+
 struct Lexer {
   Input input;
-  Token front;
+  Token[LOOKAHEAD] tokens;
   Context context;
+
+  uint frontIndex = 0;
 
   this(Context context, Buffer input) {
     this.input = Input(input);
     this.context = context;
-    consume();
+    for (int i = 0; i < LOOKAHEAD; ++i) consume();
+  }
+
+  @property
+  ref Token front() {
+    return tokens[frontIndex];
+  }
+
+  @property
+  ref Token back() {
+    return tokens[(frontIndex + LOOKAHEAD - 1) % LOOKAHEAD];
   }
 
   Slice sliceFrom(Slice slice) {
@@ -28,24 +42,26 @@ struct Lexer {
     }
   }
 
-  Token consume(Token.Type type, bool includeWhiteSpace = true) {
-    import std.stdio;
+  Token peek(int N) {
+    assert(N < LOOKAHEAD, "Can only lookahead max " ~ LOOKAHEAD);
+    return tokens[(frontIndex + N) % LOOKAHEAD];
+  }
+
+  Token consume(Token.Type type) {
     if (front.type == type) {
-      return consume(includeWhiteSpace);
+      return consume();
     }
     return None;
   }
 
-  Token consume(bool includeWhiteSpace = true) {
+  Token consume() {
     Token old = front;
     popFront();
 
-    if (includeWhiteSpace) {
-      import std.stdio;
-      while (consume(Tok!" ", false)
-        || consume(EOL, false) || consume(Comment, false) || consume(Unknown, false)) {
-      }
+    while (front.type == Tok!" " || front.type == EOL || front.type == Comment || front.type == Unknown) {
+      popFront();
     }
+
     return old;
   }
 
@@ -219,17 +235,14 @@ struct Lexer {
         context.error(front, "Unexpected character '%s'", front.value);
         return;
     }
-    front = input.tokenSince(tokenType, saved);
+    frontIndex = (frontIndex + 1) % LOOKAHEAD;
+    back = input.tokenSince(tokenType, saved);
 
     if (tokenType == Identifier) {
-      auto str = front.value;
-      if (str == "function") front.type = Tok!"function";
-      if (str == "extern") front.type = Tok!"extern";
-      if (str == "module") front.type = Tok!"module";
-      if (str == "struct") front.type = Tok!"struct";
-      if (str == "import") front.type = Tok!"import";
-      if (str == "return") front.type = Tok!"return";
-      if (str == "constructor") front.type = Tok!"constructor";
+      auto str = back.value;
+      auto type = str in reservedWords;
+      if (type != null)
+        back.type = *type;
     }
   }
 }
