@@ -22,6 +22,18 @@ string generateCode(Node node, Context context) {
   return cg.output.data;
 }
 
+string typeString(Type type) {
+  import std.conv: to;
+  return type.visit!(
+    (ModuleType m) => m.name,
+    (StructType t) => t.name,
+    (StringType t) => "string",
+    (NumberType t) => "float",
+    (ArrayType t) => typeString(t.elementType) ~ "[]",
+    (StaticArrayType t) => typeString(t.elementType) ~ "[" ~ t.size.to!string ~ "]"
+  );
+}
+
 string lvalueToString(Expr expr){
   return expr.visit!(
     (RefExpr re) => re.identifier.value,
@@ -272,6 +284,15 @@ struct CodeGen {
     }
   }
 
+  void visit(IndexExpr expr) {
+    debug(CodeGen) log("IndexExpr");
+
+    accept(expr.expr);
+    emit("[");
+    accept(expr.arguments);
+    emit("]");
+  }
+
   void visit(CallExpr expr) {
     debug(CodeGen) log("CallExpr");
     accept(expr.expr);
@@ -286,16 +307,14 @@ struct CodeGen {
     VarDecl varDecl = cast(VarDecl)stmt.decl;
     if (varDecl.external) return;
 
-    string typeName = stmt.decl.declType.visit!(
-      (ModuleType m) => m.name,
-      (StructType s) => s.name,
-      (NumberType n) => "float"
-    );
+    string typeName = stmt.decl.declType.typeString();
     emit(typeName);
     emit(" ");
     emit(stmt.identifier.value);
-    emit(" = ");
-    accept(stmt.expr);
+    if (stmt.expr) {
+      emit(" = ");
+      accept(stmt.expr);
+    }
     emit(";\n");
 
   }
@@ -338,8 +357,12 @@ struct CodeGen {
   }
   void visit(RefExpr expr) {
     debug(CodeGen) log("RefExpr");
-    emit(expr.identifier.value);
+    emit(expr.decl.visit!(
+      (Decl d) => d.name.value,
+      (TypeDecl d) => typeString(d.declType)
+    ));
   }
+
   void visit(ScopeStmt expr) {
     debug(CodeGen) log("ScopeStmt");
     indent();

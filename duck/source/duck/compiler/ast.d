@@ -224,6 +224,11 @@ class ArrayDecl : TypeDecl {
     this.elementType = elementType;
     super(ArrayType.create(elementType), Token());
   }
+
+  this(Type elementType, uint size) {
+    this.elementType = elementType;
+    super(StaticArrayType.create(elementType, size), Token());
+  }
 }
 
 class StructDecl : TypeDecl {

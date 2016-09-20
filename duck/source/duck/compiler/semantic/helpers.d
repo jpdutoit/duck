@@ -103,6 +103,7 @@ Expr findTarget(Expr expr) {
 
 bool isLValue(Expr expr) {
   return expr.visit!(
+    (IndexExpr i) => isLValue(i.expr),
     (IdentifierExpr i) => true,
     (RefExpr r) => true,
     (MemberExpr m) => isLValue(m.left),
@@ -119,10 +120,18 @@ Decl getTypeDecl(Expr expr) {
   );
 }
 
-Type getResultType(Decl decl) {
+Type getResultType(Decl decl, int line = __LINE__, string file = __FILE__) {
   return decl.visit!(
+    (OverloadSet os) {
+      if (os.decls.length == 1)
+        return os.decls[0].getResultType(line, file);
+      return ErrorType.create();
+    },
     (FieldDecl fd) => fd.declType,
-    (CallableDecl cd) => cd.returnType.decl.declType
+    (CallableDecl cd) {
+      auto ft = cast(FunctionType)cd.declType;
+      return ft.returnType;
+    }
   );
 }
 

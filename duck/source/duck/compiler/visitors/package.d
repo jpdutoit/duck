@@ -249,7 +249,9 @@ struct LineNumber {
     return s;
   }
   Slice visit(VarDeclStmt s) {
-    return s.expr.accept(this);
+    if (s.expr)
+      return s.expr.accept(this);
+    return Slice();
   }
   Slice visit(ImportStmt s) {
     return s.identifier.slice;

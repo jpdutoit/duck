@@ -403,19 +403,56 @@ struct SemanticAnalysis {
       return expr.taint;
     }
 
-
-      return expr.expr.exprType.visit!(
-        (TypeType t) {
-          Decl decl = expr.expr.getTypeDecl;
-          debug(Semantic) log ("=>", decl);
-          ArrayDecl arrayDecl = new ArrayDecl(decl.declType);
-          //accept(arrayDecl);
-
-          auto re = new RefExpr(context.token(Identifier, "this"), arrayDecl);
-          accept(re);
-          return re;
+    return expr.expr.exprType.visit!(
+      (StaticArrayType t) {
+        if (expr.arguments.length != 1) {
+          error(expr.arguments, "Only one index accepted");
+          return expr.taint;
         }
-      );
+        expr.exprType = t.elementType;
+        return expr;
+      },
+      (ArrayType t) {
+        if (expr.arguments.length != 1) {
+          error(expr.arguments, "Only one index accepted");
+          return expr.taint;
+        }
+        expr.exprType = t.elementType;
+        return expr;
+      },
+      (TypeType t) {
+        Decl decl = expr.expr.getTypeDecl;
+        debug(Semantic) log ("=>", decl);
+        ArrayDecl arrayDecl;
+
+        if (expr.arguments.length == 0)
+          arrayDecl = new ArrayDecl(decl.declType);
+        else {
+          if (expr.arguments.length != 1) {
+            error(expr.arguments, "Only one length accepted.");
+
+            return expr.taint;
+          }
+          import std.conv: to;
+          auto size = expr.arguments[0].visit!(
+              (LiteralExpr literal) => literal.token.toString().to!uint,
+              (Expr e) {
+                error(expr.arguments, "Expected a number for array size.");
+                expr.taint;
+                return cast(uint)0;
+              }
+          )();
+          if (expr.hasError) return expr;
+
+          arrayDecl = new ArrayDecl(decl.declType, size);
+        }
+
+        auto re = new RefExpr(context.token(Identifier, "this"), arrayDecl);
+        re.exprType = t;
+        accept(re);
+        return re;
+      }
+    );
 
   }
 
@@ -863,12 +900,13 @@ struct SemanticAnalysis {
 
   Node visit(VarDeclStmt stmt) {
     debug(Semantic) log("VarDeclStmt", stmt.expr);
-    accept(stmt.expr);
-    debug(Semantic) log("=>", stmt.expr);
+    if (stmt.expr) {
+      accept(stmt.expr);
+      debug(Semantic) log("=>", stmt.expr);
+    }
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 
-    debug(Semantic) log("VarDeclStmt", stmt.expr, stmt.decl);//, mangled(stmt.decl.declType), stmt.identifier.value);
     debug(Semantic) log("Add to symbol table:", stmt.identifier.value, mangled(stmt.decl.declType));
     // Add identifier to symbol table
     if (symbolTable.defines(stmt.identifier.value)) {

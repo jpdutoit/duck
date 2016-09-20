@@ -228,7 +228,7 @@ struct Parser {
           typeExpr = call.expr;
         } else {
           typeExpr = ctor;
-          ctor = new CallExpr(ctor, new TupleExpr([]));
+          ctor = null;
         }
 
         return new InlineDeclExpr(identifier.token, new VarDeclStmt(identifier.token, new VarDecl(new TypeExpr(typeExpr), identifier.token), ctor));

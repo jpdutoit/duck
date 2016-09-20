@@ -4,11 +4,12 @@ import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
+private import std.conv;
 
 alias BasicTypes = AliasSeq!("number", "string", "type", "nothing", "error");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType);
 
-alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType);
+alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -139,6 +140,33 @@ final class ArrayType : Type {
 
   auto init(Type elementType) {
     this.elementType = elementType;
+    return this;
+  }
+}
+
+final class StaticArrayType : Type {
+  mixin TypeMixin;
+
+  Type elementType;
+  uint size;
+
+  override string describe() const {
+    return elementType.describe() ~ "[" ~ size.to!string ~ "]";
+  }
+
+  static auto create(Type elementType, uint size) {
+    return new StaticArrayType().init(elementType, size);
+  }
+
+  override
+  bool isSameType(Type other) {
+    ArrayType a = cast(ArrayType)other;
+    return a && a.elementType.isSameType((elementType));
+  }
+
+  auto init(Type elementType, uint size) {
+    this.elementType = elementType;
+    this.size = size;
     return this;
   }
 }
