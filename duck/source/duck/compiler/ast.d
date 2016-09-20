@@ -359,9 +359,8 @@ abstract class Expr : Node {
   }
 
   override string toString() {
-    import duck.compiler.dbg;
-    import duck.compiler.visitors;
-    return cast(string)this.accept(ExprToString());
+    import duck.compiler.dbg.conv;
+    return .toString(this);
   }
 }
 

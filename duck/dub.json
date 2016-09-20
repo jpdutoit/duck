@@ -26,7 +26,9 @@
     "source/duck/compiler/lexer/tokens.d",
     "source/duck/compiler/lexer/lexer.d",
     "source/duck/compiler/input.d",
-    "source/duck/compiler/dbg.d",
+    "source/duck/compiler/dbg/package.d",
+    "source/duck/compiler/dbg/colors.d",
+    "source/duck/compiler/dbg/conv.d",
     "source/duck/host/package.d"
   ],
   "stringImportPaths": [
