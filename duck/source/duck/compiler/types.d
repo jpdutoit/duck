@@ -176,7 +176,7 @@ final class ModuleType : StructType {
   mixin TypeMixin;
 
   override string describe() const {
-    return "module";
+    return "module." ~ name;
   }
 
   static ModuleType create(string name) {

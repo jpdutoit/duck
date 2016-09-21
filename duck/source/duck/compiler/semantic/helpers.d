@@ -42,40 +42,6 @@ struct ImportPaths
   }
 }
 
-CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, CallableDecl[]* viable) {
-  int bestScore = 0;
-  int matches = 0;
-  CallableDecl bestCallable;
-
-  CallableDecl[32] overloads;
-  foreach(decl; os.decls) {
-
-    //FunctionType type = cast(FunctionType)decl.declType;
-    debug(Semantic) log("Checking", decl, args.exprType.describe(),  ((cast(TupleType)args.exprType).describe));
-    assert(cast(TupleType)args.exprType !is null, "Internal error: Expected args to have tuple type");
-    int score = ((cast(TupleType)args.exprType).elementTypes).matchScore(contextExpr ? contextExpr.exprType : null, decl);
-    debug(Semantic) log("=> check", args.exprType.describe, decl);
-    if (score >= bestScore) {
-      if (score != bestScore) {
-        matches = 0;
-      }
-      overloads[matches++] = decl;
-      bestScore = score;
-      bestCallable = decl;
-      debug(Semantic) log("=>", bestScore, bestCallable);
-    }
-  }
-  if (matches > 1) {
-    foreach (overload; overloads) *viable ~= overload;
-    //overloads[0..matches].copy(*viable);
-    return null;
-  }
-  if (bestCallable !is null && bestScore >= 0) {
-    return bestCallable;
-  }
-  return null;
-}
-
 
 bool hasError(Expr expr) {
   return (cast(ErrorType)expr._exprType) !is null;
@@ -135,55 +101,6 @@ Type getResultType(Decl decl, int line = __LINE__, string file = __FILE__) {
   );
 }
 
-
-int matchScore(Type[] args, Type contextType, CallableDecl F) {
-  if (F.contextType !is null) {
-    if (contextType is null) {
-      return -1;
-    }
-    Type targetContextType = F.contextType.getTypeDecl.declType;
-    if (contextType != targetContextType) {
-      return -1;
-    }
-  }
-
-  if (args.length != F.parameterTypes.length) return -1;
-  int score = 0;
-  size_t len = args.length;
-  for (int i = 0; i < len; ++i) {
-    Type paramType = F.parameterTypes[i].getTypeDecl.declType;
-    Type argType = args[i];
-
-    if (paramType.isSameType(argType)) {
-      score += 10;
-    } else {
-      if (auto mt = cast(ModuleType)argType)
-      {
-        auto output = mt.decl.decls.lookup("output");
-        if (auto resultType = output.getResultType) {
-          if (resultType == paramType) {
-            score += 5;
-            continue;
-          }
-        }
-      }
-
-      return -1;
-    }
-  }
-  return score;
-}
-
-
-/*
-F1 is determined to be a better function than F2 if implicit conversions for
-all arguments of F1 are not worse than the implicit conversions for all arguments of F2, and
-1) there is at least one argument of F1 whose implicit conversion is better than the corresponding implicit conversion for that argument of F2
-2) or. if not that, (only in context of non-class initialization by conversion), the standard conversion sequence from the return type of F1 to the type being initialized is better than the standard conversion sequence from the return type of F2
-3) or, if not that, F1 is a non-template function while F2 is a template specialization
-4) or, if not that, F1 and F2 are both template specializations and F1 is more specialized according to the partial ordering rules for template specializations
-*/
-
 enum MatchResult {
   Equal,
   Better,
@@ -194,61 +111,6 @@ bool isFunctionViable(Type[] args, FunctionType A) {
   return false;
 }
 
-// M - N - parameters to use
-MatchResult rankViableFunctionArgs(TupleType T, TupleType F1, TupleType F2, ulong M, ulong N) {
-  return rankArgLists(T.elementTypes, F1.elementTypes, F2.elementTypes, 0, T.elementTypes.length);
-}
-
-MatchResult rankFunctions(Type[] args, FunctionType A, FunctionType B) {
-  // Best viable function
-  return MatchResult.Equal;
-}
-
-MatchResult rankArgLists(Type[] T, Type[] A, Type[] B, ulong M, ulong N) {
-  bool someWorse = false;
-  bool someBetter = false;
-  for (ulong i = M; i < N; ++i) {
-    MatchResult result = T[i].rankArgs(A[i], B[i]);
-    if (result == MatchResult.Worse) someWorse = true;
-    if (result == MatchResult.Better) someBetter = true;
-  }
-  if (someBetter == someWorse) return MatchResult.Equal;
-  if (someBetter) return MatchResult.Better;
-  if (someWorse) return MatchResult.Worse;
-  return MatchResult.Equal;
-}
-
-MatchResult rankArgs(Type T, Type A, Type B) {
-  // Ranking of implicit conversion sequence
-  return T.visit!(
-    (TupleType T) {
-      if (T.elementTypes.length == 1) {
-        return rankArgs(
-          T.elementTypes[0],
-          cast(TupleType)A ? (cast(TupleType)A).elementTypes[0] : A,
-          cast(TupleType)B ? (cast(TupleType)B).elementTypes[0] : B);
-      }
-      return rankArgLists(T.elementTypes, (cast(TupleType)A).elementTypes, (cast(TupleType)B).elementTypes, 0, cast(int)T.elementTypes.length);
-    },
-    (Type T) {
-      bool eqA = T == A;
-      bool eqB = T == B;
-      if (eqA == eqB) return MatchResult.Equal;
-      if (eqA) return MatchResult.Better;
-      if (eqB) return MatchResult.Worse;
-      return MatchResult.Equal;
-    }
-  );
-}
-
-unittest {
-  assert(rankArgs(NumberType.create, NumberType.create, NumberType.create) == MatchResult.Equal);
-  assert(rankArgs(NumberType.create, StringType.create, NumberType.create) == MatchResult.Worse);
-  assert(rankArgs(NumberType.create, NumberType.create, StringType.create) == MatchResult.Better);
-  assert(rankArgLists([NumberType.create, StringType.create], [NumberType.create, StringType.create], [NumberType.create, StringType.create], 0, 2) == MatchResult.Equal);
-  assert(rankArgLists([NumberType.create, StringType.create], [NumberType.create, StringType.create], [StringType.create, StringType.create], 0, 2) == MatchResult.Better);
-  assert(rankArgLists([NumberType.create, StringType.create], [StringType.create, StringType.create], [NumberType.create, StringType.create], 0, 2) == MatchResult.Worse);
-}
 /*
 http://en.cppreference.com/w/cpp/language/overload_resolution
 https://stackoverflow.com/questions/29090692/how-is-ambiguity-determined-in-the-overload-resolution-algorithm

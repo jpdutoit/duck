@@ -1,6 +1,7 @@
 module duck.compiler.semantic.expr;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
+import duck.compiler.semantic.overloads;
 import duck.compiler.ast;
 import duck.compiler.scopes;
 import duck.compiler.lexer;
@@ -445,9 +446,7 @@ struct ExprSemantic {
     debug(Semantic) log("=>", expr);
 
       if (isModule(expr.operand)) {
-        expr.operand = new MemberExpr(expr.operand, context.token(Identifier, "output"));
-        accept(expr.operand);
-        implicitCall(expr.operand);
+        implicitMember(expr.operand, "output");
       }
     {
       auto os = cast(OverloadSet)symbolTable.lookup(expr.operator.value);
