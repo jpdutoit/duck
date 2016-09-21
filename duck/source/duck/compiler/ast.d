@@ -75,15 +75,15 @@ abstract class Stmt : Node {
 class Library : Node {
   mixin NodeMixin;
 
-  Node[] nodes;
+  Stmt[] nodes;
   DeclTable imports;
   Decl[] exports;
   Node[] declarations;
 
-  this(Node[] nodes, Node[] decls) {
+  this(Stmt[] stmts, Node[] decls) {
     this.declarations = decls;
     this.imports = new DeclTable();
-    this.nodes = nodes;
+    this.nodes = stmts;
   }
 }
 
@@ -348,9 +348,7 @@ abstract class Expr : Node {
   }
 
   @property Type exprType(string file = __FILE__, int line = __LINE__) {
-    if (!_exprType) {
-      throw __ICE("Trying to use expression type before it is calculated", line, file);
-    }
+    ASSERT(_exprType, "Trying to use expression type before it is calculated", line, file);
     return _exprType;
   }
 
@@ -466,6 +464,15 @@ class TupleExpr : Expr {
         break;
     }
     return result;
+  }
+
+  TupleType tupleType() {
+    Type[] elementTypes = [];
+    assumeSafeAppend(elementTypes);
+    foreach (ref Expr e; elements) {
+      elementTypes ~= e.exprType;
+    }
+    return TupleType.create(elementTypes);
   }
 
   ref Expr opIndex(size_t index) {

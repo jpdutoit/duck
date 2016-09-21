@@ -30,6 +30,7 @@ class DeclTable : Scope {
 
   void define(string identifier, Decl decl) {
     Decl* existing = identifier in symbols;
+
     if (existing) {
       if (auto cd = cast(CallableDecl)decl) {
         if (auto os = cast(OverloadSet)(*existing)) {
@@ -39,7 +40,7 @@ class DeclTable : Scope {
         }
       }
       else
-        throw __ICE("Cannot redefine " ~ identifier.idup);
+        ASSERT(false, "Cannot redefine " ~ identifier.idup);
     }
 
     symbolsInDefinitionOrder ~= decl;

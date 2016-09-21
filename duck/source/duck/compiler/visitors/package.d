@@ -4,43 +4,46 @@ import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 public import duck.compiler.transforms;
 
 public import duck.compiler.visitors.codegen;
-
+import duck.compiler.dbg;
 import duck.compiler.buffer;
 import std.traits;
 
 auto accept(N, Visitor)(N node, auto ref Visitor visitor) if (is(N : Node)){
-  import duck.compiler.dbg;
+  ASSERT(node, "Null node");
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
       static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
         case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
     }
     default:
-      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+      ASSERT(false, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+      assert(0);
   }
 }
 
 R acceptNodes(R, N, Visitor)(N node, auto ref Visitor visitor) {
-  import duck.compiler.dbg;
+  ASSERT(node, "Null node");
   switch(node.nodeType) {
     foreach(NodeType; NodeTypes) {
       static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
         case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
     }
     default:
-      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+      ASSERT(false, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+      assert(0);
   }
 }
 
 R acceptTypes(R, N, Visitor)(N node, auto ref Visitor visitor) {
-  import duck.compiler.dbg;
+  ASSERT(node, "Null type");
   switch(node.kind) {
     foreach(Type; Types) {
       static if (is(Type : N) && is(typeof(visitor.visit(cast(Type)node))))
         case Type.Kind: return visitor.visit(cast(Type)node);
     }
     default:
-      throw __ICE("Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+      ASSERT(false, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
+      assert(0);
   }
 }
 
@@ -49,12 +52,12 @@ import std.typetuple;
 template visit(alias T) if (isSomeFunction!(T)) {
   import duck.compiler.dbg;
   auto visit(N)(N node) {
-    //pragma(inline, true);
     if (auto n = cast(ParameterTypeTuple!(T)[0])node)
       return T(n);
-    else
-      throw __ICE("Can not visit node of type " ~ node.classinfo.name);
-    //return acceptR!(CommonType!(staticMap!(ReturnType, T)))(node, DelegateVisitor());
+    else {
+      ASSERT(false, "Can not visit node of type " ~ node.classinfo.name);
+      assert(0);
+    }
   }
 }
 

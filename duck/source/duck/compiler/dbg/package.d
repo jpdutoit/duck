@@ -6,7 +6,6 @@ public import duck.compiler.dbg.conv;
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 import duck.compiler.transforms;
 import duck.compiler.visitors;
-public import std.exception : enforce;
 
 auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import core.exception;
@@ -14,8 +13,14 @@ auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import std.stdio;
   auto msg = "Internal compiler error: " ~ message ~ " at " ~ file ~ "(" ~ line.to!string ~ ") ";
   stderr.writeln(msg);
-  asm {hlt;}
+  //asm {hlt;}
   return new AssertError(msg);
+}
+
+void ASSERT(T)(T value, lazy string message, int line = __LINE__, string file = __FILE__) {
+  if (!value) {
+    throw __ICE(message, line, file);
+  }
 }
 
 string describe(const Type type) {
