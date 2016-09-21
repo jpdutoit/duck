@@ -372,16 +372,19 @@ struct Parser {
 
     parseCallableArgumentList(func, isExtern);
 
-    if (isExtern) {
-      expect(Tok!"->", "Expected '->'");
-      func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
-      lexer.expect(Tok!";", "Expected ';'");
-    } else if (lexer.consume(Tok!"->")) {
-      func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
+
+    if (lexer.consume(Tok!"->")) {
+      if (isExtern) {
+        func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
+      } else  {
+        func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
+      }
     }
 
     if (!isExtern) {
       func.functionBody = expect(parseBlock(), "Expected function body");
+    } else {
+      lexer.expect(Tok!";", "Expected ';'");
     }
 
     auto stmt = new TypeDeclStmt(func);

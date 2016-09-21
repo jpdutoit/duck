@@ -1,3 +1,14 @@
+extern struct void;
+extern function assertEquals(float, float);
+
 arr: float[4];
 
 arr[0] = 2;
+arr[1] = 3;
+arr[2] = 4;
+arr[3] = 5;
+
+assertEquals(arr[0], 2);
+assertEquals(arr[1], 3);
+assertEquals(arr[2], 4);
+assertEquals(arr[3], 5);

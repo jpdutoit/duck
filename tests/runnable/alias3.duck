@@ -1,5 +1,4 @@
-extern struct void;
-extern function assertEquals(float, float) -> void;
+extern function assertEquals(float, float);
 
 module A {
   a: float = 100;
