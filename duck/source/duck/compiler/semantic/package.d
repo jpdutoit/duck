@@ -27,7 +27,7 @@ string prettyName(T)(ref T t) {
 
 
 Expr error(Expr expr, string message) {
-  Context.current.error(expr.accept(LineNumber()), message);
+  Context.current.error(expr.findSource(), message);
   return expr.taint;
 }
 

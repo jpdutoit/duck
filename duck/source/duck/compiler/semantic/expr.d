@@ -39,8 +39,7 @@ struct ExprSemantic {
           expr = makeModule(expr.exprType, expr);
           accept(expr);
         }
-      },
-      (Expr expr) {}
+      }
     );
     expr.exprType.visit!(
       delegate(TypeType t) {
@@ -431,7 +430,6 @@ struct ExprSemantic {
     if (!expr.context) {
       expr.context = expr.expr.visit!(
         (MemberExpr expr) => expr.left,
-        (Expr expr) => null
       );
     }
     return expr.expr.exprType.visit!(
@@ -441,7 +439,7 @@ struct ExprSemantic {
         expr.exprType = ft.returnType;
         return ft.decl.visit!(
           (MacroDecl m) => expandMacro(m, expr.arguments.elements, expr.context),
-          (CallableDecl c) => c
+          (CallableDecl c) => expr
         );
       },
       delegate (OverloadSetType ot) {

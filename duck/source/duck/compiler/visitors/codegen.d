@@ -153,7 +153,7 @@ struct CodeGen {
   }
 
   void instrument(Expr value, Expr target) {
-    auto slice = value.accept(LineNumber());
+    auto slice = value.findSource();
     emit("\n");
     emit("instrument(\"");
     emit(slice.toLocationString());
@@ -330,7 +330,7 @@ struct CodeGen {
   }
 
   void line(Node node) {
-    auto slice = node.accept(LineNumber());
+    auto slice = node.findSource();
     if (cast(FileBuffer)slice.buffer) {
       import std.conv : to;
       emit("#line ");

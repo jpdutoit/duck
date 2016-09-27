@@ -42,7 +42,7 @@ struct StmtSemantic {
   Node visit(Stmts stmts) {
     foreach(ref stmt ; stmts.stmts) {
       splitStatements = [];
-      debug(Semantic) log("'", stmt.accept(LineNumber()).toString().yellow, "'");
+      debug(Semantic) log("'", stmt.findSource().toString().yellow, "'");
       accept(stmt);
       debug(Semantic) log("");
       if (splitStatements.length > 0) {

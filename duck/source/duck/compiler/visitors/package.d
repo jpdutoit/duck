@@ -2,85 +2,15 @@ module duck.compiler.visitors;
 
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 public import duck.compiler.transforms;
-
+public import duck.compiler.visitors.visit;
+public import duck.compiler.visitors.source;
 public import duck.compiler.visitors.codegen;
+public import duck.compiler.visitors.dup;
+
 import duck.compiler.dbg;
 import duck.compiler.buffer;
-import std.traits;
+import std.traits, std.conv, std.typetuple;
 
-auto accept(N, Visitor)(N node, auto ref Visitor visitor) if (is(N : Node)){
-  ASSERT(node, "Null node");
-  switch(node.nodeType) {
-    foreach(NodeType; NodeTypes) {
-      static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
-        case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
-    }
-    default:
-      ASSERT(false, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
-      assert(0);
-  }
-}
-
-R acceptNodes(R, N, Visitor)(N node, auto ref Visitor visitor) {
-  ASSERT(node, "Null node");
-  switch(node.nodeType) {
-    foreach(NodeType; NodeTypes) {
-      static if (is(NodeType : N) && is(typeof(visitor.visit(cast(NodeType)node))))
-        case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
-    }
-    default:
-      ASSERT(false, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
-      assert(0);
-  }
-}
-
-R acceptTypes(R, N, Visitor)(N node, auto ref Visitor visitor) {
-  ASSERT(node, "Null type");
-  switch(node.kind) {
-    foreach(Type; Types) {
-      static if (is(Type : N) && is(typeof(visitor.visit(cast(Type)node))))
-        case Type.Kind: return visitor.visit(cast(Type)node);
-    }
-    default:
-      ASSERT(false, "Visitor " ~ Visitor.stringof ~ " can not visit node of type " ~ node.classinfo.name);
-      assert(0);
-  }
-}
-
-import std.typetuple;
-
-template visit(alias T) if (isSomeFunction!(T)) {
-  import duck.compiler.dbg;
-  auto visit(N)(N node) {
-    if (auto n = cast(ParameterTypeTuple!(T)[0])node)
-      return T(n);
-    else {
-      ASSERT(false, "Can not visit node of type " ~ node.classinfo.name);
-      assert(0);
-    }
-  }
-}
-
-template visit(T...) if (T.length > 1) {
-  import std.conv;
-  alias ReturnTypes = staticMap!(ReturnType, T);
-  string genCode() {
-    auto code = "struct DelegateVisitor {\n";
-    foreach(i, t; T) {
-      auto idx  = i.to!string;
-      code ~= "  ReturnTypes["~ idx ~ "] visit(ParameterTypeTuple!(T["~idx~"])[0] n) { return T["~idx~"](n); }\n";
-    }
-    return code ~ "\n}";
-  }
-  auto visit(N)(N node) if (is(N : Node)) {
-    mixin(genCode());
-    return acceptNodes!(CommonType!(staticMap!(ReturnType, T)), N, DelegateVisitor)(node, DelegateVisitor());
-  }
-  auto visit(N)(N node) if (is(N : Type)) {
-    mixin(genCode());
-    return acceptTypes!(CommonType!(staticMap!(ReturnType, T)), N, DelegateVisitor)(node, DelegateVisitor());
-  }
-}
 
 void traverse(T)(Node node, bool delegate(T) dg) {
   struct TraverseVisitor {
@@ -100,12 +30,6 @@ void traverse(T)(Node node, bool delegate(T) dg) {
   return node.accept(TraverseVisitor());
 }
 
-
-string className(Type type) {
-  //return "";
-  if (!type) return "τ";
-  return "τ-"~mangled(type);
-}
 
 mixin template RecursiveAccept() {
     void accept(Node node) {
@@ -170,89 +94,4 @@ mixin template RecursiveAccept() {
     void recurse(Node node) {
 
     }
-}
-
-T dup(T : Expr)(T t) {
-  return cast(T)t.dupImpl;
-}
-
-private Expr dupImpl(Expr expr) {
-  import std.array, std.algorithm.iteration;
-  return expr.visit!(
-    (MemberExpr expr) => new MemberExpr(expr.left.dup, expr.right),
-    (IdentifierExpr expr) => expr,
-    (RefExpr expr) => expr,
-    (LiteralExpr expr) => expr,
-    (CallExpr expr) => new CallExpr(expr.dup, expr.arguments.dup, expr.context.dup),
-    (BinaryExpr expr) => new BinaryExpr(expr.operator, expr.left.dup, expr.right.dup),
-    (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => e.dup).array)
-  );
-}
-
-struct LineNumber {
-  Slice visit(ErrorExpr expr) {
-      return expr.slice;
-  }
-  Slice visit(TypeExpr expr) {
-    return expr.expr.accept(this);
-  }
-  Slice visit(ArrayLiteralExpr expr) {
-    Slice s;
-    foreach (i, arg ; expr.exprs) {
-      s = s + arg.accept(this);
-    }
-    return Slice();
-  }
-  Slice visit(InlineDeclExpr expr) {
-    return expr.declStmt.accept(this);
-  }
-  Slice visit(RefExpr expr) {
-    return expr.identifier;
-  }
-  Slice visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
-    return expr.token.slice;
-  }
-  Slice visit(BinaryExpr expr) {
-    return expr.left.accept(this) + expr.operator + expr.right.accept(this);
-  }
-  Slice visit(UnaryExpr expr) {
-    return expr.operator + expr.operand.accept(this);
-  }
-  Slice visit(TupleExpr expr) {
-    Slice s;
-    foreach (ref Expr e; expr) {
-      s = s + e.accept(this);
-    }
-    return s;
-  }
-  Slice visit(CallExpr expr) {
-    return expr.expr.accept(this) + expr.arguments.accept(this);
-  }
-  Slice visit(IndexExpr expr) {
-    return expr.expr.accept(this) + expr.arguments.accept(this);
-  }
-  Slice visit(ReturnStmt stmt) {
-    return stmt.expr.accept(this);
-  }
-  Slice visit(ExprStmt stmt) {
-    return stmt.expr.accept(this);
-  }
-  Slice visit(Stmts stmt) {
-    Slice s;
-    foreach (i, sm; stmt.stmts) {
-      s = s + sm.accept(this);
-    }
-    return s;
-  }
-  Slice visit(VarDeclStmt s) {
-    if (s.expr)
-      return s.expr.accept(this);
-    return Slice();
-  }
-  Slice visit(ImportStmt s) {
-    return s.identifier.slice;
-  }
-  Slice visit(TypeDeclStmt s) {
-    return Slice();
-  }
 }
