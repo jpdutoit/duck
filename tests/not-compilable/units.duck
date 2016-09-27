@@ -9,7 +9,7 @@ module AA {
 /*
 OUTPUT:
 ---
-tests/not-compilable/units.duck(7:1-14): Error: cannot connect a number to a frequency input
-tests/not-compilable/units.duck(8:1-5): Error: cannot connect a number to a frequency input
+tests/not-compilable/units.duck(7:1-2): Error: Cannot coerce a value of type number to a value of type frequency
+tests/not-compilable/units.duck(8:1-2): Error: Cannot coerce a value of type number to a value of type frequency
 ---
 */

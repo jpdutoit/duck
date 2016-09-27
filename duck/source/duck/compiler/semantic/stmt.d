@@ -13,7 +13,7 @@ import duck;
 struct StmtSemantic {
   SemanticAnalysis *semantic;
   alias semantic this;
-  
+
   void accept(E)(ref E target) { semantic.accept!E(target);}
 
   Node visit(ExprStmt stmt) {
@@ -80,13 +80,15 @@ struct StmtSemantic {
 
 
   Node visit(TypeDeclStmt stmt) {
+    accept(stmt.decl);
+    
     if (!cast(CallableDecl)stmt.decl && globalScope.defines(stmt.decl.name)) {
       error(stmt.decl.name, "Cannot redefine " ~ stmt.decl.name.idup);
     }
     else {
       globalScope.define(stmt.decl.name, stmt.decl);
     }
-    accept(stmt.decl);
+
     if (stmt.decl.declType.kind != ErrorType.Kind) {
       library.exports ~= stmt.decl;
     }

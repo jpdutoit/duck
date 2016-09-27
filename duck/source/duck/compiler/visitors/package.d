@@ -172,28 +172,21 @@ mixin template RecursiveAccept() {
     }
 }
 
-T dup(T)(T t) {
-  auto e = t.accept(Dup());
-  return cast(T)e;
+T dup(T : Expr)(T t) {
+  return cast(T)t.dupImpl;
 }
 
-Expr dupl(Expr expr) {
+private Expr dupImpl(Expr expr) {
+  import std.array, std.algorithm.iteration;
   return expr.visit!(
-    (MemberExpr expr) => new MemberExpr(dupl(expr.left), expr.right),
+    (MemberExpr expr) => new MemberExpr(expr.left.dup, expr.right),
     (IdentifierExpr expr) => expr,
-    (RefExpr expr) => expr
+    (RefExpr expr) => expr,
+    (LiteralExpr expr) => expr,
+    (CallExpr expr) => new CallExpr(expr.dup, expr.arguments.dup, expr.context.dup),
+    (BinaryExpr expr) => new BinaryExpr(expr.operator, expr.left.dup, expr.right.dup),
+    (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => e.dup).array)
   );
-}
-
-
-struct Dup {
-  Node visit(MemberExpr expr) {
-    return new MemberExpr(dup(expr.left), expr.right);
-  }
-
-  Node visit(IdentifierExpr expr) {
-    return expr.token ? new IdentifierExpr(expr.token) : new IdentifierExpr(expr.identifier);
-  }
 }
 
 struct LineNumber {

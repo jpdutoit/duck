@@ -25,6 +25,24 @@ string prettyName(T)(ref T t) {
   return t.classinfo.name.replaceFirst(regex(r"^.*\."), "");
 }
 
+
+Expr error(Expr expr, string message) {
+  Context.current.error(expr.accept(LineNumber()), message);
+  return expr.taint;
+}
+
+void error(Token token, string message) {
+  Context.current.error(token, message);
+}
+
+bool expect(T)(T expectation, Expr expr, lazy string message) {
+  if (!expectation) {
+    error(expr, message);
+    return false;
+  }
+  return true;
+}
+
 struct SemanticAnalysis {
   ExprSemantic exprSemantic;
   StmtSemantic stmtSemantic;
@@ -99,15 +117,6 @@ struct SemanticAnalysis {
   void splitStatement(Stmt stmt) {
     splitStatements ~= stmt;
   }
-
-  void error(Expr expr, string message) {
-    context.error(expr.accept(LineNumber()), message);
-  }
-
-  void error(Token token, string message) {
-    context.error(token, message);
-  }
-
 
   Library library;
 

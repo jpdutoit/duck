@@ -4,6 +4,7 @@ import duck.compiler.semantic.helpers;
 import duck.compiler.ast;
 import duck.compiler.scopes;
 import duck.compiler.types;
+import duck.compiler.dbg;
 
 // Type coercion cost
 struct Cost {
@@ -17,7 +18,9 @@ struct Cost {
   static Cost max()  { return Cost(int.max-1); }
   static Cost infinity() { return Cost(int.max); }
   static Cost zero() { return Cost(0); }
-  static Cost implicitOutput() { return Cost(1000); }
+  static Cost implicitCall() { return Cost(100); }
+  static Cost implicitOutput() { return Cost(10000); }
+  static Cost implicitConstruct() { return Cost(10000); }
 
   bool opCast(T: bool)() {
     return cost != int.max;
@@ -38,6 +41,22 @@ struct Cost {
 Cost coercionCost(Type type, Type target) {
   if (!type || !target) return Cost.infinity;
   if (type.isSameType(target)) return Cost.zero;
+
+  // Coerce an overload set by automatically calling it with not arguments
+  if (auto overloadSetType = cast(OverloadSetType)type) {
+    if (overloadSetType.overloadSet.decls.length == 1) {
+      auto functionType = cast(FunctionType)overloadSetType.overloadSet.decls[0].declType;
+      auto returnType = functionType.returnType;
+      return Cost.implicitCall + coercionCost(returnType, target);
+    }
+  }
+  // Coerce type by constructing instance of that type
+  if (auto typeType = cast(TypeType)type) {
+    if (auto moduleType = cast(ModuleType)typeType.type) {
+      return Cost.implicitConstruct + coercionCost(moduleType, target);
+    }
+  }
+  // Coerce module by automatically reference field output
   if (auto moduleType = cast(ModuleType)type) {
     auto output = moduleType.decl.decls.lookup("output");
     if (output) {

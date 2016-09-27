@@ -41,10 +41,10 @@
   "configurations": [{
     "name": "default",
     "targetName": "duck",
-    "mainSourceFile": "source/host.d",
+    "mainSourceFile": "source/host.d"
   }, {
     "name": "interactive",
     "targetName": "iduck",
-    "mainSourceFile": "source/ihost.d",
+    "mainSourceFile": "source/ihost.d"
   }]
 }

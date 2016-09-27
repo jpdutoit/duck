@@ -154,7 +154,7 @@ class MacroDecl : CallableDecl {
   this(Token identifier, TypeExpr contextType, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
     super(identifier);
     this.contextType = contextType;
-    this.returnType = null;
+    this.returnExpr = null;
     this.argTypes = argTypes;
     this.argNames = argNames;
     this.expansion = expansion;
@@ -184,7 +184,7 @@ class CallableDecl : Decl {
   TypeExpr contextType;
   TypeExpr[] parameterTypes;
   Token[] parameterIdentifiers;
-  TypeExpr returnType;
+  Expr returnExpr;
   bool external;
   bool dynamic;
 
@@ -466,15 +466,6 @@ class TupleExpr : Expr {
     return result;
   }
 
-  TupleType tupleType() {
-    Type[] elementTypes = [];
-    assumeSafeAppend(elementTypes);
-    foreach (ref Expr e; elements) {
-      elementTypes ~= e.exprType;
-    }
-    return TupleType.create(elementTypes);
-  }
-
   ref Expr opIndex(size_t index) {
     return elements[index];
   }
@@ -504,7 +495,10 @@ class UnaryExpr : Expr {
   mixin NodeMixin;
 
   Token operator;
-  Expr operand;
+  union {
+    Expr operand;
+    Expr[1] arguments;
+  }
 
   this(Token op, Expr operand) {
     operator = op;
@@ -516,7 +510,12 @@ class BinaryExpr : Expr {
   mixin NodeMixin;
 
   Token operator;
-  Expr left, right;
+  union {
+    struct {
+      Expr left, right;
+    }
+    Expr[2] arguments;
+  }
 
   this(Token op, Expr left, Expr right) {
     this.operator = op;
@@ -559,10 +558,18 @@ class CallExpr : Expr {
 
   Expr expr;
   TupleExpr arguments;
+  Expr context;
 
-  this(Expr expr, TupleExpr arguments) {
+  this(Expr expr, TupleExpr arguments, Expr context = null) {
     this.expr = expr;
     this.arguments = arguments;
+    this.context = context;
+  }
+
+  this(Expr expr, Expr[] arguments, Expr context = null) {
+    this.expr = expr;
+    this.arguments = new TupleExpr(arguments);
+    this.context = context;
   }
 }
 

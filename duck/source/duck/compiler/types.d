@@ -6,8 +6,8 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.conv;
 
-alias BasicTypes = AliasSeq!("number", "string", "type", "nothing", "error");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType);
+alias BasicTypes = AliasSeq!("number", "string", "nothing", "error");
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType, TypeType);
 
 alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
 
@@ -42,7 +42,6 @@ template BasicType(string desc) {
 
 alias NumberType = BasicType!("number");
 alias StringType = BasicType!("string");
-alias TypeType = BasicType!("type");
 alias VoidType = BasicType!("nothing");
 alias ErrorType = BasicType!("error");
 
@@ -188,6 +187,31 @@ final class ModuleType : StructType {
     return this;
   }
 
+}
+
+class TypeType : Type {
+  mixin TypeMixin;
+
+  Type type;
+
+  override string describe() const {
+    return "Type";
+  }
+
+  static auto create(Type type) {
+    return new TypeType().init(type);
+  }
+
+  override
+  bool isSameType(Type other) {
+    TypeType a = cast(TypeType)other;
+    return a && a.type.isSameType(type);
+  }
+
+  auto init(Type type) {
+    this.type = type;
+    return this;
+  }
 }
 
 class OverloadSetType : Type {

@@ -374,16 +374,14 @@ struct Parser {
 
 
     if (lexer.consume(Tok!"->")) {
-      if (isExtern) {
-        func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
-      } else  {
-        func.returnType = new TypeExpr(expect(parseExpression(), "Expected expression."));
-      }
+      func.returnExpr = expect(parseExpression(Precedence.Comparison), "Expected expression.");
     }
 
     if (!isExtern) {
-      func.functionBody = expect(parseBlock(), "Expected function body");
-    } else {
+      func.functionBody = parseBlock();
+    }
+
+    if (!func.functionBody) {
       lexer.expect(Tok!";", "Expected ';'");
     }
 

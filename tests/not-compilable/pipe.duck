@@ -13,9 +13,9 @@ b >> b + 20;
 /*
 OUTPUT:
 ---
-tests/not-compilable/pipe.duck(8:1-5): Error: expected a value expression
-tests/not-compilable/pipe.duck(9:6-10): Error: Type number is not a valid connection target
-tests/not-compilable/pipe.duck(11:6-11): Error: Cannot connect to an expression
-tests/not-compilable/pipe.duck(12:1-12): Error: cannot connect a string to a number input
+tests/not-compilable/pipe.duck(8:1-5): Error: Cannot coerce type number to a value of type number
+tests/not-compilable/pipe.duck(9:1): Error: Cannot coerce a value of type number to type number
+tests/not-compilable/pipe.duck(11:6-11): Error: Right hand side of connection must be a module field
+tests/not-compilable/pipe.duck(12:1-7): Error: Cannot coerce a value of type string to a value of type number
 ---
 */

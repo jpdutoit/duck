@@ -34,17 +34,18 @@ struct DeclSemantic {
     decl.declType = type;
     debug(Semantic) log("=>", decl.declType.describe);
 
-
     debug(Semantic) log("=> expansion", decl.expansion);
     return decl;
   }
 
-  DeclTable analyzeCallableParams(CallableDecl decl) {
+  Decl analyzeCallableParams(CallableDecl decl) {
     auto paramScope = new DeclTable();
     Type[] paramTypes;
 
     bool parentIsExternal = false;
+    StructDecl parentDecl = null;
     if (auto md = cast(MethodDecl)decl) {
+      parentDecl = md.parentDecl;
       if (md.parentDecl.external) parentIsExternal = true;
     }
 
@@ -58,44 +59,66 @@ struct DeclSemantic {
         paramScope.define(name.value, new UnboundDecl(paramType, name));
       }
     }
-    debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnType);
-    auto type = FunctionType.create(decl.returnType ? decl.returnType.decl.declType : VoidType.create, TupleType.create(paramTypes));
-    type.decl = decl;
-    decl.declType = type;
-    return paramScope;
+
+    if (parentDecl) {
+      //auto thisToken = semantic.context.token(Identifier, "this");
+      paramScope.define("this", new UnboundDecl(parentDecl.declType, None));
+    }
+
+    semantic.symbolTable.pushScope(paramScope);
+    if (decl.returnExpr) {
+      accept(decl.returnExpr);
+    }
+    if (decl.callableBody) {
+      accept(decl.callableBody);
+    }
+    semantic.symbolTable.popScope();
+
+    debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnExpr);
+
+    auto returnType = decl.returnExpr ? decl.returnExpr.exprType : TypeType.create(VoidType.create);
+    return returnType.visit!(
+      (TypeType t) {
+        auto type = FunctionType.create(t.type, TupleType.create(paramTypes));
+        type.decl = decl;
+        decl.declType = type;
+        return decl;
+      },
+      (Type t) {
+        expect(!decl.callableBody, decl.returnExpr, "Cannot specify a function body along with an inline return expression");
+        auto mac = new MacroDecl(decl.name, decl.contextType, decl.parameterTypes, decl.parameterIdentifiers, decl.returnExpr, parentDecl);
+        this.accept(mac);
+        return mac;
+      }
+    );
   }
 
-  FunctionDecl visit(FunctionDecl decl) {
-    debug(Semantic) log("=>", decl.name, decl.parameterTypes, "->", decl.returnType);
-    if (decl.returnType)
-      accept(decl.returnType);
+  Node visit(FunctionDecl decl) {
+    debug(Semantic) log("=>", decl.name, decl.parameterTypes, "->", decl.returnExpr);
 
-    DeclTable paramScope = analyzeCallableParams(decl);
+    return analyzeCallableParams(decl);
 
-    if (decl.functionBody) {
+    /*if (decl.functionBody) {
       semantic.symbolTable.pushScope(paramScope);
       accept(decl.functionBody);
       semantic.symbolTable.popScope();
-    }
+    }*/
 
-    debug(Semantic) log("=>", decl.declType.describe);
-    return decl;
+
   }
 
    Node visit(MethodDecl decl) {
-    if (decl.returnType)
-      accept(decl.returnType);
 
-    DeclTable paramScope = analyzeCallableParams(decl);
-    if (decl.methodBody) {
+    return analyzeCallableParams(decl);
+    /*if (decl.methodBody) {
       auto thisToken = semantic.context.token(Identifier, "this");
       paramScope.define("this", new UnboundDecl(decl.parentDecl.declType, thisToken));
 
       semantic.symbolTable.pushScope(paramScope);
       accept(decl.methodBody);
       semantic.symbolTable.popScope();
-    }
-    return decl;
+    }*/
+
   }
 
 

@@ -18,7 +18,3 @@ A + 1 >> A.input;
 a: A;
 2 >> a.a;
 1 >> a;
-
-
-b: float;
-3 >> b;

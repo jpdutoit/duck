@@ -1,6 +1,7 @@
 module duck.compiler.lexer.tokens;
 
 public import duck.compiler.lexer.token;
+import std.meta: staticIndexOf, AliasSeq;
 
 enum TokenSpecial  = AliasSeq!(
   "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown"

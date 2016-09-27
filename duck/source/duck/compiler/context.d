@@ -15,6 +15,8 @@ import duck.compiler.dbg;
 
 
 class Context {
+  static Context current = null;
+
   this () {
     temp = new TempBuffer("");
     import core.runtime;
@@ -46,10 +48,13 @@ class Context {
     auto phaseFlatten = Flatten();
     auto phaseSemantic = SemanticAnalysis(this, buffer.path);
 
+    Context previous = Context.current;
+    Context.current = this;
     _library = cast(Library)(Parser(this, buffer)
       .parseLibrary()
       .flatten()
       .accept(phaseSemantic));
+    Context.current = previous;
 
     for (int i = 0; i < dependencies.length; ++i) {
       dependencies[i].library;

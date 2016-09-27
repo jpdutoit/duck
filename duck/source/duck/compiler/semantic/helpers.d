@@ -77,6 +77,28 @@ bool isLValue(Expr expr) {
   );
 }
 
+bool isPipeTarget(Expr expr) {
+  return expr.visit!(
+    (IndexExpr i) => isPipeTarget(i.expr),
+    (IdentifierExpr i) => true,
+    (RefExpr r) => r.decl.visit!(
+      (FieldDecl d) => true,
+      (Decl d) => false
+    ),
+    (MemberExpr m) {
+      if (auto mod = cast(ModuleType)m.left.exprType) {
+        StructDecl decl = mod.decl;
+        auto ident = m.right.visit!((IdentifierExpr e) => e.identifier);
+        auto fieldDecl = decl.decls.lookup(ident);
+        if (fieldDecl) {
+          return true;
+        }
+      }
+      return false;
+    },
+    (Expr e) => false
+  );
+}
 
 Decl getTypeDecl(Expr expr) {
   return expr.visit!(

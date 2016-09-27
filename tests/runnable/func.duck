@@ -6,12 +6,32 @@ function add(a: float, b: float) -> float {
   return a + b;
 }
 
-add((2 >> c: float), (2 >> d: float)) >> e: float;
-assertEquals(e, 6);
+module A {
+  input: float;
+  output: input;
+}
+
+add((2 >> c: A), (2 >> d: A)) >> e: A;
+
+assertEquals(add(2,2), 6);
+
+extern struct Now;
+function fnc(a:Now, b:Now) -> float {
+  return 2;
+}
+function alwaysTwo(a:Now, b:Now) -> 2;
+function other() -> 4;
+aaa:Now; bbb:Now;
+f: float = alwaysTwo(aaa, bbb);
+g: float = alwaysTwo(aaaa:Now, bbbb:Now);
+
+function operator-(a: float, b: float) -> a+b+10;
+assertEquals(1-2, 13);
+assertEquals(10-5, 25);
 
 /*
 OUTPUT:
 ---
-tests/runnable/func.duck(10): Assertion failed: 4.000000 != 6.000000
+tests/runnable/func.duck(16): Assertion failed: 4.000000 != 6.000000
 ---
 */

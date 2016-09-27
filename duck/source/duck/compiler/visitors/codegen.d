@@ -411,8 +411,8 @@ struct CodeGen {
   void visit(FunctionDecl funcDecl) {
     debug(CodeGen) log("FunctionDecl", funcDecl.name.value);
     if (!funcDecl.external) {
-      if (funcDecl.returnType)
-        accept(funcDecl.returnType);
+      if (funcDecl.returnExpr)
+        accept(funcDecl.returnExpr);
       else
         emit("void");
       emit(" ");
