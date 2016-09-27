@@ -10,7 +10,7 @@ import std.stdio;
 import std.algorithm.searching;
 import duck.compiler.context;
 import std.getopt, std.array;
-import std.c.stdlib : exit;
+import core.stdc.stdlib : exit;
 
 import duck;
 
