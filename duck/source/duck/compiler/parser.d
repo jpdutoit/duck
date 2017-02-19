@@ -225,7 +225,7 @@ struct Parser {
         Expr typeExpr;
         CallExpr call = cast(CallExpr)ctor;
         if (call) {
-          typeExpr = call.expr;
+          typeExpr = call.callable;
         } else {
           typeExpr = ctor;
           ctor = null;

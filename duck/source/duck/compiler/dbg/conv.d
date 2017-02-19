@@ -58,7 +58,7 @@ struct ExprToString {
     return s ~ ")".annot(expr._exprType);
   }
   string visit(CallExpr expr) {
-    string s = "(" ~ expr.expr.accept(this) ~ "(";
+    string s = "(" ~ expr.callable.accept(this) ~ "(";
     foreach (i, arg ; expr.arguments.elements) {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);

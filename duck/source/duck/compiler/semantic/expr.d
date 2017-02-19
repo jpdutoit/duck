@@ -305,23 +305,23 @@ struct ExprSemantic {
   }
 
   Node visit(ConstructExpr expr) {
-    accept(expr.expr);
+    typeCheck(expr.target);
     accept(expr.arguments);
     debug(Semantic) log("=>", expr);
 
-    Decl decl = expr.expr.getTypeDecl();
+    Decl decl = expr.target.getTypeDecl();
 
     debug(Semantic) log("=> decl", decl);
-    if (expr.expr.hasError || expr.arguments.hasError)
+    if (expr.target.hasError || expr.arguments.hasError)
       return expr.taint;
 
     //TODO: Generate default constructor if no constructors are defined.
     if (expr.arguments.length == 0) {
-      expr.exprType = expr.expr.getTypeDecl().declType;
+      expr.exprType = expr.callable.getTypeDecl().declType;
       return expr;
     }
 
-    return expr.expr.exprType.visit!(
+    return expr.target.exprType.visit!(
       delegate(TypeType type) {
         if (expr.arguments.length == 1 && expr.arguments[0].exprType == decl.declType) {
           return expr.arguments[0];
@@ -417,14 +417,13 @@ struct ExprSemantic {
   }
 
   Node visit(CallExpr expr) {
-    if (!expr.expr.exprTypeSet)
-    accept(expr.expr);
+    typeCheck(expr.callable);
     debug(Semantic) log("=>", expr);
     if (!expr.arguments.exprTypeSet)
       accept(expr.arguments);
     debug(Semantic) log("=>", expr);
 
-    if (expr.expr.hasError || expr.arguments.hasError)
+    if (expr.callable.hasError || expr.arguments.hasError)
       return expr.taint;
 
     if (!expr.context) {
@@ -569,15 +568,15 @@ struct ExprSemantic {
       StructDecl decl = ge.decl;
       ASSERT(isLValue(expr.left), "Modules can not be temporaries.");
 
-      auto ident = expr.right.visit!((IdentifierExpr e) => e.identifier);
-      auto fieldDecl = decl.decls.lookup(ident);
+      auto ident = expr.right.visit!((IdentifierExpr e) => e);
+      auto fieldDecl = decl.decls.lookup(ident.identifier);
 
       if (fieldDecl) {
         expr.exprType = fieldDecl.declType;
 
         return expr;
       }
-      expr.error("No field " ~ ident.idup ~ " in " ~ decl.name.value.idup);
+      expr.error("No field " ~ ident.identifier.idup ~ " in " ~ decl.name.value.idup);
       return expr.taint;
     }
 

@@ -556,18 +556,18 @@ class MemberExpr : BinaryExpr {
 class CallExpr : Expr {
   mixin NodeMixin;
 
-  Expr expr;
+  Expr callable;
   TupleExpr arguments;
   Expr context;
 
-  this(Expr expr, TupleExpr arguments, Expr context = null) {
-    this.expr = expr;
+  this(Expr callable, TupleExpr arguments, Expr context = null) {
+    this.callable = callable;
     this.arguments = arguments;
     this.context = context;
   }
 
-  this(Expr expr, Expr[] arguments, Expr context = null) {
-    this.expr = expr;
+  this(Expr callable, Expr[] arguments, Expr context = null) {
+    this.callable = callable;
     this.arguments = new TupleExpr(arguments);
     this.context = context;
   }
@@ -589,6 +589,7 @@ class IndexExpr : Expr {
 class ConstructExpr : CallExpr {
   mixin NodeMixin;
 
+  alias target = callable;
   this(Expr expr, TupleExpr arguments) {
     super(expr, arguments);
   }

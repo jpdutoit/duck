@@ -61,7 +61,7 @@ mixin template RecursiveAccept() {
       }
     }
     void recurse(CallExpr expr) {
-      accept(expr.expr);
+      accept(expr.callable);
       accept(expr.arguments);
     }
 

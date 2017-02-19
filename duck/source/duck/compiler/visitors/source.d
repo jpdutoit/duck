@@ -28,7 +28,7 @@ private alias V = Visitor!(
     }
     return s;
   },
-  (CallExpr expr) => expr.expr.findSource() + expr.arguments.findSource(),
+  (CallExpr expr) => expr.callable.findSource() + expr.arguments.findSource(),
   (IndexExpr expr) => expr.expr.findSource() + expr.arguments.findSource(),
   (ReturnStmt stmt) => stmt.expr.findSource(),
   (ExprStmt stmt) => stmt.expr.findSource(),
