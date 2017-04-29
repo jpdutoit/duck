@@ -5,6 +5,8 @@ import duck.compiler.dbg;
 import duck.compiler.visitors.visit;
 
 T dup(T : Expr)(T t) {
+  if (!t) return null;
+  
   auto result = cast(T)t.dupImpl;
   ASSERT(result, "Expected non-null duplicate of " ~ T.stringof);
   return result;
@@ -17,7 +19,7 @@ private Expr dupImpl(Expr expr) {
     (IdentifierExpr expr) => expr,
     (RefExpr expr) => expr,
     (LiteralExpr expr) => expr,
-    (CallExpr expr) => new CallExpr(expr.dup, expr.arguments.dup, expr.context.dup),
+    (CallExpr expr) => new CallExpr(expr.callable.dup, expr.arguments.dup, expr.context.dup),
     (BinaryExpr expr) => new BinaryExpr(expr.operator, expr.left.dup, expr.right.dup),
     (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => e.dup).array)
   );
