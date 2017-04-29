@@ -11,6 +11,7 @@ import duck.compiler.transforms;
 import duck.compiler;
 import duck.compiler.context;
 import duck.compiler.visitors;
+import duck.compiler.semantic.helpers;
 
 import duck.compiler.dbg;
 
@@ -36,37 +37,42 @@ string typeString(Type type) {
 
 string lvalueToString(Expr expr){
   return expr.visit!(
-    (RefExpr re) => re.identifier.value,
-    (IdentifierExpr ie) => ie.identifier,
-    (MemberExpr me) => lvalueToString(me.left) ~ "." ~ lvalueToString(me.right));
+    (RefExpr re) => re.context
+      ? lvalueToString(re.context) ~ "." ~ re.identifier.value
+      : re.identifier.value,
+    (IdentifierExpr ie) => ie.identifier);
 }
 
 string findTarget(Expr expr) {
   return expr.visit!(
     (Expr expr) => cast(string)null,
-    (MemberExpr expr) => lvalueToString(expr.left));
+    (RefExpr expr) => expr.context ? lvalueToString(expr.context) : null);
 }
 
 StructDecl findOwnerDecl(Expr expr) {
   return expr.visit!(
     (Expr expr) => cast(StructDecl)null,
-    delegate StructDecl(MemberExpr expr) {
-      if (auto ge = cast(ModuleType)expr.left.exprType) {
-        return ge.decl;
+    (RefExpr e) {
+      if (e.context) {
+        if (auto ge = cast(ModuleType)e.context.exprType) {
+          return ge.decl;
+        }
+        return e.context.findOwnerDecl();
       }
-      return expr.left.findOwnerDecl();
+      return null;
     });
 }
 
 auto findModules(Expr expr) {
   string[] modules;
-  expr.traverse((MemberExpr memberExpr) {
-    if (memberExpr.left.exprType.kind == ModuleType.Kind) {
-      modules ~= memberExpr.findTarget();
+  expr.traverse((RefExpr e) {
+    if (e.context && e.context.exprType.kind == ModuleType.Kind) {
+      modules ~= e.findTarget();
       //return false;
     }
     return true;
   });
+
   return modules;
 }
 
@@ -99,6 +105,24 @@ struct CodeGen {
 
   Context context;
 
+  string[size_t] symbols;
+  int symbolCount = 0;
+
+string symbolName(Decl decl) {
+    import std.conv : to;
+    size_t addr = cast(size_t)cast(void*)decl;
+    string* name = addr in symbols;
+    if (name is null) {
+      symbolCount++;
+      string s = "__symbol_" ~ symbolCount.to!string();
+      symbols[addr] = s;
+      debug(CodeGen) log("symbolName", mangled(decl.declType), s, decl.name.toString());
+      return s;
+    }
+    debug(CodeGen) log("symbolName", mangled(decl.declType), *name,decl.name.toString());
+    return *name;
+  }
+
   this(Context context) {
     this.context = context;
   }
@@ -114,13 +138,6 @@ struct CodeGen {
     debug(CodeGen) logIndent();
     n.accept(this);
     debug(CodeGen) logOutdent();
-  }
-
-  void visit(MemberExpr expr) {
-    debug(CodeGen) log("MemberExpr");
-    accept(expr.left);
-    emit(".");
-    accept(expr.right);
   }
 
   void visit(IdentifierExpr expr) {
@@ -355,10 +372,23 @@ struct CodeGen {
   void visit(TypeExpr expr) {
     accept(expr.expr);
   }
+
   void visit(RefExpr expr) {
     debug(CodeGen) log("RefExpr");
+    if (expr.context) {
+      accept(expr.context);
+      emit(".");
+    }
+
     emit(expr.decl.visit!(
       (Decl d) => d.name.value,
+      (MethodDecl d) => d.name.value,
+      (CallableDecl d) {
+        if (d.external)
+          return d.name.value;
+        else
+          return symbolName(d);
+      },
       (TypeDecl d) => typeString(d.declType)
     ));
   }
@@ -416,7 +446,9 @@ struct CodeGen {
       else
         emit("void");
       emit(" ");
-      emit(funcDecl.name.value);
+
+      emit(symbolName(funcDecl));
+
       emit("(");
       for (int i = 0; i < funcDecl.parameterTypes.length; ++i) {
         accept(funcDecl.parameterTypes[i]);

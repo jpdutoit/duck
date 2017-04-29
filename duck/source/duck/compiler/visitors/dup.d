@@ -15,7 +15,7 @@ T dup(T : Expr)(T t) {
 private Expr dupImpl(Expr expr) {
   import std.array, std.algorithm.iteration;
   return expr.visit!(
-    (MemberExpr expr) => new MemberExpr(expr.left.dup, expr.right),
+    (MemberExpr expr) => new MemberExpr(expr.context.dup, expr.member),
     (IdentifierExpr expr) => expr,
     (RefExpr expr) => expr,
     (LiteralExpr expr) => expr,

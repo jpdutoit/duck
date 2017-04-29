@@ -16,7 +16,14 @@ private alias V = Visitor!(
     return Slice();
   },
   (InlineDeclExpr expr) => expr.declStmt.findSource(),
-  (RefExpr expr) => expr.identifier,
+  (RefExpr expr) {
+    if (expr.context)
+      return expr.context.findSource() + expr.identifier;
+    return expr.identifier;
+  },
+  (MemberExpr expr) {
+      return expr.context.findSource() + expr.member;
+  },
   (LiteralExpr expr) => expr.token.slice,
   (IdentifierExpr expr) => expr.token.slice,
   (BinaryExpr expr) => expr.left.findSource() + expr.operator + expr.right.findSource(),

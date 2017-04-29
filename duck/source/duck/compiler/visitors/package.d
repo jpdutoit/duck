@@ -66,7 +66,7 @@ mixin template RecursiveAccept() {
     }
 
     void recurse(MemberExpr expr) {
-      accept(expr.left);
+      accept(expr.context);
     }
 
     void recurse(RefExpr expr) {

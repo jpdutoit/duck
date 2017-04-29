@@ -15,7 +15,10 @@ struct ExprSemantic {
 
   alias semantic this;
 
-  void accept(E)(ref E target) { semantic.accept!E(target); }
+  E accept(E)(ref E target) {
+    semantic.accept!E(target);
+    return target;
+  }
 
   Expr makeModule(Type type, Expr ctor) {
     auto t = context.temporary();
@@ -499,12 +502,13 @@ struct ExprSemantic {
             return new RefExpr(expr.token, overloadSet);
           },
           (MethodDecl methodDecl)
-            => new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.dup),
-          (FieldDecl fieldDecl)
-            => new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.dup),
+            => new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.token),
+          (FieldDecl fieldDecl) {
+            return new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.token);
+          },
           (MacroDecl macroDecl) {
             if (macroDecl.parentDecl)
-              return cast(Expr)new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.dup);
+              return cast(Expr)new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.token);
             else
               return cast(Expr)new RefExpr(expr.token, decl);
           },
@@ -543,45 +547,47 @@ struct ExprSemantic {
   }
 
   Node visit(RefExpr expr) {
-    //Decl decl = currentScope.lookup(expr.identifier.value);
-    Decl decl = expr.decl;
+    if (expr.context) {
+      accept(expr.context);
+      debug(Semantic) log("=>", expr);
+      implicitConstructCall(expr.context);
+      if (expr.context.hasError) return expr.taint;
+    }
 
-    auto retExpr = decl.visit!(
+    return expr.decl.visit!(
       (TypeDecl decl) => (expr.exprType = TypeType.create(decl.declType), expr),
       (VarDecl decl) => (expr.exprType = decl.declType, expr),
+      (FieldDecl decl) => (expr.exprType = decl.declType, expr),
       (CallableDecl decl) => (expr.exprType = decl.declType, expr),
       (OverloadSet os) => (expr.exprType = OverloadSetType.create(os), expr),
-      //(UnboundDecl decl) => (expr.exprType = decl.declType, expr),
+      (UnboundDecl decl) => (expr.exprType = decl.declType, expr),
       (AliasDecl decl) => decl.targetExpr
     );
-    return retExpr;
   }
 
   Node visit(MemberExpr expr) {
-    accept(expr.left);
-    implicitConstructCall(expr.left);
+    accept(expr.context);
+    implicitConstructCall(expr.context);
     debug(Semantic) log("=>", expr);
 
-    if (expr.left.hasError) return expr.taint;
+    if (expr.context.hasError) return expr.taint;
 
-    if (auto ge = cast(ModuleType)expr.left.exprType) {
-      StructDecl decl = ge.decl;
-      ASSERT(isLValue(expr.left), "Modules can not be temporaries.");
+    return expr.context.exprType.visit!(
+      (ModuleType type) {
+        ASSERT(isLValue(expr.context), "Modules can not be temporaries.");
 
-      auto ident = expr.right.visit!((IdentifierExpr e) => e);
-      auto fieldDecl = decl.decls.lookup(ident.identifier);
+        auto member = type.decl.decls.lookup(expr.member);
+        if (!member) {
+          return expr.error("No member " ~ expr.member.value ~ " in " ~ type.decl.name.value.idup);
+        }
 
-      if (fieldDecl) {
-        expr.exprType = fieldDecl.declType;
-
-        return expr;
-      }
-      expr.error("No field " ~ ident.identifier.idup ~ " in " ~ decl.name.value.idup);
+        auto refExpr = new RefExpr(expr.member, member, expr.context);
+        return accept(refExpr);
+    },
+    (Type t) {
+      expr.context.error("Cannot access members of " ~ expr.context.exprType.mangled());
       return expr.taint;
-    }
-
-    expr.left.error("Cannot access members of " ~ mangled(expr.left.exprType));
-    return expr.taint;
+    });
   }
 
   // Nothing to do for these

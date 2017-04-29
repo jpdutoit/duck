@@ -29,10 +29,12 @@ struct ExprToString {
     return expr.expr.accept(this);
   }
   string visit(RefExpr expr) {
+    if (expr.context)
+      return "(" ~ expr.context.accept(this) ~ "." ~ expr.identifier.blue ~ "".annot(expr._exprType) ~ ")";
     return "(" ~ expr.identifier.blue ~ "".annot(expr._exprType) ~ ")";
   }
   string visit(MemberExpr expr) {
-    return "(" ~ expr.left.accept(this) ~ "." ~ expr.right.accept(this) ~ ")".annot(expr._exprType);
+    return "(" ~ expr.context.accept(this) ~ "." ~ expr.member.value ~ ")".annot(expr._exprType);
   }
   string visit(T)(T expr) if (is(T : LiteralExpr) || is(T : IdentifierExpr)) {
     return ""  ~ expr.token.value.blue ~ "".annot(expr._exprType) ~ "";

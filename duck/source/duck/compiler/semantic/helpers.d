@@ -64,15 +64,21 @@ auto taint(Decl decl) {
 Expr findTarget(Expr expr) {
   return expr.visit!(
     (Expr expr) => cast(Expr)null,
-    (MemberExpr expr) => expr.left);
+    (RefExpr expr) => expr.context);
 }
 
 bool isLValue(Expr expr) {
   return expr.visit!(
     (IndexExpr i) => isLValue(i.expr),
     (IdentifierExpr i) => true,
-    (RefExpr r) => true,
-    (MemberExpr m) => isLValue(m.left),
+    (RefExpr r) {
+      if (r.context)
+        return isLValue(r.context);
+      return r.decl.visit!(
+        (VarDecl d) => true,
+        (Decl d) => false
+      );
+    },
     (Expr e) => false
   );
 }
@@ -81,21 +87,7 @@ bool isPipeTarget(Expr expr) {
   return expr.visit!(
     (IndexExpr i) => isPipeTarget(i.expr),
     (IdentifierExpr i) => true,
-    (RefExpr r) => r.decl.visit!(
-      (FieldDecl d) => true,
-      (Decl d) => false
-    ),
-    (MemberExpr m) {
-      if (auto mod = cast(ModuleType)m.left.exprType) {
-        StructDecl decl = mod.decl;
-        auto ident = m.right.visit!((IdentifierExpr e) => e.identifier);
-        auto fieldDecl = decl.decls.lookup(ident);
-        if (fieldDecl) {
-          return true;
-        }
-      }
-      return false;
-    },
+    (RefExpr r) => r.context && r.context.exprType.as!ModuleType && r.decl.as!FieldDecl,
     (Expr e) => false
   );
 }
@@ -132,6 +124,10 @@ enum MatchResult {
 bool isFunctionViable(Type[] args, FunctionType A) {
   return false;
 }
+
+N as(N : Node)(Node node) { return cast(N) node; }
+T as(T : Type)(Type type) { return cast(T) type; }
+D as(D : Decl)(Decl decl) { return cast(D) decl; }
 
 /*
 http://en.cppreference.com/w/cpp/language/overload_resolution

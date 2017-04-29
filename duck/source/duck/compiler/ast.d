@@ -405,10 +405,12 @@ class RefExpr : Expr {
 
   Decl decl;
   Token identifier;
+  Expr context;
 
-  this(Token identifier, Decl decl) {
+  this(Token identifier, Decl decl, Expr context = null) {
     this.identifier = identifier;
     this.decl = decl;
+    this.context = context;
   }
 }
 
@@ -481,10 +483,6 @@ class IdentifierExpr : Expr {
   string identifier;
   Token token;
 
-  this(string identifier) {
-    this.token = None;
-    this.identifier = identifier;
-  }
   this(Token token) {
     this.identifier = token.value;
     this.token = token;
@@ -540,15 +538,15 @@ class AssignExpr : BinaryExpr {
   }
 }
 
-class MemberExpr : BinaryExpr {
+class MemberExpr : Expr {
   mixin NodeMixin;
 
-  this(Expr expr, Token identifier) {
-    super(None, expr, new IdentifierExpr(identifier));
-  }
+  Expr context;
+  Token member;
 
-  this(Expr left, Expr right) {
-    super(None, left, right);
+  this(Expr context, Token member) {
+    this.context = context;
+    this.member = member;
   }
 
 }
