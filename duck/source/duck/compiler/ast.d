@@ -187,6 +187,7 @@ class CallableDecl : Decl {
   Expr returnExpr;
   bool external;
   bool dynamic;
+  bool operator;
 
   this(Token identifier) {
     super(identifier);

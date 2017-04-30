@@ -2,6 +2,17 @@ extern function operator+(float, float) -> float;
 extern struct bool;
 extern function assertEquals(float, float);
 
+module B {
+  function output() {
+
+  }
+}
+
+//function operator stereo(m: mono) -> stereo(m, m);
+
+//extern function operator+(a: __literal_float, b: __literal_float) -> __literal_float;
+//extern function implicit(a: __literal_int) -> __literal_float;
+
 function add(a: float, b: float) -> float {
   return a + b;
 }
@@ -26,12 +37,28 @@ f: float = alwaysTwo(aaa, bbb);
 g: float = alwaysTwo(aaaa:Now, bbbb:Now);
 
 function operator-(a: float, b: float) -> a+b+10;
+function operator*(a: float, b: float) -> float {
+  return a + b + 20;
+}
+function operator*(a: string, b: string) -> float {
+  return 100;
+}
+
+function test1(a: float) -> float {
+  return 10;
+}
+function test1(a: string) -> float {
+  return 20;
+}
 assertEquals(1-2, 13);
 assertEquals(10-5, 25);
-
+assertEquals(10*5, 35);
+assertEquals("hello"*"there", 100);
+assertEquals(test1(10), 10);
+assertEquals(test1("hello"), 20);
 /*
 OUTPUT:
 ---
-tests/runnable/func.duck(16): Assertion failed: 4.000000 != 6.000000
+tests/runnable/func.duck(27): Assertion failed: 4.000000 != 6.000000
 ---
 */

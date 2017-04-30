@@ -361,6 +361,7 @@ struct Parser {
         case Tok!"<=":
         case Tok!">":
         case Tok!"<":
+          func.operator = true;
           ident = lexer.consume();
           break;
         default:

@@ -123,6 +123,13 @@ string symbolName(Decl decl) {
     return *name;
   }
 
+  bool isInfixOperator(CallableDecl callable) {
+    if (callable.external && callable.operator) {
+      return true;
+    }
+    return false;
+  }
+
   this(Context context) {
     this.context = context;
   }
@@ -312,10 +319,19 @@ string symbolName(Decl decl) {
 
   void visit(CallExpr expr) {
     debug(CodeGen) log("CallExpr");
-    accept(expr.expr);
-    emit("(");
-    accept(expr.arguments);
-    emit(")");
+    auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
+    if (callable && isInfixOperator(callable) && expr.arguments.length == 2) {
+      emit("(");
+      accept(expr.arguments[0]);
+      accept(expr.callable);
+      accept(expr.arguments[1]);
+      emit(")");
+    } else {
+      accept(expr.callable);
+      emit("(");
+      accept(expr.arguments);
+      emit(")");
+    }
   }
 
   void visit(VarDeclStmt stmt) {

@@ -77,6 +77,29 @@ module Clock {
   }
 }
 */
+
+extern function sum(buffer: float[]) -> float;
+extern function max(float, float) -> float;
+extern function min(float, float) -> float;
+extern function floorf(float) -> float;
+extern function sqrt(float) -> float;
+/*
+module LowPass {
+  buffer: float[256];
+  input: float;
+  freq: frequency;
+
+  function tick() {
+    buffer[next] = input;
+    next = (next + 1) % 256;
+
+    f: float = freq / SAMPLE_RATE;
+    N: float = floorf(min(255, sqrt(0.196202 + f*f)/f));
+  }
+
+  next: float;
+}*/
+
 module SinOsc {
   phasor: Phasor;
   freq: this.phasor.freq;
