@@ -129,6 +129,19 @@ N as(N : Node)(Node node) { return cast(N) node; }
 T as(T : Type)(Type type) { return cast(T) type; }
 D as(D : Decl)(Decl decl) { return cast(D) decl; }
 
+
+O enforce(O : Object)(Object o, string file = __FILE__, int line = __LINE__) {
+  auto c = cast(O)o;
+  ASSERT(c !is null, "Expected object to be of type " ~ O.stringof ~ " not be " ~ o.classinfo.name, line, file);
+  return c;
+}
+
+
+O enforce(O : Object)(O o, string file = __FILE__, int line = __LINE__) {
+   ASSERT(o !is null, "Expected object to not be null", line, file);
+   return o;
+}
+
 /*
 http://en.cppreference.com/w/cpp/language/overload_resolution
 https://stackoverflow.com/questions/29090692/how-is-ambiguity-determined-in-the-overload-resolution-algorithm
@@ -176,8 +189,3 @@ for (int i = 0; i < type.parameterTypes.length; ++i) {
   }
 }
 */
-
-
-bool isModule(Expr expr) {
-  return expr.exprType.isKindOf!ModuleType;
-}

@@ -61,10 +61,6 @@ abstract class Type {
   _Kind kind();
   string describe() const ;
 
-  final bool isKindOf(T)() {
-    return this.kind == T.Kind;
-  }
-
   bool isSameType(Type other) {
     return (this is other);
   }

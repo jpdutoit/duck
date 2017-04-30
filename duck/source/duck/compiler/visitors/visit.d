@@ -13,6 +13,7 @@ R accept(R, N : Node, Visitor)(N node, auto ref Visitor visitor) {
         case NodeType._nodeTypeId: return visitor.visit(cast(NodeType)node);
     }
     default:
+      ASSERT(false, "Not handled: " ~ node.classinfo.name);
       static if (!is(R:void)) return R.init;
   }
 }
@@ -25,6 +26,7 @@ R accept(R, N : Type, Visitor)(N node, auto ref Visitor visitor) {
         case TType.Kind: return cast(R)(visitor.visit(cast(TType)node));
     }
     default:
+      ASSERT(false, "Not handled: " ~ node.classinfo.name);
       static if (!is(R:void)) return R.init;
   }
 }
@@ -75,10 +77,12 @@ template visit(alias T) if (isSomeFunction!(T)) {
     ASSERT(node, "Null node");
     if (auto n = cast(ParameterTypeTuple!(T)[0])node)
       return T(n);
-    else
+    else {
+      ASSERT(false, "Not handled: " ~ node.classinfo.name);
       static if (!is(R:void)) {
         return R.init;
       }
+    }
   }
 }
 
@@ -97,6 +101,7 @@ template visit(alias T, alias U) if (isSomeFunction!T && isSomeFunction!U) {
       if (auto n = cast(TP)(node)) return T(n);
       if (auto n = cast(UP)(node)) return U(n);
     }
+    ASSERT(false, "Not handled: " ~ node.classinfo.name);
     static if (!is(R:void)) {
       return R.init;
     }

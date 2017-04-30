@@ -113,7 +113,7 @@ CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, 
     auto functionType = cast(FunctionType)decl.declType;
 
     assert(args.exprType.as!TupleType, "Internal error: Expected args to have tuple type");
-    Cost cost = ((args.exprType.as!TupleType).elementTypes).coercionCost(contextExpr ? contextExpr.exprType : null, decl);
+    Cost cost = (args.exprType.as!TupleType().elementTypes).coercionCost(contextExpr ? contextExpr.exprType : null, decl);
     debug(Semantic) log("=> Cost:", cost, "for", args.exprType.describe(), "to", functionType.parameters.describe);
     if (cost <= lowestCost) {
       if (cost != lowestCost) {
