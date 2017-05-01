@@ -59,3 +59,8 @@ shared static this()
     "constructor": Tok!"constructor"
   ];
 }
+
+@property
+bool isWhitespace(Token token)  {
+  return token.type == Tok!" " || token.type == EOL || token.type == Comment || token.type == Unknown;
+}

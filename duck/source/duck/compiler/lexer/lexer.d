@@ -30,8 +30,8 @@ struct Lexer {
     return tokens[(frontIndex + LOOKAHEAD - 1) % LOOKAHEAD];
   }
 
-  Slice sliceFrom(Slice slice) {
-    return input.sliceFrom(slice);
+  Slice sliceFrom(Slice from) {
+    return input.slice(from, front);
   }
 
   void expect(Token.Type type, string message) {
@@ -57,15 +57,17 @@ struct Lexer {
   Token consume() {
     Token old = front;
     popFront();
-
-    while (front.type == Tok!" " || front.type == EOL || front.type == Comment || front.type == Unknown) {
-      popFront();
-    }
-
     return old;
   }
 
   void popFront() {
+    frontIndex = (frontIndex + 1) % LOOKAHEAD;
+    do {
+      back = tokenizeNext();
+    } while (back.isWhitespace);
+  }
+
+  private Token tokenizeNext() {
     auto saved = input.save();
     Token.Type tokenType;
     switch (input.front) {
@@ -231,18 +233,18 @@ struct Lexer {
       default:
         input.consume();
         tokenType = Unknown;
-        front = input.tokenSince(tokenType, saved);
-        context.error(front, "Unexpected character '%s'", front.value);
-        return;
+        Token token = input.tokenSince(tokenType, saved);
+        context.error(token, "Unexpected character '%s'", token.value);
+        return token;
     }
-    frontIndex = (frontIndex + 1) % LOOKAHEAD;
-    back = input.tokenSince(tokenType, saved);
+    Token token = input.tokenSince(tokenType, saved);
 
     if (tokenType == Identifier) {
-      auto str = back.value;
-      auto type = str in reservedWords;
+      auto type = token.value in reservedWords;
       if (type != null)
-        back.type = *type;
+        token.type = *type;
     }
+
+    return token;
   }
 }
