@@ -188,6 +188,12 @@ auto test(string file, bool expectProcessSuccess, bool run = false)
 
   auto proc = Proc(file, options);
   auto output = proc.wait();
+
+  // TODO: Remove this when dmd is fixed to avoid spurious linker warnings
+  import std.regex;
+  auto ldWarning = regex(r"ld: warning[^\n]*\n?","g");
+  output = output.replaceAll(ldWarning, "");
+
   if (output == testCase.output.stderr &&
   ((expectProcessSuccess && proc.result == 0)||(!expectProcessSuccess && proc.result != 0))) {
     succeeded++;
