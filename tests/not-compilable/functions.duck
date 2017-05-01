@@ -14,16 +14,21 @@ function testfn() {
   return 1;
 }
 
-function testfn() -> float{
+function testfn() -> float {
   //TODO: This should type-check against return type specified above
   return "hello";
 }
 
+function fn1(p1 : float, p2: "hello", p3: 123) {  }
+function fn1(p3: 123) {  }
 
 /**
 OUTPUT:
 ---
-tests/not-compilable/functions.duck(9:1-9): Error: No functions matches arguments.
-tests/not-compilable/functions.duck(10:1-12): Error: No functions matches arguments.
+tests/not-compilable/functions.duck(9:1-10): Error: No functions matches arguments.
+tests/not-compilable/functions.duck(10:1-13): Error: No functions matches arguments.
+tests/not-compilable/functions.duck(22:30-36): Error: Expected a type
+tests/not-compilable/functions.duck(22:43-45): Error: Expected a type
+tests/not-compilable/functions.duck(23:18-20): Error: Expected a type
 ---
 */

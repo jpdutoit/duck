@@ -38,8 +38,8 @@ string typeString(Type type) {
 string lvalueToString(Expr expr){
   return expr.visit!(
     (RefExpr re) => re.context
-      ? lvalueToString(re.context) ~ "." ~ re.identifier.value
-      : re.identifier.value,
+      ? lvalueToString(re.context) ~ "." ~ re.decl.name
+      : re.decl.name,
     (IdentifierExpr ie) => ie.identifier);
 }
 
@@ -154,7 +154,7 @@ string symbolName(Decl decl) {
 
   void visit(LiteralExpr expr) {
     debug(CodeGen) log("LiteralExpr");
-    emit(expr.token.value);
+    emit(expr.value);
   }
 
   void visit(ArrayLiteralExpr expr) {
@@ -177,7 +177,7 @@ string symbolName(Decl decl) {
   }
 
   void instrument(Expr value, Expr target) {
-    auto slice = value.findSource();
+    auto slice = value.source;
     emit("\n");
     emit("instrument(\"");
     emit(slice.toLocationString());
@@ -343,7 +343,7 @@ string symbolName(Decl decl) {
     string typeName = stmt.decl.declType.typeString();
     emit(typeName);
     emit(" ");
-    emit(stmt.identifier.value);
+    emit(stmt.decl.name);
     if (stmt.expr) {
       emit(" = ");
       accept(stmt.expr);
@@ -363,7 +363,7 @@ string symbolName(Decl decl) {
   }
 
   void line(Node node) {
-    auto slice = node.findSource();
+    auto slice = node.source;
     if (cast(FileBuffer)slice.buffer) {
       import std.conv : to;
       emit("#line ");
@@ -397,11 +397,11 @@ string symbolName(Decl decl) {
     }
 
     emit(expr.decl.visit!(
-      (Decl d) => d.name.value,
-      (MethodDecl d) => d.name.value,
+      (Decl d) => d.name,
+      (MethodDecl d) => d.name,
       (CallableDecl d) {
         if (d.external)
-          return d.name.value;
+          return d.name;
         else
           return symbolName(d);
       },
@@ -421,13 +421,13 @@ string symbolName(Decl decl) {
     line(fieldDecl.typeExpr);
 
     emit("__ConnDg ");
-    emit(fieldDecl.name.value);
+    emit(fieldDecl.name);
     emit("__dg; ");
 
     emit("  ");
     accept(fieldDecl.typeExpr);
     emit(" ");
-    emit(fieldDecl.name.value);
+    emit(fieldDecl.name);
     if (fieldDecl.valueExpr) {
       emit(" = ");
       accept(fieldDecl.valueExpr);
@@ -437,7 +437,7 @@ string symbolName(Decl decl) {
 
   void visit(MethodDecl methodDecl) {
     emit("void ");
-    emit(methodDecl.name.value);
+    emit(methodDecl.name);
     emit("(");
     emit(") ");
     //emit("{");
@@ -455,7 +455,7 @@ string symbolName(Decl decl) {
   }
 
   void visit(FunctionDecl funcDecl) {
-    debug(CodeGen) log("FunctionDecl", funcDecl.name.value);
+    debug(CodeGen) log("FunctionDecl", funcDecl.name);
     if (!funcDecl.external) {
       if (funcDecl.returnExpr)
         accept(funcDecl.returnExpr);
@@ -481,17 +481,17 @@ string symbolName(Decl decl) {
   }
 
   void visit(StructDecl structDecl) {
-   debug(CodeGen) log("StructDecl", structDecl.name.value);
+   debug(CodeGen) log("StructDecl", structDecl.name);
    if (!structDecl.external) {
      assert(false, "Structs not yet supported");
    }
   }
 
   void visit(ModuleDecl moduleDecl) {
-    debug(CodeGen) log("ModuleDecl", moduleDecl.name.value);
+    debug(CodeGen) log("ModuleDecl", moduleDecl.name);
     if (!moduleDecl.external) {
         emit("struct ");
-        emit(moduleDecl.name.value);
+        emit(moduleDecl.name);
         emit(" {");
         indent();
         emit("\n");
@@ -512,9 +512,9 @@ string symbolName(Decl decl) {
         foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
           if (auto fd = cast(FieldDecl)field) {
             emit("if (");
-            emit(fd.name.value);
+            emit(fd.name);
             emit("__dg) ");
-            emit(fd.name.value);
+            emit(fd.name);
             emit("__dg();\n");
           }
         }

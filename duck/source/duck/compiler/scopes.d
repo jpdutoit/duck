@@ -8,11 +8,14 @@ import duck.compiler.lexer;
 
 interface Scope {
   Decl lookup(string identifier);
-  void define(string identifier, Decl decl);
   bool defines(string identifier);
 }
 
-class DeclTable : Scope {
+interface DefinitionScope : Scope {
+  void define(string identifier, Decl decl);
+}
+
+class DeclTable : DefinitionScope {
   Decl[string] symbols;
   Decl[] symbolsInDefinitionOrder;
 
@@ -71,8 +74,17 @@ class SymbolTable : Scope {
       assumeSafeAppend(scopes);
     }
 
-    void define(string identifier, Decl decl) {
-      return scopes[$-1].define(identifier, decl);
+    Scope top() {
+        return scopes[$-1];
+    }
+
+    bool define(string identifier, Decl decl) {
+      auto dscope = cast(DefinitionScope)top;
+      if (dscope) {
+        dscope.define(identifier, decl);
+        return true;
+      }
+      return false;
     }
 
     bool defines(string identifier) {

@@ -15,8 +15,8 @@ A([1, 2, 3]);
 /*
 OUTPUT:
 ---
-tests/not-compilable/ctors.duck(8:1-12): Error: No constructor matches argument types (number, string)
-tests/not-compilable/ctors.duck(9:1-3): Error: No constructor matches argument types (number)
-tests/not-compilable/ctors.duck(12:1): Error: No constructor matches argument types (number[])
+tests/not-compilable/ctors.duck(8:1-13): Error: No constructor matches argument types (number, string)
+tests/not-compilable/ctors.duck(9:1-4): Error: No constructor matches argument types (number)
+tests/not-compilable/ctors.duck(12:1-12): Error: No constructor matches argument types (number[])
 ---
 */

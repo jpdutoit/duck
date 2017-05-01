@@ -62,13 +62,14 @@ struct StmtSemantic {
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 
-    debug(Semantic) log("Add to symbol table:", stmt.identifier.value, mangled(stmt.decl.declType));
+    auto name = stmt.decl.name;
+    debug(Semantic) log("Add to symbol table:", name, mangled(stmt.decl.declType));
     // Add identifier to symbol table
-    if (symbolTable.defines(stmt.identifier.value)) {
-      error(stmt.identifier, "Cannot redefine " ~ stmt.identifier.value.idup);
+    if (symbolTable.defines(name)) {
+      error(name, "Cannot redefine " ~ name);
     }
     else {
-      symbolTable.define(stmt.identifier.value, stmt.decl);
+      symbolTable.define(name, stmt.decl);
     }
 
     if (stmt.decl.declType.kind != ErrorType.Kind) {
@@ -81,12 +82,12 @@ struct StmtSemantic {
 
   Node visit(TypeDeclStmt stmt) {
     accept(stmt.decl);
-    
-    if (!cast(CallableDecl)stmt.decl && globalScope.defines(stmt.decl.name)) {
-      error(stmt.decl.name, "Cannot redefine " ~ stmt.decl.name.idup);
+
+    if (!stmt.decl.as!CallableDecl && globals.defines(stmt.decl.name)) {
+      error(stmt.identifier, "Cannot redefine " ~ stmt.decl.name);
     }
     else {
-      globalScope.define(stmt.decl.name, stmt.decl);
+      globals.define(stmt.decl.name, stmt.decl);
     }
 
     if (stmt.decl.declType.kind != ErrorType.Kind) {

@@ -9,13 +9,32 @@ struct LineColumn {
 
 struct Slice {
   Buffer buffer;
-  uint start = uint.max;
-  uint end = uint.max;
+  union {
+    struct {
+      string _value = null;
+    }
+    struct {
+      uint start;
+      uint end;
+    }
+  }
+
+  this(Buffer buffer, uint start, uint end) {
+    this.buffer = buffer;
+    this.start = start;
+    this.end = end;
+  }
+
+  this(string value) {
+    this.buffer = null;
+    this._value = value;
+  }
 
   alias toString this;
+  alias value = toString;
 
   bool opCast(T : bool)() const {
-    return start < uint.max && end < uint.max;
+    return buffer ? start < uint.max && end < uint.max : false;
   }
 
   LineColumn getStartLocation() const {
@@ -48,13 +67,16 @@ struct Slice {
     return r;
   }
 
+  void opOpAssign(string op : "+") (Slice other) {
+    this = this + other;
+  }
+
   Slice opBinary(string op : "+")(Slice other){
     if (buffer != other.buffer) {
       if (cast(FileBuffer)buffer)
         return this;
       else if (cast(FileBuffer)other.buffer)
         return other;
-      else return this;
     }
     if (!other) return this;
     if (!this) return other;
@@ -70,6 +92,7 @@ struct Slice {
 
   auto toLocationString() const {
     import std.conv;
+    if (!buffer) return "";
     LineColumn[2] ab = getLocation();
     LineColumn a = ab[0], b = ab[1];
     if ((a.line == b.line) && (a.col == b.col-1)) {
@@ -82,7 +105,7 @@ struct Slice {
   }
 
   string toString() const {
-    if (!buffer) return "";
+    if (!buffer) return _value;
     return buffer.contents[start..end].assumeUnique;
   }
 }

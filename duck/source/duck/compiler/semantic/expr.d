@@ -21,14 +21,14 @@ struct ExprSemantic {
   }
 
   Expr makeModule(Type type, Expr ctor) {
-    auto t = context.temporary();
-    return new InlineDeclExpr(t, new VarDeclStmt(t, new VarDecl(type, t), ctor));
+    auto decl = new VarDecl(type, context.temporary());
+    return new InlineDeclExpr(new VarDeclStmt(decl, ctor));
   }
 
   void implicitCall(ref Expr expr) {
     expr.exprType.visit!(
       delegate(OverloadSetType os) {
-        expr = new CallExpr(expr, new TupleExpr([]));
+        expr = expr.call();
         accept(expr);
       },
       (Type type) { }
@@ -51,7 +51,7 @@ struct ExprSemantic {
         // to:      ModuleType tmpVar = Module();
         if (auto refExpr = cast(RefExpr)expr) {
           if (refExpr.decl.declType.as!ModuleType) {
-            auto ctor = new CallExpr(refExpr, new TupleExpr([]));
+            auto ctor = refExpr.call();
             expr = makeModule(refExpr.decl.declType, ctor);
             accept(expr);
             return;
@@ -96,7 +96,7 @@ struct ExprSemantic {
     if (auto moduleType = sourceType.as!ModuleType) {
       auto output = moduleType.decl.decls.lookup("output");
       if (output) {
-        sourceExpr = new MemberExpr(sourceExpr, context.token(Identifier, "output"));
+        sourceExpr = sourceExpr.member("output");
         accept(sourceExpr);
         return coerce(sourceExpr, targetType);
       }
@@ -142,7 +142,8 @@ struct ExprSemantic {
 
     splitStatement(expr.declStmt);
     debug(Semantic) log("=> Split", expr.declStmt);
-    Expr ident = new IdentifierExpr(expr.token);
+
+    Expr ident = new IdentifierExpr(expr).withSource(expr);
     accept(ident);
     return ident;
   }
@@ -178,7 +179,7 @@ struct ExprSemantic {
     expr.exprType = expr.right.exprType;
 
     while (expr.right.exprType.as!ModuleType && expr.right.isLValue) {
-      expr.right = new MemberExpr(expr.right, context.token(Identifier, "input"));
+      expr.right = expr.right.member("input");
       accept(expr.right);
       implicitCall(expr.right);
       debug(Semantic) log("=>", expr);
@@ -200,8 +201,8 @@ struct ExprSemantic {
     return expr;
   }
 
-  CallableDecl resolveCall(Expr expr, Scope searchScope, Token identifier, Expr[] arguments, Expr context = null) {
-    return resolveCall(expr, cast(OverloadSet)searchScope.lookup(identifier.value), arguments);
+  CallableDecl resolveCall(Expr expr, Scope searchScope, string identifier, Expr[] arguments, Expr context = null) {
+    return resolveCall(expr, cast(OverloadSet)searchScope.lookup(identifier), arguments);
   }
 
   CallableDecl resolveCall(Expr expr, OverloadSet overloadSet, Expr[] arguments, Expr context = null) {
@@ -224,7 +225,7 @@ struct ExprSemantic {
 
     auto callable = resolveCall(expr, symbolTable, expr.operator, expr.arguments);
     if (callable && coerce(expr.arguments, callable)) {
-      Expr e = new CallExpr(new RefExpr(expr.operator, callable), expr.arguments);
+      Expr e = callable.call(expr.arguments).withSource(expr);
       return accept(e);
     }
 
@@ -239,8 +240,8 @@ struct ExprSemantic {
 
     auto callable = resolveCall(expr, symbolTable, expr.operator, expr.arguments);
     if (callable && coerce(expr.arguments, callable)) {
-        Expr e = new CallExpr(new RefExpr(expr.operator, callable), expr.arguments);
-        return accept(e);
+      Expr e = callable.call(expr.arguments).withSource(expr);
+      return accept(e);
     }
 
     return expr.left.error("Operation " ~ mangled(expr.left.exprType) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.exprType) ~ " is not defined.");
@@ -265,10 +266,10 @@ struct ExprSemantic {
   Expr expandMacro(MacroDecl macroDecl, Expr[] arguments, Expr contextExpr = null) {
     debug(Semantic) log("=> ExpandMacro", macroDecl, contextExpr);
 
-    Scope macroScope = new DeclTable();
+    DeclTable macroScope = new DeclTable();
     symbolTable.pushScope(macroScope);
-    macroScope.define("this", new AliasDecl(context.token(Identifier, "this"), contextExpr));
-    foreach (int i, Token paramName; macroDecl.parameterIdentifiers) {
+    macroScope.define("this", new AliasDecl("this", contextExpr));
+    foreach (int i, string paramName; macroDecl.parameterIdentifiers) {
       macroScope.define(paramName, new AliasDecl(paramName, arguments[i]));
     }
 
@@ -311,7 +312,7 @@ struct ExprSemantic {
           (StructDecl structDecl) {
             // TODO: Rewrite as call expression instead
             OverloadSet os = structDecl.ctors;
-            expr.context = new RefExpr(structDecl.name, decl);
+            expr.context = structDecl.reference().withSource(expr);
             accept(expr.context);
 
             auto best = resolveCall(expr, os, expr.arguments.elements, expr.context);
@@ -376,7 +377,7 @@ struct ExprSemantic {
           }
           import std.conv: to;
           auto size = expr.arguments[0].visit!(
-              (LiteralExpr literal) => literal.token.toString().to!uint,
+              (LiteralExpr literal) => literal.value.toString().to!uint,
               (Expr e) {
                 expr.arguments.error("Expected a number for array size.");
                 expr.taint;
@@ -388,7 +389,7 @@ struct ExprSemantic {
           arrayDecl = new ArrayDecl(decl.declType, size);
         }
 
-        auto re = new RefExpr(this.context.token(Identifier, "this"), arrayDecl);
+        auto re = arrayDecl.reference();
         re.exprType = t;
         accept(re);
         return re;
@@ -430,7 +431,7 @@ struct ExprSemantic {
           auto best = resolveCall(expr, ot.overloadSet, expr.arguments.elements, expr.context);
           if (expect(best, expr, "No functions matches arguments.")) {
             expr.callable = expr.callable.visit!(
-              (RefExpr r) => new RefExpr(r.identifier, best, r.context)
+              (RefExpr r) => best.reference().withContext(r.context).withSource(r)
             );
 
             accept(expr.callable);
@@ -439,7 +440,7 @@ struct ExprSemantic {
           return expr;
         },
         delegate (TypeType tt) {
-          Expr e = new ConstructExpr(expr.callable, expr.arguments);
+          Expr e = new ConstructExpr(expr.callable, expr.arguments, expr.source);
           accept(e);
           return e;
         },
@@ -479,26 +480,26 @@ struct ExprSemantic {
             if (overloadSet.decls.length == 1 && cast(MacroDecl)overloadSet.decls[0]) {
               return resolve(overloadSet.decls[0]);
             }
-            return new RefExpr(expr.token, overloadSet);
+            return overloadSet.reference().withSource(expr);
           },
           (MethodDecl methodDecl)
-            => new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.token),
-          (FieldDecl fieldDecl) {
-            return new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.token);
-          },
+            => new IdentifierExpr("this").member(expr.identifier),
+          (FieldDecl fieldDecl)
+            => new IdentifierExpr("this").member(expr.identifier),
           (MacroDecl macroDecl) {
             if (macroDecl.parentDecl)
-              return cast(Expr)new MemberExpr(new IdentifierExpr(this.context.token(Identifier, "this")), expr.token);
+              return cast(Expr)new IdentifierExpr("this").member(expr.identifier);
             else
-              return cast(Expr)new RefExpr(expr.token, decl);
+              return cast(Expr)decl.reference().withSource(expr);
           },
-          (AliasDecl aliasDecl)
-            => aliasDecl.targetExpr,
+          (AliasDecl aliasDecl) {
+            return aliasDecl.targetExpr;
+          },
           (UnboundDecl unboundDecl) {
             expr.exprType = unboundDecl.declType;
             return expr;
           },
-          (Decl decl) => new RefExpr(expr.token, decl)
+          (Decl decl) => decl.reference().withSource(expr)
         );
       }
 
@@ -521,8 +522,10 @@ struct ExprSemantic {
         }
       }
 
-      if (!expr.expr.hasError)
+      if (!expr.expr.hasError) {
+        expr.decl = new TypeDecl(ErrorType.create());
         expr.error("Expected a type");
+      }
       return expr.taint();
   }
 
@@ -556,12 +559,12 @@ struct ExprSemantic {
       (ModuleType type) {
         ASSERT(isLValue(expr.context), "Modules can not be temporaries.");
 
-        auto member = type.decl.decls.lookup(expr.member);
+        auto member = type.decl.decls.lookup(expr.name);
         if (!member) {
-          return expr.error("No member " ~ expr.member.value ~ " in " ~ type.decl.name.value.idup);
+          return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
         }
 
-        auto refExpr = new RefExpr(expr.member, member, expr.context);
+        auto refExpr = member.reference().withContext(expr.context).withSource(expr);
         return accept(refExpr);
     },
     (Type t) {

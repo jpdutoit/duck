@@ -55,14 +55,13 @@ struct DeclSemantic {
       paramTypes ~= paramType;
 
       if (!decl.external && !parentIsExternal) {
-        Token name = decl.parameterIdentifiers[i];
-        paramScope.define(name.value, new UnboundDecl(paramType, name));
+        auto name = decl.parameterIdentifiers[i];
+        paramScope.define(name, new UnboundDecl(paramType, name));
       }
     }
 
     if (parentDecl) {
-      //auto thisToken = semantic.context.token(Identifier, "this");
-      paramScope.define("this", new UnboundDecl(parentDecl.declType, None));
+      paramScope.define("this", new UnboundDecl(parentDecl.declType, "this"));
     }
 
     semantic.symbolTable.pushScope(paramScope);
@@ -127,9 +126,8 @@ struct DeclSemantic {
     // a macro value expression.
 
     DeclTable funcScope = new DeclTable();
-    Token thisToken = semantic.context.token(Identifier, "this");
     debug(Semantic) log("=> expansion", decl.typeExpr);
-    Decl thisVar = new UnboundDecl(decl.parentDecl.declType, thisToken);
+    Decl thisVar = new UnboundDecl(decl.parentDecl.declType, "this");
     //thisVar.accept(this);
     funcScope.define("this", thisVar);
     semantic.symbolTable.pushScope(funcScope);
@@ -153,7 +151,7 @@ struct DeclSemantic {
     } else {
       //FIXME: Check that valueExpr is null
       Expr target = decl.typeExpr;
-      TypeExpr contextType = new TypeExpr(new RefExpr(thisToken, decl.parentDecl));
+      TypeExpr contextType = new TypeExpr(decl.parentDecl.reference());
       auto mac = new MacroDecl(decl.name, contextType, [], [], target, decl.parentDecl);
       // Think of a nicer solution than replacing it in decls table,
       // perhaps the decls table should only be constructed after all the fields

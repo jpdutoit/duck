@@ -27,11 +27,11 @@ string prettyName(T)(ref T t) {
 
 
 Expr error(Expr expr, string message) {
-  Context.current.error(expr.findSource(), message);
+  Context.current.error(expr.source, message);
   return expr.taint;
 }
 
-void error(Token token, string message) {
+void error(Slice token, string message) {
   Context.current.error(token, message);
 }
 
@@ -97,7 +97,7 @@ struct SemanticAnalysis {
   alias accept2 = accept;
 
   SymbolTable symbolTable;
-  Scope globalScope;
+  DeclTable globals;
   string sourcePath;
 
   Context context;
@@ -124,12 +124,13 @@ struct SemanticAnalysis {
     this.library = library;
 
     symbolTable.pushScope(library.imports);
-    symbolTable.pushScope(new DeclTable());
-    globalScope = symbolTable.scopes[1];
 
-    globalScope.define("mono", new TypeDecl(NumberType.create, context.token(Identifier, "mono")));
-    globalScope.define("float", new TypeDecl(NumberType.create, context.token(Identifier, "float")));
-    globalScope.define("string", new TypeDecl(StringType.create, context.token(Identifier, "string")));
+    globals = new DeclTable();
+    globals.define("mono", new TypeDecl(NumberType.create, "mono"));
+    globals.define("float", new TypeDecl(NumberType.create, "float"));
+    globals.define("string", new TypeDecl(StringType.create, "string"));
+
+    symbolTable.pushScope(globals);
 
     foreach (ref node ; library.nodes)
       accept(node);

@@ -15,12 +15,12 @@ T dup(T : Expr)(T t) {
 private Expr dupImpl(Expr expr) {
   import std.array, std.algorithm.iteration;
   return expr.visit!(
-    (MemberExpr expr) => new MemberExpr(expr.context.dup, expr.member),
+    (MemberExpr expr) => new MemberExpr(expr.context.dup, expr.name, expr.source),
     (IdentifierExpr expr) => expr,
     (RefExpr expr) => expr,
     (LiteralExpr expr) => expr,
-    (CallExpr expr) => new CallExpr(expr.callable.dup, expr.arguments.dup, expr.context.dup),
-    (BinaryExpr expr) => new BinaryExpr(expr.operator, expr.left.dup, expr.right.dup),
+    (CallExpr expr) => new CallExpr(expr.callable.dup, expr.arguments.dup, expr.context.dup, expr.source),
+    (BinaryExpr expr) => new BinaryExpr(expr.operator, expr.left.dup, expr.right.dup, expr.source),
     (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => e.dup).array)
   );
 }

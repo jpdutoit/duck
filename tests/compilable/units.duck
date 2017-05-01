@@ -7,7 +7,7 @@ module AA {
 }
 aa: AA;
 hz(aa);
-//TODO: hz(AA) should work too
+hz(AA);
 
 f1: frequency = 10 hz;
 f2: frequency = hz(10);

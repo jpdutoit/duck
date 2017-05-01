@@ -5,6 +5,7 @@ import duck.compiler.scopes;
 import duck.compiler;
 import duck.compiler.dbg;
 import duck.compiler.context;
+import duck.compiler.visitors.source;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
@@ -67,6 +68,7 @@ abstract class Node {
     //writefln("%s %s", this, &this);
   }
   NodeType nodeType();
+  Slice source() { return this.findSource(); }
 };
 
 abstract class Stmt : Node {
@@ -90,18 +92,20 @@ class Library : Node {
 abstract class Decl : Node {
   mixin NodeMixin;
 
-  Token name;
-  //Expr expr;
-  //Rebindable!(immutable Type) varType;
-  //Token identifier;
+  Slice name;
+
   Type declType;
 
-  this(Type type, Token name) {
+  RefExpr reference() {
+      return new RefExpr(this);
+  }
+
+  this(Type type, Slice name) {
     this.name = name;
     this.declType = type;
   }
 
-  this(Token name) {
+  this(Slice name) {
     this.name = name;
   }
 }
@@ -109,12 +113,12 @@ abstract class Decl : Node {
 class UnboundDecl : Decl {
   mixin NodeMixin;
 
-  this(Type type, Token name) {
-    super(type, name);
+  this(Type type, string name) {
+    super(type, Slice(name));
   }
 
-  this(Token name) {
-    super(name);
+  this(Type type, Slice name) {
+    super(type, name);
   }
 }
 
@@ -127,7 +131,7 @@ class OverloadSet : Decl {
     decls ~= decl;
   }
 
-  this(Token name) {
+  this(Slice name) {
     super(OverloadSetType.create(this), name);
   }
 }
@@ -137,9 +141,13 @@ class AliasDecl : Decl {
 
   Expr targetExpr;
 
-  this(Token identifier, Expr targetExpr) {
+  this(Slice identifier, Expr targetExpr) {
     super(null, identifier);
     this.targetExpr = targetExpr;
+  }
+
+  this(string identifier, Expr targetExpr) {
+    this(Slice(identifier), targetExpr);
   }
 }
 
@@ -151,7 +159,7 @@ class MacroDecl : CallableDecl {
   alias argNames = parameterIdentifiers;
   StructDecl parentDecl;
 
-  this(Token identifier, TypeExpr contextType, TypeExpr[] argTypes, Token[] argNames, Expr expansion, StructDecl parentDecl) {
+  this(Slice identifier, TypeExpr contextType, TypeExpr[] argTypes, string[] argNames, Expr expansion, StructDecl parentDecl) {
     super(identifier);
     this.contextType = contextType;
     this.returnExpr = null;
@@ -179,17 +187,26 @@ class FieldDecl : Decl {
   }
 }
 
+/*class ParameterDecl : Decl {
+  this(Slice name, Expr type) {
+  }
+}*/
+
 class CallableDecl : Decl {
   Stmt callableBody;
   TypeExpr contextType;
   TypeExpr[] parameterTypes;
-  Token[] parameterIdentifiers;
+  string[] parameterIdentifiers;
   Expr returnExpr;
   bool external;
   bool dynamic;
   bool operator;
 
-  this(Token identifier) {
+  CallExpr call(Expr[] arguments = []) {
+    return this.reference().call(arguments);
+  }
+
+  this(Slice identifier) {
     super(identifier);
   }
 }
@@ -240,7 +257,7 @@ class StructDecl : TypeDecl {
 
   bool external;
 
-  this(Type type, Token name) {
+  this(Type type, Slice name) {
     ctors = new OverloadSet(name);
     super(type, name);
     decls = new DeclTable();
@@ -261,10 +278,10 @@ class VarDecl : Decl {
   bool external;
   TypeExpr typeExpr;
 
-  this(Type type, Token name) {
+  this(Type type, Slice name) {
     super(type, name);
   }
-  this(TypeExpr typeExpr, Token identifier) {
+  this(TypeExpr typeExpr, Slice identifier) {
     super(null, identifier);
     this.typeExpr = typeExpr;
   }
@@ -273,8 +290,12 @@ class VarDecl : Decl {
 class TypeDecl : Decl {
   mixin NodeMixin;
 
-  this(Type type, Token name) {
+  this(Type type, Slice name = Slice()) {
     super(type, name);
+  }
+
+  this(Type type, string name) {
+    super(type, Slice(name));
   }
 }
 
@@ -299,6 +320,7 @@ class Stmts : Stmt {
 
 class ImportStmt : Stmt {
   mixin NodeMixin;
+
   Token identifier;
   Context targetContext;
 
@@ -310,12 +332,10 @@ class ImportStmt : Stmt {
 class VarDeclStmt : Stmt {
   mixin NodeMixin;
 
-  Token identifier;
   Decl decl;
   Expr expr;
 
-  this(Token token, Decl decl, Expr expr) {
-    this.identifier = token;
+  this(VarDecl decl, Expr expr) {
     this.decl = decl;
     this.expr = expr;
   }
@@ -324,9 +344,11 @@ class VarDeclStmt : Stmt {
 class TypeDeclStmt : Stmt {
   mixin NodeMixin;
 
+  Slice identifier;
   Decl decl;
 
-  this(Decl decl) {
+  this(Slice identifier, Decl decl) {
+    this.identifier = identifier;
     this.decl = decl;
   }
 }
@@ -361,13 +383,36 @@ abstract class Expr : Node {
     import duck.compiler.dbg.conv;
     return .toString(this);
   }
+
+  CallExpr call(Expr[] arguments = []) {
+    return new CallExpr(this, arguments, null, this.source);
+  }
+
+  MemberExpr member(Slice name) {
+    return new MemberExpr(this, name, this.source + name);
+  }
+
+  MemberExpr member(string name) {
+    return new MemberExpr(this, name, this.source);
+  }
+
+  Expr withSource(Slice source) {
+    this.source = source;
+    return this;
+  }
+
+  Expr withSource(Expr expr) {
+    this.source = expr.source;
+    return this;
+  }
+
+  Slice source;
 }
 
 class ErrorExpr : Expr {
     mixin NodeMixin;
-    Slice slice;
-    this(Slice span) {
-      this.slice = slice;
+    this(Slice source) {
+      this.source = source;
       this.exprType = ErrorType.create;
     }
 }
@@ -395,8 +440,8 @@ class InlineDeclExpr : IdentifierExpr {
 
   VarDeclStmt declStmt;
 
-  this(Token token, VarDeclStmt declStmt) {
-    super(token);
+  this(VarDeclStmt declStmt) {
+    super(declStmt.decl.name);
     this.declStmt = declStmt;
   }
 }
@@ -405,13 +450,17 @@ class RefExpr : Expr {
   mixin NodeMixin;
 
   Decl decl;
-  Token identifier;
   Expr context;
 
-  this(Token identifier, Decl decl, Expr context = null) {
-    this.identifier = identifier;
+  this(Decl decl, Expr context = null, Slice source = Slice()) {
     this.decl = decl;
     this.context = context;
+    this.source = source;
+  }
+
+  RefExpr withContext(Expr context) {
+    this.context = context;
+    return this;
   }
 }
 
@@ -423,15 +472,18 @@ class TypeExpr : Expr {
 
   this(Expr expr) {
     this.expr = expr;
+    this.source = expr.source;
   }
 }
 
 class LiteralExpr : Expr {
   mixin NodeMixin;
 
-  Token token;
+  alias value = source;
+
   this(Token token) {
-    this.token = token;
+    super();
+    this.source = token;
     if (token.type == Number)
       this.exprType = NumberType.create;
     else if (token.type == StringLiteral)
@@ -443,8 +495,9 @@ class ArrayLiteralExpr : Expr {
   mixin NodeMixin;
 
   Expr[] exprs;
-  this(Expr[] exprs) {
+  this(Expr[] exprs, Slice source = Slice()) {
     this.exprs = exprs;
+    this.source = source;
   }
 }
 
@@ -481,34 +534,41 @@ class TupleExpr : Expr {
 class IdentifierExpr : Expr {
   mixin NodeMixin;
 
-  string identifier;
-  Token token;
+  alias identifier = source;
 
-  this(Token token) {
-    this.identifier = token.value;
-    this.token = token;
+  this(string identifier) {
+    this.identifier = Slice(identifier);
+  }
+
+  this(Slice slice) {
+    this.identifier = slice;
+  }
+
+  this(IdentifierExpr expr) {
+    this.identifier = expr.identifier;
   }
 }
 
 class UnaryExpr : Expr {
   mixin NodeMixin;
 
-  Token operator;
+  Slice operator;
   union {
     Expr operand;
     Expr[1] arguments;
   }
 
-  this(Token op, Expr operand) {
+  this(Slice op, Expr operand, Slice source = Slice()) {
     operator = op;
     this.operand = operand;
+    this.source = source;
   }
 }
 
 class BinaryExpr : Expr {
   mixin NodeMixin;
 
-  Token operator;
+  Slice operator;
   union {
     struct {
       Expr left, right;
@@ -516,17 +576,18 @@ class BinaryExpr : Expr {
     Expr[2] arguments;
   }
 
-  this(Token op, Expr left, Expr right) {
+  this(Slice op, Expr left, Expr right, Slice source = Slice()) {
     this.operator = op;
     this.left = left;
     this.right = right;
+    this.source = source;
   }
 }
 
 class PipeExpr : BinaryExpr {
   mixin NodeMixin;
 
-  this(Token op, Expr left, Expr right) {
+  this(Slice op, Expr left, Expr right) {
     super(op, left, right);
   }
 }
@@ -534,7 +595,7 @@ class PipeExpr : BinaryExpr {
 class AssignExpr : BinaryExpr {
   mixin NodeMixin;
 
-  this(Token op, Expr left, Expr right) {
+  this(Slice op, Expr left, Expr right) {
     super(op, left, right);
   }
 }
@@ -543,11 +604,16 @@ class MemberExpr : Expr {
   mixin NodeMixin;
 
   Expr context;
-  Token member;
+  Slice name;
 
-  this(Expr context, Token member) {
+  this(Expr context, string member, Slice source) {
+    this(context, Slice(member), source);
+  }
+
+  this(Expr context, Slice member, Slice source) {
     this.context = context;
-    this.member = member;
+    this.name = member;
+    this.source = source;
   }
 
 }
@@ -559,16 +625,15 @@ class CallExpr : Expr {
   TupleExpr arguments;
   Expr context;
 
-  this(Expr callable, TupleExpr arguments, Expr context = null) {
+  this(Expr callable, TupleExpr arguments, Expr context = null, Slice source = Slice()) {
     this.callable = callable;
     this.arguments = arguments;
     this.context = context;
+    this.source = source;
   }
 
-  this(Expr callable, Expr[] arguments, Expr context = null) {
-    this.callable = callable;
-    this.arguments = new TupleExpr(arguments);
-    this.context = context;
+  this(Expr callable, Expr[] arguments, Expr context = null, Slice source = Slice()) {
+    this(callable, new TupleExpr(arguments), context, source);
   }
 }
 
@@ -578,9 +643,10 @@ class IndexExpr : Expr {
   Expr expr;
   TupleExpr arguments;
 
-  this(Expr expr, TupleExpr arguments) {
+  this(Expr expr, TupleExpr arguments, Slice source = Slice()) {
     this.expr = expr;
     this.arguments = arguments;
+    this.source = source;
   }
 }
 
@@ -589,7 +655,7 @@ class ConstructExpr : CallExpr {
   mixin NodeMixin;
 
   alias target = callable;
-  this(Expr expr, TupleExpr arguments) {
-    super(expr, arguments);
+  this(Expr expr, TupleExpr arguments, Slice source = Slice()) {
+    super(expr, arguments, null, source);
   }
 }

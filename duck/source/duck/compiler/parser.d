@@ -108,7 +108,7 @@ struct Parser {
         }
       }
       expect(Tok!"]", "Expected ']'");
-      return new ArrayLiteralExpr(exprs);
+      return new ArrayLiteralExpr(exprs, lexer.sliceFrom(token));
     }
     return null;
   }
@@ -123,7 +123,8 @@ struct Parser {
         Expr literal = new LiteralExpr(token);
         // Unit parsing
         if (lexer.front.type == Identifier) {
-          return new CallExpr(new IdentifierExpr(lexer.consume), new TupleExpr([literal]));
+          auto unit = new IdentifierExpr(lexer.consume);
+          return new CallExpr(unit, new TupleExpr([literal]), null, token + unit.source);
         }
         return literal;
       }
@@ -144,7 +145,8 @@ struct Parser {
       case Tok!"+":
       case Tok!"-":
         lexer.consume;
-        return new UnaryExpr(token, expect(parseExpression(Precedence.Unary - 1), "Expected expression."));
+        auto right = expect(parseExpression(Precedence.Unary - 1), "Expected expression.");
+        return new UnaryExpr(token, right, token + right.source);
       default: break;
     }
     return null;
@@ -162,9 +164,10 @@ struct Parser {
   }
 
   CallExpr parseCall(Expr target) {
+    lexer.expect(Tok!"(", "Expected '['");
     Expr[] arguments = parseExpressionTuple(Tok!")", "Expected function parameter");
-    expect(Tok!")", "Expected ')'");
-    auto call = new CallExpr(target, new TupleExpr(arguments));
+    auto close = expect(Tok!")", "Expected ')'");
+    auto call = new CallExpr(target, new TupleExpr(arguments), null, target.source + close);
     return call;
   }
 
@@ -231,9 +234,8 @@ struct Parser {
           ctor = null;
         }
 
-        return new InlineDeclExpr(identifier.token, new VarDeclStmt(identifier.token, new VarDecl(new TypeExpr(typeExpr), identifier.token), ctor));
+        return new InlineDeclExpr(new VarDeclStmt(new VarDecl(new TypeExpr(typeExpr), identifier.identifier), ctor));
       case Tok!"(":
-        lexer.consume;
         // Call parenthesis
         return parseCall(left);
       case Tok!"[":
@@ -242,7 +244,7 @@ struct Parser {
         lexer.consume;
         //writefln("%s %s", Identifier, Identifier);
         Token identifier = expect(Identifier, "Expected identifier following '.'");
-        return new MemberExpr(left, identifier);
+        return left.member(identifier);
       }
       case Tok!"=":
       case Tok!"+=":
@@ -263,7 +265,8 @@ struct Parser {
       case Tok!"/":
       case Tok!"%":
         lexer.consume;
-        return new BinaryExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of binary operator."));
+        auto right = expect(parseExpression(prec), "Expected expression on right side of binary operator.");
+        return new BinaryExpr(token, left, right, left.source + right.source);
       default: break;
     }
 
@@ -386,7 +389,7 @@ struct Parser {
       lexer.expect(Tok!";", "Expected ';'");
     }
 
-    auto stmt = new TypeDeclStmt(func);
+    auto stmt = new TypeDeclStmt(ident, func);
     this.decls ~= stmt;
 
 
@@ -420,7 +423,7 @@ struct Parser {
     }
 
      //new NamedType(ident.value.idup, new ModuleType())
-    auto stmt = new TypeDeclStmt(structDecl);
+    auto stmt = new TypeDeclStmt(ident, structDecl);
     this.decls ~= stmt;
     return stmt;
   }
@@ -453,7 +456,7 @@ struct Parser {
     expect(Tok!"}", "Expected '}'");
 
     //new NamedType(ident.value.idup, new ModuleType())
-    auto stmt = new TypeDeclStmt(structDecl);
+    auto stmt = new TypeDeclStmt(ident, structDecl);
     this.decls ~= stmt;
     return stmt;
     //decls ~= structDecl;

@@ -2,8 +2,7 @@ module duck.compiler.visitors;
 
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 public import duck.compiler.transforms;
-public import duck.compiler.visitors.visit;
-public import duck.compiler.visitors.source;
+public import duck.compiler.visitors.visit;;
 public import duck.compiler.visitors.codegen;
 public import duck.compiler.visitors.dup;
 
