@@ -4,7 +4,7 @@ echo Running unittests
 dub run duck:duck --quiet --build=unittest-cov
 
 echo Running external tests
-dub build duck:duck --quiet --build=cov
+dub build duck:duck --quiet --build=cov #--debug=Semantic --debug=CodeGen
 time dub run duck:test-runner --quiet  -- --executable bin/duck $1 $2 $3 $4 $5 $6
 
 echo Generating test report

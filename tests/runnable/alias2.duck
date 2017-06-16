@@ -6,12 +6,13 @@ module A {
 module B {
   a: A;
   z: float;
-  y: this.a.x;
-  t: a.x;
+  f: a;
+  y: a.x;
+  t: this.a.x;
 
   function tick() {
     this.y >> z;
-    z = this.y;
+    z = this.t;
     z >> z;
   }
 }

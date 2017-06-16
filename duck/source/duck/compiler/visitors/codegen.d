@@ -124,7 +124,7 @@ string symbolName(Decl decl) {
   }
 
   bool isInfixOperator(CallableDecl callable) {
-    if (callable.external && callable.operator) {
+    if (callable.isExternal && callable.isOperator) {
       return true;
     }
     return false;
@@ -398,9 +398,8 @@ string symbolName(Decl decl) {
 
     emit(expr.decl.visit!(
       (Decl d) => d.name,
-      (MethodDecl d) => d.name,
       (CallableDecl d) {
-        if (d.external)
+        if (d.isExternal)
           return d.name;
         else
           return symbolName(d);
@@ -417,6 +416,12 @@ string symbolName(Decl decl) {
     outdent();
     emit("\n}\n");
   }
+
+  void visit(ParameterDecl decl) {
+    debug(CodeGen) log("ParameterDecl", decl.name);
+    emit(decl.name);
+  }
+
   void visit(FieldDecl fieldDecl) {
     line(fieldDecl.typeExpr);
 
@@ -435,28 +440,17 @@ string symbolName(Decl decl) {
     emit(";\n");
   }
 
-  void visit(MethodDecl methodDecl) {
-    emit("void ");
-    emit(methodDecl.name);
-    emit("(");
-    emit(") ");
-    //emit("{");
-    accept(methodDecl.methodBody);
-    //emit("  }");
-  }
-
-  void visit(MacroDecl aliasDecl) {
-  }
-
   void visit(ReturnStmt returnStmt) {
     emit("return ");
     accept(returnStmt.expr);
     emit(";\n");
   }
 
-  void visit(FunctionDecl funcDecl) {
-    debug(CodeGen) log("FunctionDecl", funcDecl.name);
-    if (!funcDecl.external) {
+  void visit(CallableDecl funcDecl) {
+    if (funcDecl.isMacro) return;
+    debug(CodeGen) log("CallableDecl", funcDecl.name);
+
+    if (!funcDecl.isExternal) {
       if (funcDecl.returnExpr)
         accept(funcDecl.returnExpr);
       else
@@ -466,17 +460,17 @@ string symbolName(Decl decl) {
       emit(symbolName(funcDecl));
 
       emit("(");
-      for (int i = 0; i < funcDecl.parameterTypes.length; ++i) {
-        accept(funcDecl.parameterTypes[i]);
+      foreach (i, parameter; funcDecl.parameters) {
+        accept(parameter.as!ParameterDecl().typeExpr);
         emit(" ");
-        emit(funcDecl.parameterIdentifiers[i]);
-        if (i + 1 < funcDecl.parameterTypes.length) {
+        emit(parameter.name);
+        if (i + 1 < funcDecl.parameters.length) {
           emit(", ");
         }
       }
       emit(") ");
       //emit("{");
-      accept(funcDecl.functionBody);
+      accept(funcDecl.callableBody);
     }
   }
 
@@ -518,8 +512,11 @@ string symbolName(Decl decl) {
             emit("__dg();\n");
           }
         }
-        if (moduleDecl.decls.defines("tick")) {
-          emit("tick();");
+        if (Decl decl = moduleDecl.decls.lookup("tick")) {
+          decl.visit!(
+            (CallableDecl decl) { emit(symbolName(decl) ~ "();"); },
+            (OverloadSet os) { emit(symbolName(os.decls[0]) ~ "();"); }
+          );
         }
         outdent();
         emit("\n}");

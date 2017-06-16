@@ -1,4 +1,5 @@
 module duck.compiler.semantic.decl;
+import duck.compiler.buffer;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
 import duck.compiler.ast;
@@ -15,56 +16,15 @@ struct DeclSemantic {
 
   void accept(E)(ref E target) { semantic.accept!E(target); }
 
-  Node visit(UnboundDecl decl) {
-    return decl;
-  }
-
-  Node visit(MacroDecl decl) {
-    if (decl.contextType)
-      accept(decl.contextType);
-    Type[] paramTypes;
-    for (int i = 0; i < decl.parameterTypes.length; ++i) {
-      accept(decl.parameterTypes[i]);
-      paramTypes ~= decl.parameterTypes[i].decl.declType;
-    }
-    debug(Semantic) log("=>", decl.parameterTypes);
-
-    auto type = FunctionType.create(decl.expansion.exprType, TupleType.create(paramTypes));
-    type.decl = decl;
-    decl.declType = type;
-    debug(Semantic) log("=>", decl.declType.describe);
-
-    debug(Semantic) log("=> expansion", decl.expansion);
-    return decl;
-  }
-
   Decl analyzeCallableParams(CallableDecl decl) {
-    auto paramScope = new DeclTable();
     Type[] paramTypes;
 
-    bool parentIsExternal = false;
-    StructDecl parentDecl = null;
-    if (auto md = cast(MethodDecl)decl) {
-      parentDecl = md.parentDecl;
-      if (md.parentDecl.external) parentIsExternal = true;
+    foreach(parameter; decl.parameters) {
+        accept(parameter);
+        paramTypes ~= parameter.declType;
     }
 
-    for (int i = 0; i < decl.parameterTypes.length; ++i) {
-      accept(decl.parameterTypes[i]);
-      Type paramType = decl.parameterTypes[i].decl.declType;
-      paramTypes ~= paramType;
-
-      if (!decl.external && !parentIsExternal) {
-        auto name = decl.parameterIdentifiers[i];
-        paramScope.define(name, new UnboundDecl(paramType, name));
-      }
-    }
-
-    if (parentDecl) {
-      paramScope.define("this", new UnboundDecl(parentDecl.declType, "this"));
-    }
-
-    semantic.symbolTable.pushScope(paramScope);
+    semantic.symbolTable.pushScope(decl.parameters.readonly());
     if (decl.returnExpr) {
       accept(decl.returnExpr);
     }
@@ -85,54 +45,31 @@ struct DeclSemantic {
       },
       (Type t) {
         expect(!decl.callableBody, decl.returnExpr, "Cannot specify a function body along with an inline return expression");
-        auto mac = new MacroDecl(decl.name, decl.contextType, decl.parameterTypes, decl.parameterIdentifiers, decl.returnExpr, parentDecl);
-        this.accept(mac);
-        return mac;
+        auto type = FunctionType.create(returnType, TupleType.create(paramTypes));
+        type.decl = decl;
+        decl.declType = type;
+        decl.isMacro = true;
+        return decl;
       }
     );
   }
 
-  Node visit(FunctionDecl decl) {
-    debug(Semantic) log("=>", decl.name, decl.parameterTypes, "->", decl.returnExpr);
-
+   Node visit(CallableDecl decl) {
     return analyzeCallableParams(decl);
-
-    /*if (decl.functionBody) {
-      semantic.symbolTable.pushScope(paramScope);
-      accept(decl.functionBody);
-      semantic.symbolTable.popScope();
-    }*/
-
-
   }
 
-   Node visit(MethodDecl decl) {
-
-    return analyzeCallableParams(decl);
-    /*if (decl.methodBody) {
-      auto thisToken = semantic.context.token(Identifier, "this");
-      paramScope.define("this", new UnboundDecl(decl.parentDecl.declType, thisToken));
-
-      semantic.symbolTable.pushScope(paramScope);
-      accept(decl.methodBody);
-      semantic.symbolTable.popScope();
-    }*/
-
+  Node visit(ParameterDecl decl) {
+    accept(decl.typeExpr);
+    decl.declType = decl.typeExpr.decl.declType;
+    if (decl.typeExpr.hasError) decl.taint();
+    return decl;
   }
 
 
   Node visit(FieldDecl decl) {
-    // Have to define "this" as unbound because the valu expression might actually be
-    // a macro value expression.
-
     DeclTable funcScope = new DeclTable();
     debug(Semantic) log("=> expansion", decl.typeExpr);
-    Decl thisVar = new UnboundDecl(decl.parentDecl.declType, "this");
-    //thisVar.accept(this);
-    funcScope.define("this", thisVar);
-    semantic.symbolTable.pushScope(funcScope);
     accept(decl.typeExpr);
-    semantic.symbolTable.popScope();
     debug(Semantic) log("=> expansion", decl.typeExpr);
 
     if (decl.valueExpr)
@@ -152,7 +89,8 @@ struct DeclSemantic {
       //FIXME: Check that valueExpr is null
       Expr target = decl.typeExpr;
       TypeExpr contextType = new TypeExpr(decl.parentDecl.reference());
-      auto mac = new MacroDecl(decl.name, contextType, [], [], target, decl.parentDecl);
+      auto mac = new CallableDecl(decl.name, contextType, [], target, decl.parentDecl);
+      mac.isMacro = true;
       // Think of a nicer solution than replacing it in decls table,
       // perhaps the decls table should only be constructed after all the fields
       // have been analyzed
@@ -188,18 +126,35 @@ struct DeclSemantic {
 
   Node visit(StructDecl structDecl) {
     debug(Semantic) log("=>", structDecl.name.blue);
-    semantic.symbolTable.pushScope(structDecl.decls);
+
+    auto typeExpr = new TypeExpr(structDecl.reference());
+    structDecl.context = new ParameterDecl(typeExpr, Slice("this"));
+    accept(structDecl.context);
+
+    DeclTable thisScope = new DeclTable();
+    thisScope.define(structDecl.context);
+    semantic.symbolTable.pushScope(thisScope);
+
+    auto thisRef = structDecl.context.reference();
+    accept(thisRef);
+    semantic.symbolTable.pushScope(structDecl.decls, thisRef);
+
     ///FIXME
     foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder) {
       if (cast(FieldDecl)decl)accept(decl);
     }
+
     foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder) {
-      if (cast(MacroDecl)decl)accept(decl);
+      if (cast(CallableDecl)decl && (cast(CallableDecl)decl).isMacro) accept(decl);
     }
+
     foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder)
-      if (cast(MethodDecl)decl)accept(decl);
+      if (cast(CallableDecl)decl && !(cast(CallableDecl)decl).isMacro) accept(decl);
+
     foreach(name, ref decl; structDecl.ctors.decls)
-      if (cast(MethodDecl)decl)accept(decl);
+      if (cast(CallableDecl)decl && !(cast(CallableDecl)decl).isMacro) accept(decl);
+
+    semantic.symbolTable.popScope();
     semantic.symbolTable.popScope();
     return structDecl;
   }

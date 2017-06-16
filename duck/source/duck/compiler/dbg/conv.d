@@ -30,7 +30,7 @@ struct ExprToString {
   }
   string visit(RefExpr expr) {
     auto source = expr.source.value;
-    return (source ? source : "Ref").blue ~ "".annot(expr._exprType);
+    return "Ref".blue ~ "(" ~ (expr.context ? expr.context.toString() ~ "." : "") ~ expr.source.annot(expr._exprType) ~ ")";
   }
   string visit(MemberExpr expr) {
     return "(" ~ expr.context.accept(this) ~ "." ~ expr.name ~ ")".annot(expr._exprType);

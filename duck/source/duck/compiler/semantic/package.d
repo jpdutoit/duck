@@ -26,7 +26,8 @@ string prettyName(T)(ref T t) {
 }
 
 
-Expr error(Expr expr, string message) {
+Expr error(Expr expr, lazy string message) {
+  if (expr.hasError) return expr;
   Context.current.error(expr.source, message);
   return expr.taint;
 }
@@ -77,7 +78,7 @@ struct SemanticAnalysis {
   void accept(E : Decl)(ref E target) {
     debug(Semantic) {
       logIndent();
-      log(target.prettyName.red, target);
+      log(target.prettyName.red, target, "'" ~ decl.name ~ "'");
     }
     auto obj = target.accept(declSemantic);
     debug(Semantic)  logOutdent();

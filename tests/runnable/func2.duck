@@ -1,0 +1,22 @@
+extern function operator+(float, float) -> float;
+
+function a(b: float, c: float) -> float {
+  return b + c;
+}
+
+function b(b: float, c: float, d: float) -> b + c + d;
+
+module A {
+  function f() {
+    output = a(input, input);
+  }
+  input: float;
+  output: input;
+}
+
+module B {
+  input: float;
+  output: input;
+}
+
+A + A >> A;

@@ -201,8 +201,8 @@ struct ExprSemantic {
     return expr;
   }
 
-  CallableDecl resolveCall(Expr expr, Scope searchScope, string identifier, Expr[] arguments, Expr context = null) {
-    return resolveCall(expr, cast(OverloadSet)searchScope.lookup(identifier), arguments);
+  CallableDecl resolveCall(Expr expr, SymbolTable searchScope, string identifier, Expr[] arguments, Expr context = null) {
+    return resolveCall(expr, cast(OverloadSet)searchScope.lookup(identifier).decl, arguments);
   }
 
   CallableDecl resolveCall(Expr expr, OverloadSet overloadSet, Expr[] arguments, Expr context = null) {
@@ -263,24 +263,21 @@ struct ExprSemantic {
     return expr;
   }
 
-  Expr expandMacro(MacroDecl macroDecl, Expr[] arguments, Expr contextExpr = null) {
+  Expr expandMacro(CallableDecl macroDecl, Expr[] arguments, Expr contextExpr = null) {
     debug(Semantic) log("=> ExpandMacro", macroDecl, contextExpr);
 
-    DeclTable macroScope = new DeclTable();
-    symbolTable.pushScope(macroScope);
-    macroScope.define("this", new AliasDecl("this", contextExpr));
-    foreach (int i, string paramName; macroDecl.parameterIdentifiers) {
-      macroScope.define(paramName, new AliasDecl(paramName, arguments[i]));
+    Expr[Decl] replacements;
+    foreach (i, parameter; macroDecl.parameters) {
+      replacements[parameter] = arguments[i];
     }
+    if (macroDecl.parentDecl)
+      replacements[macroDecl.parentDecl.context] = contextExpr;
 
-    debug(Semantic) log("=> expansion", macroDecl.expansion);
-    Expr expansion = macroDecl.expansion.dup;
+    Expr expansion = macroDecl.returnExpr;
+    debug(Semantic) log("=> expansion", expansion);
+    expansion = expansion.dupWithReplacements(replacements);
     debug(Semantic) log("=> expansion", expansion);
     accept(expansion);
-
-    debug(Semantic) log("=>", expansion);
-
-    symbolTable.popScope();
 
     return expansion;
   }
@@ -320,8 +317,8 @@ struct ExprSemantic {
               expr.arguments = coerce(expr.arguments, best);
               expr.exprType = decl.declType;
               // Expand macros immediately
-              if (auto macroDecl = cast(MacroDecl)best) {
-                return expandMacro(macroDecl, expr.arguments.elements, expr.context);
+              if (best.isMacro) {
+                return expandMacro(best, expr.arguments.elements, expr.context);
               }
               return expr;
             }
@@ -420,10 +417,10 @@ struct ExprSemantic {
         delegate (FunctionType ft) {
           expr.arguments = coerce(expr.arguments, ft.decl);
           expr.exprType = ft.returnType;
-          return ft.decl.visit!(
-            (MacroDecl m) => expandMacro(m, expr.arguments.elements, expr.context),
-            (CallableDecl c) => expr
-          );
+          if (ft.decl.isMacro) {
+            return expandMacro(ft.decl, expr.arguments.elements, expr.context);
+          }
+          return expr;
         },
         delegate (OverloadSetType ot) {
           debug(Semantic) log("=>", "context", expr.context);
@@ -465,49 +462,17 @@ struct ExprSemantic {
   }
 
   Node visit(IdentifierExpr expr) {
-    // Look up identifier in symbol table
-    Decl decl = symbolTable.lookup(expr.identifier);
-    if (!decl) {
-      if (!expr.hasError) {
-        return expr.error("Undefined identifier " ~ expr.identifier.idup);
-      }
-      return expr;
-    } else {
-      Expr resolve(Decl decl) {
-        return decl.visit!(
-          (OverloadSet overloadSet) {
-            // TODO: This is a hack!!
-            if (overloadSet.decls.length == 1 && cast(MacroDecl)overloadSet.decls[0]) {
-              return resolve(overloadSet.decls[0]);
-            }
-            return overloadSet.reference().withSource(expr);
-          },
-          (MethodDecl methodDecl)
-            => new IdentifierExpr("this").member(expr.identifier),
-          (FieldDecl fieldDecl)
-            => new IdentifierExpr("this").member(expr.identifier),
-          (MacroDecl macroDecl) {
-            if (macroDecl.parentDecl)
-              return cast(Expr)new IdentifierExpr("this").member(expr.identifier);
-            else
-              return cast(Expr)decl.reference().withSource(expr);
-          },
-          (AliasDecl aliasDecl) {
-            return aliasDecl.targetExpr;
-          },
-          (UnboundDecl unboundDecl) {
-            expr.exprType = unboundDecl.declType;
-            return expr;
-          },
-          (Decl decl) => decl.reference().withSource(expr)
-        );
-      }
+    ContextDecl decl = symbolTable.lookup(expr.identifier);
 
-      auto result = resolve(decl);
-      if (result != expr)
-        accept(result);
-      return result;
+    if (decl) {
+      auto reference = decl.reference()
+        .withContext(decl.context)
+        .withSource(expr);
+      accept(reference);
+      return reference;
     }
+
+    return expr.error("Undefined identifier " ~ expr.identifier.idup);
   }
 
   Node visit(TypeExpr expr) {
@@ -541,10 +506,9 @@ struct ExprSemantic {
       (TypeDecl decl) => (expr.exprType = TypeType.create(decl.declType), expr),
       (VarDecl decl) => (expr.exprType = decl.declType, expr),
       (FieldDecl decl) => (expr.exprType = decl.declType, expr),
+      (ParameterDecl decl) => (expr.exprType = decl.declType, expr),
       (CallableDecl decl) => (expr.exprType = decl.declType, expr),
-      (OverloadSet os) => (expr.exprType = OverloadSetType.create(os), expr),
-      (UnboundDecl decl) => (expr.exprType = decl.declType, expr),
-      (AliasDecl decl) => decl.targetExpr
+      (OverloadSet os) => (expr.exprType = OverloadSetType.create(os), expr)
     );
   }
 

@@ -6,6 +6,7 @@ import duck.compiler;
 import duck.compiler.dbg;
 import duck.compiler.context;
 import duck.compiler.visitors.source;
+import duck.compiler.util;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
@@ -37,19 +38,16 @@ alias NodeTypes = AliasSeq!(
   Stmts,
 
   Decl,
-  UnboundDecl,
   OverloadSet,
-  FunctionDecl,
+  ParameterDecl,
+  CallableDecl,
   VarDecl,
   TypeDecl,
   ArrayDecl,
   ConstDecl,
   FieldDecl,
-  MethodDecl,
   StructDecl,
   ModuleDecl,
-  AliasDecl,
-  MacroDecl,
 
   Library);
 
@@ -69,6 +67,11 @@ abstract class Node {
   }
   NodeType nodeType();
   Slice source() { return this.findSource(); }
+
+  override size_t toHash() @trusted { return cast(size_t)cast(void*)this; }
+  override bool opEquals(Object other) {
+      return this is other;
+  }
 };
 
 abstract class Stmt : Node {
@@ -110,18 +113,6 @@ abstract class Decl : Node {
   }
 }
 
-class UnboundDecl : Decl {
-  mixin NodeMixin;
-
-  this(Type type, string name) {
-    super(type, Slice(name));
-  }
-
-  this(Type type, Slice name) {
-    super(type, name);
-  }
-}
-
 class OverloadSet : Decl {
   mixin NodeMixin;
 
@@ -133,41 +124,6 @@ class OverloadSet : Decl {
 
   this(Slice name) {
     super(OverloadSetType.create(this), name);
-  }
-}
-
-class AliasDecl : Decl {
-  mixin NodeMixin;
-
-  Expr targetExpr;
-
-  this(Slice identifier, Expr targetExpr) {
-    super(null, identifier);
-    this.targetExpr = targetExpr;
-  }
-
-  this(string identifier, Expr targetExpr) {
-    this(Slice(identifier), targetExpr);
-  }
-}
-
-class MacroDecl : CallableDecl {
-  mixin NodeMixin;
-
-  Expr expansion;
-  alias argTypes = parameterTypes;
-  alias argNames = parameterIdentifiers;
-  StructDecl parentDecl;
-
-  this(Slice identifier, TypeExpr contextType, TypeExpr[] argTypes, string[] argNames, Expr expansion, StructDecl parentDecl) {
-    super(identifier);
-    this.contextType = contextType;
-    this.returnExpr = null;
-    this.argTypes = argTypes;
-    this.argNames = argNames;
-    this.expansion = expansion;
-    this.dynamic = parentDecl !is null;
-    this.parentDecl = parentDecl;
   }
 }
 
@@ -187,18 +143,45 @@ class FieldDecl : Decl {
   }
 }
 
-/*class ParameterDecl : Decl {
-  this(Slice name, Expr type) {
+class ParameterDecl : Decl {
+  mixin NodeMixin;
+
+  TypeExpr typeExpr;
+
+  this(/*Decl parent, */TypeExpr type, Slice name) {
+    super(null, name);
+    //this.parent = parent;
+    this.typeExpr = type;
   }
-}*/
+}
 
 class CallableDecl : Decl {
+  mixin NodeMixin;
+
+  union {
+    uint flags;
+    struct {
+      import std.bitmanip;
+      mixin(bitfields!(
+          int,  "filler", 4,
+          bool, "isOperator", 1,
+          bool, "isExternal", 1,
+          bool, "isMethod", 1,
+          bool, "isMacro", 1));
+    }
+  }
+
+  @property bool isFunction() { return !isMethod; }
+
+
   Stmt callableBody;
   TypeExpr contextType;
   TypeExpr[] parameterTypes;
-  string[] parameterIdentifiers;
+
+  ParameterList  parameters;
+  StructDecl parentDecl;
+
   Expr returnExpr;
-  bool external;
   bool dynamic;
   bool operator;
 
@@ -208,30 +191,21 @@ class CallableDecl : Decl {
 
   this(Slice identifier) {
     super(identifier);
+    this.parameters = new ParameterList();
   }
-}
 
-class FunctionDecl : CallableDecl {
-  mixin NodeMixin;
-
-  alias functionBody = callableBody;
-
-  this(Token identifier) {
+  this(Slice identifier, TypeExpr contextType, TypeExpr[] argTypes, Expr expansion, StructDecl parentDecl) {
     super(identifier);
+    //this.contextType = contextType;
+    this.parameters = new ParameterList();
+    this.returnExpr = null;
+    this.parameterTypes = argTypes;
+    this.returnExpr = expansion;
+    this.dynamic = parentDecl !is null;
+    this.parentDecl = parentDecl;
   }
 }
 
-
-class MethodDecl : CallableDecl {
-  mixin NodeMixin;
-
-  alias methodBody = callableBody;
-  StructDecl parentDecl;
-
-  this(Token identifier) {
-    super(identifier);
-  }
-}
 
 class ArrayDecl : TypeDecl {
   mixin NodeMixin;
@@ -254,6 +228,7 @@ class StructDecl : TypeDecl {
 
   DeclTable decls;
   OverloadSet ctors;
+  Decl context;
 
   bool external;
 
@@ -510,25 +485,7 @@ class TupleExpr : Expr {
     this.elements = elements;
   }
 
-  int opApply(int delegate(ref Expr) dg)
-  {
-    int result = 0;
-    for (int i = 0; i < elements.length; i++)
-    {
-      result = dg(elements[i]);
-      if (result)
-        break;
-    }
-    return result;
-  }
-
-  ref Expr opIndex(size_t index) {
-    return elements[index];
-  }
-
-  size_t length() {
-    return elements.length;
-  }
+  mixin ArrayWrapper!(Expr, elements);
 }
 
 class IdentifierExpr : Expr {

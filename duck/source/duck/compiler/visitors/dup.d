@@ -6,21 +6,34 @@ import duck.compiler.visitors.visit;
 
 T dup(T : Expr)(T t) {
   if (!t) return null;
-  
-  auto result = cast(T)t.dupImpl;
+  auto result = cast(T)t.clone;
   ASSERT(result, "Expected non-null duplicate of " ~ T.stringof);
   return result;
 }
 
-private Expr dupImpl(Expr expr) {
+Expr dupWithReplacements()(Expr expr, Expr[Decl] replacements) {
+  return expr.clone(replacements);
+}
+
+private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
   import std.array, std.algorithm.iteration;
-  return expr.visit!(
-    (MemberExpr expr) => new MemberExpr(expr.context.dup, expr.name, expr.source),
-    (IdentifierExpr expr) => expr,
-    (RefExpr expr) => expr,
-    (LiteralExpr expr) => expr,
-    (CallExpr expr) => new CallExpr(expr.callable.dup, expr.arguments.dup, expr.context.dup, expr.source),
-    (BinaryExpr expr) => new BinaryExpr(expr.operator, expr.left.dup, expr.right.dup, expr.source),
-    (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => e.dup).array)
-  );
+  Expr cloneImpl(Expr expr) {
+    if (!expr) return null;
+    return expr.visit!(
+      (MemberExpr expr) => new MemberExpr(cloneImpl(expr.context), expr.name, expr.source),
+      (IdentifierExpr expr) => expr,
+      (RefExpr expr) {
+        auto replacement = expr.decl in replacements;
+        return replacement
+          ? *replacement
+          : new RefExpr(expr.decl, cloneImpl(expr.context), expr.source);
+      },
+      (LiteralExpr expr) => expr,
+      (CallExpr expr) => new CallExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), cloneImpl(expr.context), expr.source),
+      (BinaryExpr expr) => new BinaryExpr(expr.operator, cloneImpl(expr.left), cloneImpl(expr.right), expr.source),
+      (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array)
+    );
+  }
+
+  return cloneImpl(expr);
 }

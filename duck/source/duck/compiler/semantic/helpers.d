@@ -76,6 +76,7 @@ bool isLValue(Expr expr) {
         return isLValue(r.context);
       return r.decl.visit!(
         (VarDecl d) => true,
+        (ParameterDecl d) => true,
         (Decl d) => false
       );
     },
