@@ -93,10 +93,10 @@ bool isPipeTarget(Expr expr) {
   );
 }
 
-Decl getTypeDecl(Expr expr) {
+TypeDecl getTypeDecl(Expr expr) {
   return expr.visit!(
     (TypeExpr te) => te.decl,
-    (RefExpr re) => re.decl,
+    (RefExpr re) => cast(TypeDecl)re.decl,
     (Expr e) => null
   );
 }

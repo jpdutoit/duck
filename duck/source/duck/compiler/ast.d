@@ -211,15 +211,16 @@ class CallableDecl : Decl {
 class ArrayDecl : TypeDecl {
   mixin NodeMixin;
 
-  Type elementType;
+  TypeDecl elementDecl;
+  Type elementType() { return elementDecl.declType; }
 
-  this(Type elementType) {
-    this.elementType = elementType;
+  this(TypeDecl elementDecl) {
+    this.elementDecl = elementDecl;
     super(ArrayType.create(elementType), Token());
   }
 
-  this(Type elementType, uint size) {
-    this.elementType = elementType;
+  this(TypeDecl elementDecl, uint size) {
+    this.elementDecl = elementDecl;
     super(StaticArrayType.create(elementType, size), Token());
   }
 }

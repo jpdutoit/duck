@@ -360,12 +360,12 @@ struct ExprSemantic {
         return expr;
       },
       (TypeType t) {
-        Decl decl = expr.expr.getTypeDecl;
+        TypeDecl decl = expr.expr.getTypeDecl;
         debug(Semantic) log ("=>", decl);
         ArrayDecl arrayDecl;
 
         if (expr.arguments.length == 0)
-          arrayDecl = new ArrayDecl(decl.declType);
+          arrayDecl = new ArrayDecl(decl);
         else {
           if (expr.arguments.length != 1) {
             expr.arguments.error("Only one length accepted.");
@@ -383,7 +383,7 @@ struct ExprSemantic {
           )();
           if (expr.hasError) return expr;
 
-          arrayDecl = new ArrayDecl(decl.declType, size);
+          arrayDecl = new ArrayDecl(decl, size);
         }
 
         auto re = arrayDecl.reference();
