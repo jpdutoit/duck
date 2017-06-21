@@ -70,10 +70,9 @@ struct StmtSemantic {
     }
     else {
       symbolTable.define(name, stmt.decl);
-    }
-
-    if (stmt.decl.declType.kind != ErrorType.Kind) {
-      library.exports ~= stmt.decl;
+      if (symbolTable.top is library.globals) {
+        library.exports ~= stmt.decl;
+      }
     }
 
     return stmt;
