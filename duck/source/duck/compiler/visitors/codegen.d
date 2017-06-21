@@ -545,10 +545,7 @@ string symbolName(Decl decl) {
     indent();
     emit("\n\nvoid run() {\n");
     indent();
-    foreach (i, node; library.nodes) {
-      if (cast(TypeDeclStmt)node is null)
-        accept(node);
-    }
+    accept(library.stmts);
     outdent();
     emit("\n}");
     outdent();

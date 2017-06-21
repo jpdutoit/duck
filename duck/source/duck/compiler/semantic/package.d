@@ -133,8 +133,7 @@ struct SemanticAnalysis {
 
     symbolTable.pushScope(globals);
 
-    foreach (ref node ; library.nodes)
-      accept(node);
+    accept(library.stmts);
 
     symbolTable.popScope();
     symbolTable.popScope();

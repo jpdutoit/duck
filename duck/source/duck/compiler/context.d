@@ -20,7 +20,7 @@ class Context {
   this () {
     temp = new TempBuffer("");
     import core.runtime;
-    this.packageRoots ~=  buildPath(Runtime.args[0].dirName(), "../lib");
+    this.packageRoots ~= buildPath(Runtime.args[0].dirName(), "../lib");
     this.instrument = false;
   }
 
@@ -43,7 +43,7 @@ class Context {
     if (_library) {
       return _library;
     }
-    _library = new Library([], []);
+    _library = new Library(new Stmts(), []);
 
     auto phaseFlatten = Flatten();
     auto phaseSemantic = SemanticAnalysis(this, buffer.path);

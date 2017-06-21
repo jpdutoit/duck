@@ -86,9 +86,7 @@ mixin template RecursiveAccept() {
       accept(stmt.expr);
     }
     void recurse(Library library) {
-      foreach (ref node ; library.nodes) {
-        accept(node);
-      }
+      accept(library.stmts);
     }
     void recurse(Node node) {
 

@@ -80,15 +80,15 @@ abstract class Stmt : Node {
 class Library : Node {
   mixin NodeMixin;
 
-  Stmt[] nodes;
+  Stmts stmts;
   DeclTable imports;
   Decl[] exports;
   Node[] declarations;
 
-  this(Stmt[] stmts, Node[] decls) {
+  this(Stmts stmts, Node[] decls) {
     this.declarations = decls;
     this.imports = new DeclTable();
-    this.nodes = stmts;
+    this.stmts = stmts;
   }
 }
 
