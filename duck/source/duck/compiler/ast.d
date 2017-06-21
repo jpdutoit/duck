@@ -35,6 +35,7 @@ alias NodeTypes = AliasSeq!(
   ScopeStmt,
   ImportStmt,
   ReturnStmt,
+  IfStmt,
   Stmts,
 
   Decl,
@@ -407,6 +408,19 @@ class ReturnStmt : Stmt {
   Expr expr;
   this(Expr expr) {
     this.expr = expr;
+  }
+}
+
+class IfStmt: Stmt {
+  mixin NodeMixin;
+
+  Expr condition;
+  Stmt trueBody, falseBody;
+
+  this(Expr condition, Stmt trueBody, Stmt falseBody) {
+    this.condition = condition;
+    this.trueBody = trueBody;
+    this.falseBody = falseBody;
   }
 }
 

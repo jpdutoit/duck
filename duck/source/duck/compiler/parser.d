@@ -491,6 +491,17 @@ struct Parser {
     return r;
   }
 
+  Stmt parseIf() {
+    lexer.expect(Tok!"if", "Expected 'if'");
+    auto condition = expect(parseExpression(Precedence.Comparison-1), "Expected expression.");
+    Stmt trueBody = expect(parseStatement(), "Expected statement after 'if'");
+    Stmt falseBody;
+    if (lexer.consume(Tok!"else")) {
+      falseBody = expect(parseStatement(), "Expected statement after 'else'");
+    }
+    return new IfStmt(condition, trueBody, falseBody);
+  }
+
   Stmt parseStatement() {
     switch (lexer.front.type) {
       case Tok!"import":
@@ -526,6 +537,8 @@ struct Parser {
         auto f = parseFunction();
         return f;
       }
+      case Tok!"if":
+        return parseIf();
       case Tok!"{":
         // Block statement
         return expect(parseBlock(), "Block expected");

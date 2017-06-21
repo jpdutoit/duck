@@ -12,6 +12,14 @@ extern function operator-(float, float) -> float;
 extern function operator/(float, float) -> float;
 extern function operator%(float, float) -> float;
 
+//TODO: Introduce bool type
+extern function operator!=(float, float) -> float;
+extern function operator==(float, float) -> float;
+extern function operator>(duration, duration) -> float;
+extern function operator>(float, float) -> float;
+extern function operator>=(float, float) -> float;
+extern function operator<(float, float) -> float;
+
 extern function operator*(duration, float) -> duration;
 
 extern function operator*(frequency, float) -> frequency;
@@ -49,11 +57,23 @@ module Phasor {
   }
 }
 
-extern module Clock {
-  freq: frequency;
-  phase: float;
-  output: float;
-  input: frequency;
+module Clock {
+  freq: frequency = 1 hz;
+  input: freq;
+  output: mono = 1;
+
+  //TODO: Phase should be double precision
+  phase: mono = 1.0;
+
+  function tick() {
+    phase = (phase + freq / SAMPLE_RATE);
+    if phase >= 1.0 {
+      phase = phase % 1.0;
+      output = 1;
+    } else {
+      output = 0;
+    }
+  }
 }
 
 /*
@@ -175,22 +195,29 @@ extern module ScaleQuant {
   output: mono;
 }
 
-extern module SAH {
-  trigger: mono;
-  input: mono;
-  output: mono;
-}
-
 extern module Pitch {
   input: mono;
   output: frequency;
 }
 
 
-extern module Square {
-  freq: frequency;
-  input: frequency;
+
+module Square {
+  phasor: Phasor;
+  freq: phasor.freq;
+  input: phasor.freq;
   output: mono;
+
+  lo: float = 0;
+  hi: float = 1;
+
+  function tick() {
+    if phasor < 0.5 {
+      output = lo;
+    } else {
+      output = hi;
+    }
+  }
 }
 
 extern module AR {
@@ -220,4 +247,59 @@ extern module Delay {
 
 extern module WhiteNoise {
   output: mono;
+}
+
+module TriggerDivider {
+  input: mono;
+  trigger: input;
+  output: mono;
+  counter: float = 0;
+  divisor: float = 2;
+
+  function tick() {
+    if input == 0 {
+      output = 0;
+    } else {
+      //TODO: output = 1 if counter == 0 else 0;
+      if counter == 0 {
+        output = 1;
+      } else {
+        output = 0;
+      }
+      counter = (counter + 1) % divisor;
+    }
+  }
+}
+
+module Gate {
+  input: mono;
+  trigger: input;
+  output: mono;
+
+  length: duration;
+  remaining: duration = 0 samples;
+
+  function tick() {
+    if trigger != 0 {
+      remaining = length;
+    }
+    if remaining > 0 samples {
+      output = 1;
+      remaining = remaining - 1 samples;
+    } else {
+      output = 0;
+    }
+  }
+}
+
+module SampleAndHold {
+  input: mono = 0;
+  trigger: mono = 0;
+  output: mono = 0;
+
+  function tick() {
+    if trigger > 0 {
+      output = input;
+    }
+  }
 }

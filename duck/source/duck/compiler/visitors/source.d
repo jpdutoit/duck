@@ -21,6 +21,7 @@ private alias V = Visitor!(
       return s.expr.source;
     return s.decl.name;
   },
+  (IfStmt s) => s.condition.findSource(),
   (ImportStmt s) => s.identifier.slice,
   (TypeDeclStmt s) => Slice()
 );

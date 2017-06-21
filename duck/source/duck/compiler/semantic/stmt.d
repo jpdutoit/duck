@@ -96,6 +96,15 @@ struct StmtSemantic {
     return stmt;
   }
 
+  Node visit(IfStmt stmt) {
+    //TODO: Ensure that condition converts to boolean
+    accept(stmt.condition);
+    accept(stmt.trueBody);
+    if (stmt.falseBody)
+      accept(stmt.falseBody);
+    return stmt;
+  }
+
   Node visit(ImportStmt stmt) {
     import std.path, std.file, duck.compiler;
     debug(Semantic) log("=>", stmt.identifier.value);

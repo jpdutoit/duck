@@ -362,6 +362,27 @@ string symbolName(Decl decl) {
     emit(";\n");
   }
 
+  void visit(IfStmt stmt) {
+    auto modules = findModules(stmt.condition);
+
+    foreach(mod; modules) {
+      if (mod == "this") continue;
+      emit(mod);
+      emit("._tick(); ");
+    }
+
+    debug(CodeGen) log("IfStmt");
+    emit("if (");
+    accept(stmt.condition);
+    emit(") ");
+    accept(stmt.trueBody);
+    if (stmt.falseBody) {
+      emit(" else ");
+      accept(stmt.falseBody);
+    }
+    emit("\n");
+  }
+
   void line(Node node) {
     auto slice = node.source;
     if (cast(FileBuffer)slice.buffer) {

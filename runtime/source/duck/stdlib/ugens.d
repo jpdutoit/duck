@@ -97,19 +97,6 @@ struct Log {
   mixin UGEN!Log;
 };
 
-struct SAH {
-  mono input = 0;
-  mono trigger = 0;
-  mono output = 0;
-
-  void tick() {
-    if (trigger > 0.0) {
-      output = input;
-      //writefln("%s", output);
-    }
-  }
-  mixin UGEN!SAH;
-}
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Pan {
@@ -136,23 +123,6 @@ struct Pitch {
   }
   mixin UGEN!Pitch;
 };
-
-struct Square {
-  frequency freq = 440.hz;
-  mono output = 0;
-  double phase = 0;
-  alias input = freq;
-  float min = -1;
-  float max = 1;
-
-  void tick() {
-    double delta = freq / SAMPLE_RATE;
-    phase = (phase + delta) % 1.0;
-    output = phase < 0.5f ? max : min;
-  }
-
-  mixin UGEN!Square;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -199,33 +169,6 @@ struct Quant {
 
   mixin UGEN!Quant;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-
-struct Clock {
-  mixin UGEN!Clock;
-
-  this(frequency freq) {
-    freq = freq;
-  }
-
-  frequency freq = 1.hz;
-  alias input = freq;
-  mono output = 1;
-  double phase = 1.0;
-
-  void tick() {
-    double delta = freq / SAMPLE_RATE;
-    phase = (phase + delta);
-    if (phase >= 1.0) {
-      phase = phase - 1;
-      phase %= 1.0;
-      output = 1;
-    } else {
-      output = 0;
-    }
-  }
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 
