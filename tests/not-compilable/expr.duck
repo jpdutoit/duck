@@ -9,15 +9,15 @@ OUTPUT:
 ---
 tests/not-compilable/expr.duck(1:1-6): Error: Unterminated string
 tests/not-compilable/expr.duck(2:1): Error: Expected ';' not '0'
-tests/not-compilable/expr.duck(2:1): Error: Operation number + string is not defined.
-tests/not-compilable/expr.duck(2:10-12): Error: Operation string + number is not defined.
-tests/not-compilable/expr.duck(3:1): Error: Operation number - string is not defined.
-tests/not-compilable/expr.duck(3:10-12): Error: Operation string - number is not defined.
-tests/not-compilable/expr.duck(4:1): Error: Operation number * string is not defined.
-tests/not-compilable/expr.duck(4:10-12): Error: Operation string * number is not defined.
-tests/not-compilable/expr.duck(5:1): Error: Operation number / string is not defined.
-tests/not-compilable/expr.duck(5:10-12): Error: Operation string / number is not defined.
-tests/not-compilable/expr.duck(6:1): Error: Operation number % string is not defined.
-tests/not-compilable/expr.duck(6:10-12): Error: Operation string % number is not defined.
+tests/not-compilable/expr.duck(2:3): Error: Operation number + string is not defined.
+tests/not-compilable/expr.duck(2:14): Error: Operation string + number is not defined.
+tests/not-compilable/expr.duck(3:3): Error: Operation number - string is not defined.
+tests/not-compilable/expr.duck(3:14): Error: Operation string - number is not defined.
+tests/not-compilable/expr.duck(4:3): Error: Operation number * string is not defined.
+tests/not-compilable/expr.duck(4:14): Error: Operation string * number is not defined.
+tests/not-compilable/expr.duck(5:3): Error: Operation number / string is not defined.
+tests/not-compilable/expr.duck(5:14): Error: Operation string / number is not defined.
+tests/not-compilable/expr.duck(6:3): Error: Operation number % string is not defined.
+tests/not-compilable/expr.duck(6:14): Error: Operation string % number is not defined.
 ---
 */

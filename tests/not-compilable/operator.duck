@@ -7,7 +7,7 @@ extern function operator-(float, float) -> float;
 /**
 OUTPUT:
 ---
-tests/not-compilable/operator.duck(3:1-2): Error: Operation number * number is not defined.
-tests/not-compilable/operator.duck(4:1-2): Error: Operation number / number is not defined.
+tests/not-compilable/operator.duck(3:4): Error: Operation number * number is not defined.
+tests/not-compilable/operator.duck(4:4): Error: Operation number / number is not defined.
 ---
 */

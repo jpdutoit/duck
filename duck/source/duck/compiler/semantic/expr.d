@@ -235,16 +235,23 @@ struct ExprSemantic {
   Node visit(BinaryExpr expr) {
     accept(expr.left);
     accept(expr.right);
-    if (expr.left.hasError || expr.right.hasError)
-      return expr.taint;
 
-    auto callable = resolveCall(expr, symbolTable, expr.operator, expr.arguments);
-    if (callable && coerce(expr.arguments, callable)) {
-      Expr e = callable.call(expr.arguments).withSource(expr);
-      return accept(e);
+    if (expr.left.hasError || expr.right.hasError) {
+      expr.taint;
+    }
+    else {
+      auto callable = resolveCall(expr, symbolTable, expr.operator, expr.arguments);
+      if (callable && coerce(expr.arguments, callable)) {
+        Expr e = callable.call(expr.arguments).withSource(expr);
+        return accept(e);
+      }
     }
 
-    return expr.left.error("Operation " ~ mangled(expr.left.exprType) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.exprType) ~ " is not defined.");
+    auto call = new ErrorExpr(expr.operator).taint.call(expr.arguments);
+    if (!expr.hasError)
+      call.error("Operation " ~ mangled(expr.left.exprType) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.exprType) ~ " is not defined.");
+
+    return call.taint;
   }
 
   Node visit(TupleExpr expr) {

@@ -67,34 +67,34 @@ a == !a;
 OUTPUT:
 ---
 tests/not-compilable/precedence.duck(62:3): Error: Expected expression.
-tests/not-compilable/precedence.duck(28:1-5): Error: Operation B + A is not defined.
-tests/not-compilable/precedence.duck(30:1-5): Error: Operation B - A is not defined.
-tests/not-compilable/precedence.duck(31:1-5): Error: Operation B + A is not defined.
-tests/not-compilable/precedence.duck(33:1-5): Error: Operation B * A is not defined.
-tests/not-compilable/precedence.duck(34:1-5): Error: Operation B / A is not defined.
-tests/not-compilable/precedence.duck(35:1-5): Error: Operation B % A is not defined.
-tests/not-compilable/precedence.duck(37:1-5): Error: Operation B / A is not defined.
-tests/not-compilable/precedence.duck(38:1-5): Error: Operation B * A is not defined.
-tests/not-compilable/precedence.duck(39:1-5): Error: Operation B * A is not defined.
-tests/not-compilable/precedence.duck(40:1-5): Error: Operation B % A is not defined.
-tests/not-compilable/precedence.duck(42:1): Error: Operation A + B is not defined.
-tests/not-compilable/precedence.duck(43:1-5): Error: Operation B / A is not defined.
-tests/not-compilable/precedence.duck(45:1-6): Error: Operation B == A is not defined.
-tests/not-compilable/precedence.duck(46:1-6): Error: Operation B >= A is not defined.
-tests/not-compilable/precedence.duck(47:1-6): Error: Operation B >= A is not defined.
-tests/not-compilable/precedence.duck(48:1-6): Error: Operation B == A is not defined.
-tests/not-compilable/precedence.duck(50:1-5): Error: Operation B == A is not defined.
-tests/not-compilable/precedence.duck(51:1-5): Error: Operation B == A is not defined.
-tests/not-compilable/precedence.duck(52:1): Error: Operation A == B is not defined.
-tests/not-compilable/precedence.duck(53:1): Error: Operation A == B is not defined.
+tests/not-compilable/precedence.duck(28:7): Error: Operation B + A is not defined.
+tests/not-compilable/precedence.duck(30:7): Error: Operation B - A is not defined.
+tests/not-compilable/precedence.duck(31:7): Error: Operation B + A is not defined.
+tests/not-compilable/precedence.duck(33:7): Error: Operation B * A is not defined.
+tests/not-compilable/precedence.duck(34:7): Error: Operation B / A is not defined.
+tests/not-compilable/precedence.duck(35:7): Error: Operation B % A is not defined.
+tests/not-compilable/precedence.duck(37:7): Error: Operation B / A is not defined.
+tests/not-compilable/precedence.duck(38:7): Error: Operation B * A is not defined.
+tests/not-compilable/precedence.duck(39:7): Error: Operation B * A is not defined.
+tests/not-compilable/precedence.duck(40:7): Error: Operation B % A is not defined.
+tests/not-compilable/precedence.duck(42:3): Error: Operation A + B is not defined.
+tests/not-compilable/precedence.duck(43:7): Error: Operation B / A is not defined.
+tests/not-compilable/precedence.duck(45:8-9): Error: Operation B == A is not defined.
+tests/not-compilable/precedence.duck(46:8-9): Error: Operation B >= A is not defined.
+tests/not-compilable/precedence.duck(47:8-9): Error: Operation B >= A is not defined.
+tests/not-compilable/precedence.duck(48:8-9): Error: Operation B == A is not defined.
+tests/not-compilable/precedence.duck(50:7-8): Error: Operation B == A is not defined.
+tests/not-compilable/precedence.duck(51:7-8): Error: Operation B == A is not defined.
+tests/not-compilable/precedence.duck(52:3-4): Error: Operation A == B is not defined.
+tests/not-compilable/precedence.duck(53:3-4): Error: Operation A == B is not defined.
 tests/not-compilable/precedence.duck(55:2-3): Error: Operation ! B is not defined.
 tests/not-compilable/precedence.duck(56:2-3): Error: Operation + B is not defined.
 tests/not-compilable/precedence.duck(57:2-3): Error: Operation + B is not defined.
 tests/not-compilable/precedence.duck(58:2-3): Error: Operation ! B is not defined.
-tests/not-compilable/precedence.duck(59:1): Error: Operation A + B is not defined.
-tests/not-compilable/precedence.duck(60:1-2): Error: Operation B + A is not defined.
-tests/not-compilable/precedence.duck(61:1): Error: Operation A * B is not defined.
-tests/not-compilable/precedence.duck(63:1): Error: Operation A == B is not defined.
-tests/not-compilable/precedence.duck(64:1-2): Error: Operation B == A is not defined.
+tests/not-compilable/precedence.duck(59:3): Error: Operation A + B is not defined.
+tests/not-compilable/precedence.duck(60:4): Error: Operation B + A is not defined.
+tests/not-compilable/precedence.duck(61:3): Error: Operation A * B is not defined.
+tests/not-compilable/precedence.duck(63:3-4): Error: Operation A == B is not defined.
+tests/not-compilable/precedence.duck(64:4-5): Error: Operation B == A is not defined.
 ---
 */
