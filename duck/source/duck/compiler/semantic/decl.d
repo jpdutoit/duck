@@ -29,7 +29,9 @@ struct DeclSemantic {
       accept(decl.returnExpr);
     }
     if (decl.callableBody) {
+      semantic.symbolTable.pushScope(new DeclTable());
       accept(decl.callableBody);
+      semantic.symbolTable.popScope();
     }
     semantic.symbolTable.popScope();
 
