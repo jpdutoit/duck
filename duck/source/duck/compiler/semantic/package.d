@@ -98,7 +98,6 @@ struct SemanticAnalysis {
   alias accept2 = accept;
 
   SymbolTable symbolTable;
-  DeclTable globals;
   string sourcePath;
 
   Context context;
@@ -126,12 +125,11 @@ struct SemanticAnalysis {
 
     symbolTable.pushScope(library.imports);
 
-    globals = new DeclTable();
-    globals.define("mono", new TypeDecl(NumberType.create, "mono"));
-    globals.define("float", new TypeDecl(NumberType.create, "float"));
-    globals.define("string", new TypeDecl(StringType.create, "string"));
+    library.globals.define("mono", new TypeDecl(NumberType.create, "mono"));
+    library.globals.define("float", new TypeDecl(NumberType.create, "float"));
+    library.globals.define("string", new TypeDecl(StringType.create, "string"));
 
-    symbolTable.pushScope(globals);
+    symbolTable.pushScope(library.globals);
 
     accept(library.stmts);
 

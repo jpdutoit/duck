@@ -83,6 +83,7 @@ class Library : Node {
 
   Stmts stmts;
   DeclTable imports;
+  DeclTable globals;
   Decl[] exports;
   Node[] declarations;
 
@@ -90,6 +91,7 @@ class Library : Node {
     this.declarations = decls;
     this.imports = new DeclTable();
     this.stmts = stmts;
+    this.globals = new DeclTable();
   }
 }
 
@@ -290,7 +292,7 @@ class Stmts : Stmt {
   mixin NodeMixin;
   Stmt[] stmts;
 
-  this (Stmt[] stmts) {
+  this (Stmt[] stmts = []) {
     this.stmts = stmts;
   }
 };

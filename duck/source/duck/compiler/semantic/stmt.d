@@ -83,11 +83,11 @@ struct StmtSemantic {
   Node visit(TypeDeclStmt stmt) {
     accept(stmt.decl);
 
-    if (!stmt.decl.as!CallableDecl && globals.defines(stmt.decl.name)) {
+    if (!stmt.decl.as!CallableDecl && library.globals.defines(stmt.decl.name)) {
       error(stmt.identifier, "Cannot redefine " ~ stmt.decl.name);
     }
     else {
-      globals.define(stmt.decl.name, stmt.decl);
+      library.globals.define(stmt.decl.name, stmt.decl);
     }
 
     if (stmt.decl.declType.kind != ErrorType.Kind) {
