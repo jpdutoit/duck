@@ -183,8 +183,8 @@ auto test(string file, bool expectProcessSuccess, bool run = false)
 {
   total++;
   TestCase testCase = TestCase(file);
-  string options = (testCase.options ? testCase.options : "") ~ " -b";
-  if (!run) options ~= " -c";
+  string options = (testCase.options ? testCase.options : "") ~ " -n";
+  if (!run) options ~= " -t check";
 
   auto proc = Proc(file, options);
   auto output = proc.wait();

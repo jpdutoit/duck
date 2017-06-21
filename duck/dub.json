@@ -8,6 +8,9 @@
   "sourcePaths": [],
   "sourceFiles": [
     "source/duck/package.d",
+    "source/duck/util/stack.d",
+    "source/duck/util/json.d",
+    "source/duck/util/package.d",
     "source/duck/compiler/package.d",
     "source/duck/compiler/buffer/package.d",
     "source/duck/compiler/buffer/slice.d",
@@ -25,6 +28,7 @@
     "source/duck/compiler/visitors/codegen.d",
     "source/duck/compiler/visitors/source.d",
     "source/duck/compiler/visitors/visit.d",
+    "source/duck/compiler/visitors/json.d",
     "source/duck/compiler/visitors/dup.d",
     "source/duck/compiler/transforms.d",
     "source/duck/compiler/ast.d",
@@ -44,10 +48,12 @@
   "configurations": [{
     "name": "default",
     "targetName": "duck",
-    "mainSourceFile": "source/host.d"
+    "mainSourceFile": "source/host.d",
+    "buildRequirements": ["silenceDeprecations"]
   }, {
     "name": "interactive",
     "targetName": "iduck",
-    "mainSourceFile": "source/ihost.d"
+    "mainSourceFile": "source/ihost.d",
+    "buildRequirements": ["silenceDeprecations"]
   }]
 }
