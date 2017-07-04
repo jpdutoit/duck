@@ -419,9 +419,13 @@ struct Parser {
 
     if (lexer.consume(Tok!"{")) {
       while (lexer.front.type != Tok!"}") {
-        if (lexer.front.type == Tok!"function") {
+        if (lexer.front.type == Tok!"constructor" || lexer.front.type == Tok!"function") {
           CallableDecl method = parseMethod(structDecl);
-          structDecl.decls.define(method.name, method);
+          if (method.name == "constructor") {
+              structDecl.ctors.add(method);
+          }
+          else
+            structDecl.decls.define(method.name, method);
         } else {
           Decl field = parseField(structDecl);
           if (!field) break;

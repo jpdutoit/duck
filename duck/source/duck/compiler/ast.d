@@ -185,8 +185,6 @@ class CallableDecl : Decl {
   StructDecl parentDecl;
 
   Expr returnExpr;
-  bool dynamic;
-  bool operator;
 
   CallExpr call(Expr[] arguments = []) {
     return this.reference().call(arguments);
@@ -204,7 +202,6 @@ class CallableDecl : Decl {
     this.returnExpr = null;
     this.parameterTypes = argTypes;
     this.returnExpr = expansion;
-    this.dynamic = parentDecl !is null;
     this.parentDecl = parentDecl;
   }
 }
