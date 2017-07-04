@@ -57,6 +57,12 @@ struct DCompilerOptions {
       frameworks: ["CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"],
       versions: ["USE_PORT_AUDIO"]
     },
+    Instrumentation = {
+      sourceFiles: [
+        "duck/runtime/instrument.d"
+      ],
+      versions: ["USE_INSTRUMENTATION"]
+    },
     DuckRuntime = {
       flags: ["-release", "-inline"],
       //libraries: ["../bin/libduck.a"],
@@ -66,7 +72,6 @@ struct DCompilerOptions {
         "duck/runtime/scheduler",
         "duck/runtime/entry",
         "duck/runtime/global",
-        "duck/runtime/instrument",
         "duck/runtime/print",
         "duck/stdlib/package",
         "duck/stdlib/scales",

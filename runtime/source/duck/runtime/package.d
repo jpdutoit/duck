@@ -4,7 +4,9 @@ public import duck.runtime.model;
 public import duck.runtime.entry;
 
 public import duck.runtime.print;
-public import duck.runtime.instrument;
+version (USE_INSTRUMENTATION) {
+  public import duck.runtime.instrument;
+}
 
 public import core.math;
 

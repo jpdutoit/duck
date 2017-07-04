@@ -39,14 +39,3 @@ void instrument(T : double)(string id, void* address, T value) {
 	rawWrite3(instrumentationCode(id, cast(void*)address));
 	rawWrite3(cast(float)value);
 }
-
-
-void instrument(T : duration)(string id, void* address, T value) {
-	rawWrite3(instrumentationCode(id, cast(void*)address));
-	rawWrite3(cast(float)(value.samples));
-}
-
-void instrument(T : frequency)(string id, void* address, T value) {
-	rawWrite3(instrumentationCode(id, cast(void*)address));
-	rawWrite3(value.value);
-}

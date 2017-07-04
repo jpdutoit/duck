@@ -72,6 +72,7 @@ int main(string[] args) {
     bool verbose = false;
     //bool forever = false;
     bool noStdLib = false;
+    bool instrument = false;
     string outputName = "output";
     string[] engines = [];
     string[] targets = [];
@@ -84,6 +85,7 @@ int main(string[] args) {
       "output|o", "Output filename (excluding extension)", &outputName,
       "engine|e", format("Audio engines: %-(%s, %)  (defaults to %s)", ENGINES, ENGINES_DEFAULT), &engines,
       "nostdlib|n", "Do not automatically import the standard library", &noStdLib,
+      "instrument|i", "Add instrumentation code to built binary", &instrument,
       //"forever|f", "Run forever", &forever,
       "verbose|v", "Verbose output", &verbose
     );
@@ -104,6 +106,7 @@ int main(string[] args) {
     }
     if (context.errors > 0) return context.errors;
 
+    context.instrument = instrument;
     context.verbose = verbose;
     context.includePrelude = !noStdLib;
 
@@ -127,6 +130,8 @@ int main(string[] args) {
       auto dfile = context.dfile();
       if (context.errors > 0) return context.errors;
 
+      if (context.instrument)
+        dfile.options.merge(DCompilerOptions.Instrumentation);
       if (engines.canFind(ENGINE_PORT_AUDIO))
         dfile.options.merge(DCompilerOptions.PortAudio);
 
