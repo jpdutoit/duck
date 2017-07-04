@@ -44,7 +44,7 @@ void initialize(string[] args) {
 
   if (outputMode == OutputMode.AU) {
     rawWrite2(".snd");
-    rawWrite2([cast(uint)24.bigEndian, 0xffffffff, 6.bigEndian, (cast(uint)SAMPLE_RATE.value).bigEndian, 2.bigEndian]);
+    rawWrite2([cast(uint)24.bigEndian, 0xffffffff, 6.bigEndian, (cast(uint)SAMPLE_RATE).bigEndian, 2.bigEndian]);
   }
   else if (outputMode ==  OutputMode.PortAudio) {
     version(USE_PORT_AUDIO) {

@@ -2,9 +2,8 @@ module duck.runtime.scheduler;
 
 private import core.thread : Fiber;
 private import duck.runtime;
-private import duck.runtime.model;
 
-private import core.sys.posix.signal;
+private import core.sys.posix.signal : sigset, SIGINT, SIG_DFL;
 version(USE_OSC) {
   import duck.plugin.osc.server;
 }
@@ -16,12 +15,12 @@ class ProcFiber : Fiber
   static uint fiberUuid = 0;
   this(scope void delegate() dg) {
     super(dg, 512*1024);
-    wakeTime = 0.seconds;
+    wakeTime = 0;
     uuid = ++fiberUuid;
   }
   this(scope void function() fn) {
     super(fn, 512*1024);
-    wakeTime = 0.seconds;
+    wakeTime = 0;
     uuid = ++fiberUuid;
   }
   uint uuid;
@@ -51,7 +50,7 @@ struct Scheduler {
     ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     if (fiber) {
       while (true) {
-        duration waitTime = 1000.0.seconds;
+        duration waitTime = 1000.0 * SAMPLE_RATE;
         int alive = 0;
         for (int i = 0; i < fiber.children.length; ++i) {
           if (fiber.children[i].state != Fiber.State.TERM) {
@@ -98,7 +97,7 @@ struct Scheduler {
   }
 
   static void tick(ref ulong sampleIndex) {
-    now.time = now.time + 1.samples;
+    now.time = now.time + 1;
     sampleIndex++;
 
     __idx = sampleIndex;
@@ -158,8 +157,12 @@ void sleep(duration dur) {
   Scheduler.sleep(dur);
 }
 
+void wait(duration dur) {
+  Scheduler.sleep(dur);
+}
+
 struct Now {
-  Time time = Time.withSamples(0);
+  Time time = 0;
   alias time this;
 
   void opBinaryRight(string op: ">>")(auto ref duration other) {

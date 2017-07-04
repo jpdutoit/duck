@@ -59,7 +59,7 @@ struct Audio
                                     1,
                                     2,
                                     paFloat32,
-                                    SAMPLE_RATE.value,
+                                    SAMPLE_RATE,
                                     64, //paFramesPerBufferUnspecified,
                                     null, //&sawtooth,
                                     null)) != paNoError
@@ -78,15 +78,15 @@ struct Audio
     print(info.sampleRate);
     print("\n");
     */
-    if (SAMPLE_RATE.value != info.sampleRate) {
+    if (SAMPLE_RATE != info.sampleRate) {
       print("Requested sample rate (");
-      print(SAMPLE_RATE.value);
+      print(SAMPLE_RATE);
       print("not available for audio output.");
       print("\n");
       halt();
     }
     //
-    now.samples = Pa_GetStreamTime(stream) * SAMPLE_RATE.value;
+    now = Pa_GetStreamTime(stream) * SAMPLE_RATE;
     //writefln("Start time: %s", now.samples); stdout.flush();
     //Pa_Sleep(1000 * 1000);
   }

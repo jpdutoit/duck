@@ -23,18 +23,7 @@ alias Stereo = Value!stereo;
 alias Float = Value!float;
 alias Frequency = Value!frequency;
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-struct WhiteNoise {
-  mono output = 0;
-
-  void tick() {
-    import std.random : uniform;
-    output = uniform(-1.0, 1.0);
-  }
-  mixin UGEN!WhiteNoise;
-}
+public import std.random : uniform;
 
 ///////////////////////////////////////////////////////////////////////////////
  uint bigEndian(uint value) {
@@ -79,6 +68,7 @@ struct Pat {
   mixin UGEN!Pat;
 };
 
+/*
 struct Log {
   mono input = 0;
   mono output = 0;
@@ -95,7 +85,7 @@ struct Log {
   }
 
   mixin UGEN!Log;
-};
+};*/
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -111,18 +101,6 @@ struct Pan {
   }
   mixin UGEN!Pan;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-
-struct Pitch {
-  mono input;
-  frequency output;
-
-  void tick() {
-    output = frequency(440 * powf(2, (input - 49)/ 12));
-  }
-  mixin UGEN!Pitch;
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -158,20 +136,6 @@ struct ScaleQuant {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct Quant {
-  mono output = 0;
-  mono input = 0;
-
-  void tick() {
-    output = roundf(input);
-    //_output = round((input - min) / (max - min) * levels) / levels * (max - min) + min;
-  }
-
-  mixin UGEN!Quant;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
 struct ADSR {
   mixin UGEN!ADSR;
 
@@ -184,7 +148,7 @@ struct ADSR {
   mono output = 0;
 
   void tick() {
-    //writefln("%s %s %s", elapsed, input, lastInput);
+    //writefln("%s %s %s", elapsed, input, ©put);
     if (input > 0 && lastInput <= 0) {
       elapsed = 0;
       att = attack;
@@ -236,8 +200,8 @@ struct ADSR {
 struct AR {
   mixin UGEN!AR;
 
-  duration attack = 1000.samples;
-  duration release = 1000.samples;
+  duration attack = 1000;
+  duration release = 1000;
 
   mono input = 0;
   mono output = 0;
@@ -245,14 +209,14 @@ struct AR {
   void tick() {
     //writefln("%s %s %s", elapsed, input, lastInput);
     if (input > 0 && lastInput <= 0) {
-      elapsed = 0.samples;
+      elapsed = 0;
       att = attack;
       rel = release;
       lastInput = input;
     }
     if (input <= 0 && lastInput > 0) {
       if (elapsed >= att) {
-        elapsed = 0.samples;
+        elapsed = 0;
         lastInput = input;
       }
     }
@@ -261,7 +225,8 @@ struct AR {
     if (lastInput > 0) {
       // ADS
       if (elapsed < att) {
-        output += (1 - output) * 1.samples / (att - elapsed);
+        duration tmp = ((1 - output) * 1);
+        output += tmp / (att - elapsed);
       } else {
         output = 1.0;
         return;
@@ -269,7 +234,7 @@ struct AR {
     } else {
       // R
       if (elapsed < rel) {
-        output += (0 - output) * 1.samples / (rel - elapsed);
+        output += (0 - output) * 1 / (rel - elapsed);
       }
       else {
         output = 0;
@@ -280,9 +245,9 @@ struct AR {
   }
 
 //private:
-  duration att = 0.samples, rel = 0.samples;
+  duration att = 0, rel = 0;
   mono lastInput = 0;
-  duration elapsed = 0.samples;
+  duration elapsed = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -290,7 +255,7 @@ struct AR {
 struct Delay {
   mixin UGEN!Delay;
   this(duration samples) {
-    ulong s = cast(ulong)(samples.value);
+    ulong s = cast(ulong)(samples);
     this.buffer.length = s;
     for (size_t i = 0; i < s; ++i) {
       this.buffer[i] = 0;

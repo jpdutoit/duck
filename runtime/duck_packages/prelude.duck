@@ -1,6 +1,12 @@
-extern struct frequency;
+extern struct frequency {
+  constructor(float);
+}
+
+extern struct duration {
+  constructor(float);
+}
+
 extern struct Time;
-extern struct duration;
 
 extern SAMPLE_RATE: frequency;
 extern struct Now;
@@ -26,6 +32,9 @@ extern function operator*(frequency, float) -> frequency;
 extern function operator*(float, frequency) -> frequency;
 
 extern function operator/(frequency, float) -> frequency;
+extern function operator/(float, frequency) -> duration;
+extern function operator/(float, duration) -> frequency;
+
 extern function operator/(frequency, frequency) -> float;
 extern function operator+(frequency, frequency) -> frequency;
 extern function operator-(frequency, frequency) -> frequency;
@@ -36,14 +45,23 @@ extern function operator+(duration, duration) -> duration;
 extern function operator-(duration, duration) -> duration;
 
 extern function printf(string) -> float;
+extern function printf(string, float) -> float;
+extern function printf(string, float, float) -> float;
 
 extern function sin(float) -> float;
 extern function abs(float) -> float;
-extern function hz(float) -> frequency;
-extern function bpm(float) -> frequency;
-extern function ms(float) -> duration;
-extern function seconds(float) -> duration;
-extern function samples(float) -> duration;
+
+extern function raw(f: frequency) -> float;
+
+function hz(amount: float) -> frequency(amount);
+function samples(amount: float) -> duration(amount);
+function bpm(amount: float) -> frequency(amount / 60.0);
+function ms(amount: float) -> duration(amount / 1000.0 * raw(SAMPLE_RATE));
+function seconds(amount: float) -> duration(amount * raw(SAMPLE_RATE));
+
+extern function wait(duration);
+extern function uniform(float, float) -> float;
+extern function powf(float, float) -> float;
 
 module Phasor {
   freq: frequency = 440 hz;
@@ -76,27 +94,14 @@ module Clock {
   }
 }
 
-/*
-module Clock {
-  freq: frequency = 440 hz;
-  phase: mono = 1.0;
-  output: mono = 0;
-  input: frequency : this.freq;
+module Pitch {
+  input: mono;
+  output: frequency;
 
   function tick() {
-    phase = (phase + (freq / SAMPLE_RATE));
-    //TODO: Implement if statements
-
-    //if (phase >= 1.0) {
-     // phase = phase % 1.0;
-     // output = 1;
-    //} else {
-    //  output = 0;
-    //}
-    //
+    output = frequency(440 * powf(2, (input - 49)/ 12));
   }
 }
-*/
 
 extern function sum(buffer: float[]) -> float;
 extern function max(float, float) -> float;
@@ -190,17 +195,11 @@ extern module Pat {
 }
 
 extern module ScaleQuant {
+  constructor(float, float[]);
   input: mono;
   key: mono;
   output: mono;
 }
-
-extern module Pitch {
-  input: mono;
-  output: frequency;
-}
-
-
 
 module Square {
   phasor: Phasor;
@@ -245,8 +244,12 @@ extern module Delay {
   output: mono;
 }
 
-extern module WhiteNoise {
-  output: mono;
+
+module WhiteNoise {
+  output: mono = 0;
+  function tick() {
+    output = uniform(0-1.0, 1.0);
+  }
 }
 
 module TriggerDivider {
@@ -272,7 +275,7 @@ module TriggerDivider {
 }
 
 module Gate {
-  input: mono;
+  input: mono = 0;
   trigger: input;
   output: mono;
 
