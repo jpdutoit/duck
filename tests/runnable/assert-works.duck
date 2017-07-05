@@ -1,13 +1,13 @@
 import "./assert";
 
-extern struct duration;
+extern struct duration {
+  constructor(float);
+}
 
 extern struct Now;
 extern now: Now;
-
 extern function operator+(float, float) -> float;
-
-extern function samples(float) -> duration;
+function samples(amount: float) -> duration(amount);
 
 module A {
   output: mono = 10;

@@ -1,8 +1,9 @@
-extern struct frequency;
-
+extern struct frequency {
+  constructor(float);
+}
 extern SAMPLE_RATE: frequency;
 
-extern function hz(float) -> frequency;
+function hz(amount: float) -> frequency(amount);
 extern function operator+(float, float) -> float;
 extern function sin(float) -> float;
 extern function operator/(frequency, frequency) -> float;
