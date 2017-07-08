@@ -133,7 +133,7 @@ struct StmtSemantic {
           }
         }
 
-        semantic.context.errors += context.errors;
+        semantic.context.errors ~= context.errors;
         semantic.context.dependencies ~= context;
 
         return stmt;

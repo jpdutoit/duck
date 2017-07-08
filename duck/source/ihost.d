@@ -117,15 +117,15 @@ void interactiveMode() {
                 foreach (filename; cmd.args) {
                     Context context = Duck.contextForFile(filename);
 
-                    if (context.errors > 0) continue;
+                    if (context.hasErrors) continue;
 
                     context.library;
 
-                    if (context.errors > 0) continue;
+                    if (context.hasErrors) continue;
 
                     DFile dfile = context.dfile;
 
-                    if (context.errors > 0) continue;
+                    if (context.hasErrors) continue;
 
                     if (true)
                         dfile.options.merge(DCompilerOptions.PortAudio);

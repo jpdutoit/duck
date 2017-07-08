@@ -104,7 +104,7 @@ int main(string[] args) {
     } else {
       context = Duck.contextForFile(args[1]);
     }
-    if (context.errors > 0) return context.errors;
+    if (context.hasErrors) return cast(int)context.errors.length;
 
     context.instrument = instrument;
     context.verbose = verbose;
@@ -123,12 +123,12 @@ int main(string[] args) {
       }
     }
 
-    if (context.errors == 0
+    if (!context.hasErrors
     && (targets.canFind(TARGET_RUN) || targets.canFind(TARGET_EXECUTABLE))) {
       context.dcode;
 
       auto dfile = context.dfile();
-      if (context.errors > 0) return context.errors;
+      if (context.hasErrors) return cast(int)context.errors.length;
 
       if (context.instrument)
         dfile.options.merge(DCompilerOptions.Instrumentation);
@@ -136,7 +136,7 @@ int main(string[] args) {
         dfile.options.merge(DCompilerOptions.PortAudio);
 
       auto compiled = dfile.compile;
-      if (context.errors > 0) return context.errors;
+      if (context.hasErrors) return cast(int)context.errors.length;
 
       if (targets.canFind(TARGET_EXECUTABLE) && outputName != "-") {
         import std.file;
@@ -149,6 +149,6 @@ int main(string[] args) {
       }
     }
 
-    return context.errors;
+    return cast(int)context.errors.length;
   }
 }

@@ -13,6 +13,10 @@ import duck.host;
 import duck.compiler.parser, duck.compiler.ast, duck.compiler.visitors, duck.compiler.semantic, duck.compiler.context;
 import duck.compiler.dbg;
 
+struct CompileError {
+  Slice location;
+  string message;
+}
 
 class Context {
   static Context current = null;
@@ -71,7 +75,7 @@ class Context {
     //library.accept(ExprPrint());
     auto code = library.generateCode(this);
 
-    if (this.errors > 0) return DCode(null);
+    if (this.hasErrors) return DCode(null);
 
     auto s =
     "import duck.runtime, duck.stdlib, core.stdc.stdio : printf;\n\n" ~
@@ -131,29 +135,28 @@ class Context {
     return _moduleName;
   }
 
-  void error(Args...)(Slice slice, string format, Args args)
-  {
-    errors++;
-
-    stderr.write(slice.toLocationString());
-    stderr.write(": Error: ");
-    stderr.writefln(format, args);
+  void error(Args...)(Slice slice, string formatString, Args args) {
+    import std.format: format;
+    error(slice, format(formatString, args));
   }
 
   void error(Slice slice, string str) {
-    errors++;
-
     stderr.write(slice.toLocationString());
     stderr.write(": Error: ");
     stderr.writeln(str);
+
+    errors ~= CompileError(slice, str);
   }
 
   void error(string str) {
-    errors ++;
     stderr.write("Error: ");
     stderr.writeln(str);
+
+    errors ~= CompileError(Slice(), str);
   }
 
+  bool hasErrors() { return errors.length > 0; }
+  CompileError[] errors = [];
 
   protected DCode _dcode;
   protected Library _library;
@@ -171,6 +174,5 @@ class Context {
   string[] packageRoots;
 
   TempBuffer temp;
-  int errors;
   int temporaries;
 };
