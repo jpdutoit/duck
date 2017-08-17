@@ -13,13 +13,15 @@ import duck.compiler.context;
 import std.getopt, std.array;
 import core.stdc.stdlib : exit;
 
+import duck.compiler.backend.d;
+
 import duck;
 
 immutable TARGET_CHECK        = "check";
 immutable TARGET_EXECUTABLE   = "exe";
-immutable TARGET_JSON         = "json";
+immutable TARGET_AST          = "ast";
 immutable TARGET_RUN          = "run";
-immutable TARGETS = [TARGET_CHECK, TARGET_RUN, TARGET_EXECUTABLE, TARGET_JSON];
+immutable TARGETS = [TARGET_RUN, TARGET_EXECUTABLE, TARGET_AST, TARGET_CHECK];
 immutable TARGETS_DEFAULT = TARGET_RUN;
 
 immutable ENGINE_NULL         = "null";
@@ -112,7 +114,7 @@ int main(string[] args) {
 
     context.library;
 
-    if (targets.canFind(TARGET_JSON)) {
+    if (targets.canFind(TARGET_AST)) {
       import duck.compiler.visitors.json;
       auto json = context.generateJson();
       if (outputName == "-") {
@@ -125,27 +127,21 @@ int main(string[] args) {
 
     if (!context.hasErrors
     && (targets.canFind(TARGET_RUN) || targets.canFind(TARGET_EXECUTABLE))) {
-      context.dcode;
+      Backend backend = new DBackend(context);
 
-      auto dfile = context.dfile();
-      if (context.hasErrors) return cast(int)context.errors.length;
+      if (auto compiler = backend.compiler) {
+        auto compiled = compiler.compile(engines);
+        if (context.hasErrors) return cast(int)context.errors.length;
 
-      if (context.instrument)
-        dfile.options.merge(DCompilerOptions.Instrumentation);
-      if (engines.canFind(ENGINE_PORT_AUDIO))
-        dfile.options.merge(DCompilerOptions.PortAudio);
+        if (targets.canFind(TARGET_EXECUTABLE) && outputName != "-") {
+          import std.file;
+          copy(compiled.filename, outputName);
+        }
 
-      auto compiled = dfile.compile;
-      if (context.hasErrors) return cast(int)context.errors.length;
-
-      if (targets.canFind(TARGET_EXECUTABLE) && outputName != "-") {
-        import std.file;
-        copy(compiled.filename, outputName);
-      }
-
-      if (targets.canFind(TARGET_RUN)) {
-        auto proc = compiled.execute();
-        proc.wait();
+        if (targets.canFind(TARGET_RUN)) {
+          auto proc = compiled.execute();
+          proc.wait();
+        }
       }
     }
 

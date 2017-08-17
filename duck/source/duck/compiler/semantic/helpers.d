@@ -26,16 +26,18 @@ struct ImportPaths
   int opApply(int delegate(size_t i, string path) dg)
   {
     import std.path : buildNormalizedPath;
-    int result = 0;
 
+    // Handle local includes
     if (target[0] == '.' || target[0] == '/') {
       return dg(0, buildNormalizedPath(sourcePath, "..", target ~ ".duck"));
     }
 
+    // Handle package includes
+    int result = 0;
     for (size_t i = 0; i < packageRoots.length; ++i) {
       result = dg(i, buildNormalizedPath(packageRoots[i], "duck_packages", target ~ ".duck"));
       if (result)
-        break;
+        return result;
     }
 
     return result;

@@ -1,6 +1,4 @@
-module duck.compiler.visitors.codegen;
-
-import std.stdio;
+module duck.compiler.backend.d.codegen;
 
 //debug = CodeGen;
 
@@ -15,12 +13,30 @@ import duck.compiler.semantic.helpers;
 
 import duck.compiler.dbg;
 
+immutable PREAMBLE = q{
+  import duck.runtime, duck.stdlib, core.stdc.stdio : printf;
+
+};
+immutable POSTAMBLE_MAIN = q{
+
+      void main(string[] args) {
+        initialize(args);
+        MainModule m;
+        Duck(&m.run);
+        Scheduler.run();
+      }
+};
+
 //  This code generator is a bit of hack at the moment
 
-string generateCode(Node node, Context context) {
+string generateCode(Node node, Context context, bool isMainFile) {
   CodeGen cg = CodeGen(context);
   node.accept(cg);
-  return cg.output.data;
+
+  auto code = cg.output.data;
+  return isMainFile
+      ? PREAMBLE ~ code ~ POSTAMBLE_MAIN
+      : PREAMBLE ~ code;
 }
 
 string typeString(Type type) {
@@ -259,7 +275,7 @@ string symbolName(Decl decl) {
         instrument(expr.left, expr.right);
       }
       outdent();
-      emit("\n;})");
+      emit("\n})");
 
     }
   }

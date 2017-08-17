@@ -67,61 +67,6 @@ class Context {
     return _library;
   }
 
-  DCode dcode() {
-    if (_dcode) {
-      return _dcode;
-    }
-
-    //library.accept(ExprPrint());
-    auto code = library.generateCode(this);
-
-    if (this.hasErrors) return DCode(null);
-
-    auto s =
-    "import duck.runtime, duck.stdlib, core.stdc.stdio : printf;\n\n" ~
-    code ~
-    "\n";
-
-    for (int i = 0; i < dependencies.length; ++i) {
-      dependencies[i].dcode;
-    }
-
-    return _dcode = DCode(cast(string) s);
-  }
-
-  DFile dfile(bool isMainFile = true) {
-    /*if (_dfile) {
-      return _dfile;
-    }*/
-    auto code = dcode();
-
-    _dfile = DFile.tempFromHash(isMainFile ? buffer.hashOf * 9129491 : buffer.hashOf);
-
-    File dst = File(_dfile.filename, "w");
-    dst.rawWrite(code.code);
-    if (isMainFile) {
-      dst.rawWrite(
-        "\n\nvoid main(string[] args) {\n"
-        "  initialize(args);\n"
-        "  MainModule m;\n"
-        "  Duck(&m.run);\n"
-        "  Scheduler.run();\n"
-        "}\n"
-      );
-    }
-    dst.close();
-
-    if (verbose)
-      stderr.writeln("Compiled: ", buffer.path, " to ", _dfile.filename);
-
-    _dfile.options.sourceFiles ~= _dfile.filename;
-    for (int i = 0; i < dependencies.length; ++i) {
-      _dfile.options.merge(dependencies[i].dfile(false).options);
-    }
-
-    return _dfile;
-  }
-
   string moduleName() {
     if (_moduleName) {
       return _moduleName;
@@ -158,14 +103,11 @@ class Context {
   bool hasErrors() { return errors.length > 0; }
   CompileError[] errors = [];
 
-  protected DCode _dcode;
   protected Library _library;
-  protected DFile _dfile;
   protected string _moduleName;
 
   bool instrument;
 
-  DCompilerOptions compilerOptions;
   bool includePrelude;
   bool verbose = false;
   Context[] dependencies;

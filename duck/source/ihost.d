@@ -1,66 +1,14 @@
 module interactive_host;
 
-import duck.compiler, duck.host;
+import std.stdio;
 
 import duck;
+import duck.compiler;
+import duck.host;
 import duck.compiler.context;
-
-import std.file, std.stdio, std.path, std.algorithm, std.array, core.thread, std.process, std.concurrency;
-import core.sys.posix.signal;
+import duck.compiler.backend.d;
 
 Process[] procList;
-
-void log(T...)(T t) {
-  stderr.writefln(t);
-  stderr.flush();
-}
-
-extern(C)
-static void signalHandler(int value) {
-    sigset(SIGINT, SIG_DFL);
-
-    foreach(ref Process process; procList)
-        process.stop();
-    //writefln("Intercepted");
-    //kill(process, SIGKILL);
-}
-
-void waitForProcesses() {
-    sigset(SIGINT, &signalHandler);
-
-outerLoop:
-    while(true) {
-        Thread.sleep(100.msecs);
-        foreach(ref Process process; procList) {
-            auto result = tryWait(process.pid);
-            if (!result.terminated) continue outerLoop;
-        }
-        break;
-    }
-}
-
-
-int tmpIndex = 0;
-string tmpFolder = "/tmp/";
-
-string temporaryFileName() {
-    import std.conv: to;
-    return "duck_temp" ~ tmpIndex.to!string;
-}
-/*
-struct DuckFile {
-    string filename;
-
-    this(string filename) {
-        this.filename = filename;
-    }
-
-    DFile convertToD() {
-      auto ast = SourceBuffer(filename).parse();
-      auto dcode = ast.codeGen();
-      return dcode.saveToTemporary();
-    }
-}*/
 
 struct Command {
     string name;
@@ -89,6 +37,8 @@ void describe(Process process) {
 }
 
 void describe(ref Process[] list) {
+    import std.algorithm: filter;
+    import std.array: array;
     list = list.filter!(a => a.alive)().array;
 
     foreach(i, ref process; list) {
@@ -117,23 +67,21 @@ void interactiveMode() {
                 foreach (filename; cmd.args) {
                     Context context = Duck.contextForFile(filename);
 
-                    if (context.hasErrors) continue;
-
                     context.library;
-
                     if (context.hasErrors) continue;
 
-                    DFile dfile = context.dfile;
+                    Backend backend = new DBackend(context);
 
-                    if (context.hasErrors) continue;
+                    if (auto compiler = backend.compiler) {
+                      auto compiled = compiler.compile(["port-audio"]);
 
-                    if (true)
-                        dfile.options.merge(DCompilerOptions.PortAudio);
+                      if (context.hasErrors) continue;
 
-                    auto process = dfile.compile.execute();
-                    process.describe();
-                    procList ~= process;
-                    stdout.flush();
+                      auto process = compiled.execute();
+                      process.describe();
+                      procList ~= process;
+                      stdout.flush();
+                    }
                 }
             }
             else if (cmd.name == "stop") {

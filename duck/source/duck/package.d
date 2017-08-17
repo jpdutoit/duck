@@ -11,7 +11,7 @@ class Duck {
   static Context[Buffer] cache;
 
   static Context contextForString(string code) {
-    Buffer buffer = new FileBuffer("", getcwd() ~ "/string", false);
+    Buffer buffer = new FileBuffer("", "-", false);
     buffer.contents = code ~ "\0";
 
     if (buffer in cache) return cache[buffer];
