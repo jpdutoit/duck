@@ -1,0 +1,26 @@
+name: "duck"
+sh: true
+cwd: "{PROJECT_PATH}"
+cmd: "dub"
+env:
+  DFLAGS: "-c -o-"
+args:
+  - --quiet build
+  - --combined
+  - duck:duck
+errorMatch:
+  - (?<file>[/\\0-9a-zA-Z._]+)\((?<line>\d+),(?<col>\d+)\)\:\s*(Error\:\s*)?(?<message>.+)
+targets:
+  iduck:
+      sh: true
+      cwd: "{PROJECT_PATH}"
+      cmd: "dub"
+      env:
+        DFLAGS: "-c -o-"
+      args:
+        - --quiet build
+        - --combined
+        - duck:duck
+        - --config=interactive
+      errorMatch:
+        - (?<file>[/\\0-9a-zA-Z._]+)\((?<line>\d+),(?<col>\d+)\)\:\s*(Error\:\s*)?(?<message>.+)
