@@ -1,15 +1,19 @@
 const http = require('http')
 const URL = require('url')
 const fs = require('fs')
-const port = process.env.DUCK_SERVER_PORT || 80
 const childProcess = require("child_process")
+
+const SERVER_PORT = process.env.DUCK_SERVER_PORT || 80;
+const DUCK_EXECUTABLE = "../../bin/duck";
+const FFMPEG_EXECUTABLE = "ffmpeg";
+const FFMPEG_ARGUMENTS = "-i - -acodec libmp3lame -ac 2 -y -v 0";
 
 const MEMORY_CACHE_TIMEOUT = 10 * 60 * 1000;
 const DISK_CACHE_TIMEOUT = 3 * 24 * 60 * 60 * 1000;
 const PROCESSING_TIMEOUT = 4000
 
 function spawn(cmd, args, callback) {
-  const child = childProcess.spawn(cmd, args || [], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = childProcess.spawn(cmd, args || []);
 
   let stdout = '', stderr = '';
   child.stdout.on('data', (buffer) => { stdout += buffer.toString(); });
@@ -21,15 +25,26 @@ function spawn(cmd, args, callback) {
   return child;
 }
 
+function checkSyntax(code) {
+  return new Promise((resolve, reject) => {
+    spawn(DUCK_EXECUTABLE, ["-t", "check", "--", code], (code, stdout, stderr) => {
+      if (code == 0) {
+        resolve();
+      } else {
+        reject({ message: stderr.toString() || "Internal compiler error" });
+      }
+    })
+  });
+}
+
 function generateMp3(filename, code) {
   var exeFilename = filename;
   var mp3Filename = filename + ".mp3";
-  var ffmpegParameters = "-i - -acodec libmp3lame -ac 2 -y -v 0 "
   return new Promise((resolve, reject) => {
-    spawn("../../bin/duck", ["-t", "exe", "-o", exeFilename, "-e", "null", "--", code], (code, stdout, stderr) => {
+    spawn(DUCK_EXECUTABLE, ["-t", "exe", "-o", exeFilename, "-e", "null", "--", code], (code, stdout, stderr) => {
       if (code == 0) {
         fs.chmodSync(exeFilename, 0700);
-        childProcess.exec(filename + " --output au | ffmpeg " + ffmpegParameters + mp3Filename, {
+        childProcess.exec(`${filename} --output au | ${FFMPEG_EXECUTABLE} ${FFMPEG_ARGUMENTS} ${mp3Filename}`, {
           encoding: "buffer",
           timeout: PROCESSING_TIMEOUT
         }, (error, stdout, stderr) => {
@@ -129,8 +144,11 @@ const requestHandler = (request, response) => {
   .on('data', (chunk) => { body.push(chunk);})
   .on('end', () => {
     body = Buffer.concat(body).toString();
-    if ((method == "GET" || method == "POST") && url.pathname == "/run") {
-      var code = url.query.code || body || ""
+    switch(url.pathname) {
+
+    case "/run":
+      if (method != "GET" && method != "POST") break;
+      var code = url.query.code || body || "";
       var cacheItem = Cache.get(code, "mp3")
       cacheItem.promise.then((filename) => {
           response.writeHead(200, {
@@ -146,18 +164,40 @@ const requestHandler = (request, response) => {
           response.write(error.message);
           response.end();
         });
-    } else {
-      response.statusCode = 404;
-      response.end();
+      return;
+
+    case "/check":
+      if (method != "GET" && method != "POST") break;
+      var code = url.query.code || body || "";
+      checkSyntax(code).then(() => {
+          response.writeHead(200, {
+            'Content-Type': 'text/plain'
+          })
+          response.write("OK");
+          response.end();
+        })
+        .catch((error) => {
+          response.writeHead(400, {
+            'Content-Type': 'text/plain'
+          })
+          response.write(error.message);
+          response.end();
+        });
+      return;
+
+    default:
+      break;
     }
+    response.statusCode = 404;
+    response.end();
   });
 }
 
 const server = http.createServer(requestHandler)
 
-server.listen(port, (err) => {
+server.listen(SERVER_PORT, (err) => {
   if (err) {
     return console.log('something bad happened', err)
   }
-  console.log(`server is listening on ${port}`)
+  console.log(`Server is listening on ${SERVER_PORT}`)
 })
