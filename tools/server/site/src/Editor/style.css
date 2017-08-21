@@ -1,0 +1,93 @@
+.container {
+  box-sizing: border-box;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.CodeMirror {
+  border: 1px solid #000;
+
+  height: auto;
+  overflow-y: hidden;
+  overflow-x: auto;
+}
+
+.CodeMirror-scroll {
+  height: auto;
+  min-height: 100px;
+}
+
+#wavesurfer-outer-container {
+  width:800px;
+  overflow:hidden;
+}
+
+#wavesurfer-container {
+  transform: scaleX(2);
+  padding-left: 200px;
+}
+
+#wavesurfer-container > wave {
+  background-color: #323232;
+  width:800px;
+  overlflow:hidden;
+}
+
+.codemirror-container {
+}
+
+.contains-errors .button-bar {
+  opacity: 0.25;
+}
+
+.button-bar {
+  float: right;
+  background-color: #fff;
+}
+
+body, #app, .Editor {
+  background-color: #fff;
+  height:100%;
+  width:100%;
+  padding: 00;
+  margin:0;
+}
+
+#header-container {
+  top: 0px;
+  height: 48px;;
+}
+
+#footer-container {
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  height: 26px;
+}
+
+ .bar-button {
+  display:inline-block;
+  font-size: 20pt;
+  background-color: #fff;
+  color:black;
+  border:none;
+  width: 48px;
+  height: 48px;
+  border-left: 2px solid #ddd;
+}
+
+audio {
+  opacity: 0;
+  background-color: transparent;
+  display:inline-block;
+  position: absolute;;
+  left: 0;
+  right:0;
+  top:0;
+  vertical-align: middle;
+}
+
+.CodeMirror-hints {
+  z-index: 200;
+}

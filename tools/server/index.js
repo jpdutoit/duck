@@ -146,6 +146,24 @@ const requestHandler = (request, response) => {
     body = Buffer.concat(body).toString();
     switch(url.pathname) {
 
+    case "/edit":
+      if (method != "GET") break;
+      response.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8'
+      })
+      var stream = fs.createReadStream("built/index.html");
+      stream.pipe(response);
+      return;
+
+    case "/bundle.js":
+      if (method != "GET") break;
+      response.writeHead(200, {
+        'Content-Type': 'application/javascript'
+      })
+      var stream = fs.createReadStream("built/bundle.js");
+      stream.pipe(response);
+      return;
+
     case "/run":
       if (method != "GET" && method != "POST") break;
       var code = url.query.code || body || "";

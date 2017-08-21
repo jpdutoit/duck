@@ -1,0 +1,10 @@
+{
+    "env": {
+        "development": {
+            "presets": [
+                ["es2015", {"loose": true, "modules": false}], "stage-0"
+            ]
+        }
+    },
+    "plugins": ["babel-plugin-syntax-jsx", ["babel-plugin-inferno", {"imports": true}]]
+}
