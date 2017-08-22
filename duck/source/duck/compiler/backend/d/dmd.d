@@ -7,13 +7,7 @@ import std.process;
 import std.path : buildPath;
 
 private {
-  int tmpIndex = 0;
   string tmpFolder = "/tmp/";
-}
-
-private string temporaryFileName() {
-    import std.conv: to;
-    return "duck_temp" ~ tmpIndex.to!string;
 }
 
 struct DCompilerOptions {
@@ -42,7 +36,7 @@ struct DCompilerOptions {
       "duck/plugin/portaudio/package",
       "deimos/portaudio.di"
     ],
-    libraries: ["../runtime/lib/libportaudio.a"],
+    libraries: ["libportaudio.a"],
     frameworks: ["CoreAudio", "CoreFoundation", "CoreServices", "AudioUnit", "AudioToolbox"],
     versions: ["USE_PORT_AUDIO"]
   };
@@ -92,27 +86,39 @@ struct DFile {
     this.name = name;
     this.filename = filename;
     this.options.merge(DCompilerOptions.DuckRuntime);
+    this.options.sourceFiles ~= this.filename;
+  }
+
+  void write(string code) {
+    import std.stdio: File;
+    File dst = File(this.filename, "w");
+    dst.rawWrite(code);
+    dst.close();
   }
 
   static tempFromHash(size_t hash) {
     import std.digest.digest : toHexString;
     ubyte[8] result = (cast(ubyte*) &hash)[0..8];
-    string name = "duck_" ~ toHexString(result[0..8]).assumeUnique;
+    string name = "_duck_" ~ toHexString(result[0..8]).assumeUnique;
     string filename = (tmpFolder ~ name ~ ".d").assumeUnique;
     return DFile(filename, name);
   }
 
   Executable compile() {
-      return compile(tmpFolder ~ temporaryFileName());
+      return compile(tmpFolder ~ name ~ ".bin");
   }
 
   Executable compile(string output) {
     stdout.flush();
-    auto command = "dmd  -Iruntime/source -of" ~ output ~ buildCommand(options);
+    auto command = "dmd -of=" ~ output ~ buildCommand(options);
     debug(VERBOSE) writeln("EXECUTE: ", command);
     debug(duck_host) stderr.writefln("%s", command);
     Pid compile = spawnShell(command, stdin, stdout, stderr, null, Config.none, null);
     auto result = wait(compile);
+    if (result != 0) {
+      debug(duck_host) stderr.writeln("Error compiling: ", result);
+      return Executable("");
+    }
     debug(duck_host) stderr.writeln("Done compiling");
     return Executable(output);
   }
@@ -136,7 +142,7 @@ struct DFile {
     foreach (string v; options.versions)
       command ~= " -version=" ~ v;
     foreach(string library; options.libraries)
-        command ~= " -L" ~ path ~ library;
+        command ~= " -L" ~ buildPath(hostFolder, "../runtime/lib", library);
     foreach(string framework; options.frameworks)
         command ~= " -L-framework -L" ~ framework;
     return command;

@@ -32,7 +32,9 @@ class DBackend : Backend, SourceToBinaryCompiler {
 
     if (context.hasErrors) return Executable("");
 
-    return dfile.compile();
+    auto exe = dfile.compile();
+    if (!exe) context.error("Internal compiler error.");
+    return exe;
   }
 
   bool isExecutable() {
@@ -42,17 +44,15 @@ class DBackend : Backend, SourceToBinaryCompiler {
 
 private DFile genFile(Context context, bool isMainFile) {
   auto code = generateCode(context.library, context, isMainFile);
-//  if (context.hasErrors) return DCode(null);
+  if (context.hasErrors) return DFile();
+
   auto dfile = DFile.tempFromHash(isMainFile ? context.buffer.hashOf * 9129491 : context.buffer.hashOf);
 
-  File dst = File(dfile.filename, "w");
-  dst.rawWrite(code);
-  dst.close();
+  dfile.write(code);
 
   if (context.verbose)
     stderr.writeln("Compiled: ", context.buffer.path, " to ", dfile.filename);
 
-  dfile.options.sourceFiles ~= dfile.filename;
   for (int i = 0; i < context.dependencies.length; ++i) {
     auto dep = genFile(context.dependencies[i], false);
     dfile.options.merge(dep.options);

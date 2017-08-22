@@ -134,11 +134,13 @@ int main(string[] args) {
         if (context.hasErrors) return cast(int)context.errors.length;
 
         if (targets.canFind(TARGET_EXECUTABLE) && outputName != "-") {
-          import std.file;
-          copy(compiled.filename, outputName);
+          auto original = compiled.filename;
+          compiled.move(outputName);
+          if (context.verbose) stderr.writeln("Moved: ", original, " to ", compiled.filename);
         }
 
         if (targets.canFind(TARGET_RUN)) {
+          if (context.verbose) stderr.writeln("Executing: ", compiled.filename);
           auto proc = compiled.execute();
           proc.wait();
         }

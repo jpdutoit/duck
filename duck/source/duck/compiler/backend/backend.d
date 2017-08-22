@@ -52,4 +52,13 @@ struct Executable {
     bool opCast(){
       return filename != null && filename.length > 0;
     }
+
+    void move(string target) {
+      import std.path: buildPath;
+      import std.file: copy, remove, PreserveAttributes;
+      target = buildPath(".", target);
+      copy(this.filename, target, PreserveAttributes.yes);
+      remove(this.filename);
+      this.filename = target;
+    }
 }

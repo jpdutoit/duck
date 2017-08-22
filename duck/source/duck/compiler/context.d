@@ -75,7 +75,7 @@ class Context {
     import std.digest.digest : toHexString;
     size_t hash = buffer.hashOf;
     ubyte[8] result = (cast(ubyte*) &hash)[0..8];
-    _moduleName = ("duck_" ~ toHexString(result[0..8])).assumeUnique;
+    _moduleName = ("_duck_" ~ toHexString(result[0..8])).assumeUnique;
 
     return _moduleName;
   }
