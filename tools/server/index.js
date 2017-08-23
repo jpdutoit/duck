@@ -5,8 +5,8 @@ const childProcess = require("child_process")
 
 const SERVER_PORT = process.env.DUCK_SERVER_PORT || 80;
 const DUCK_EXECUTABLE = "../../bin/duck";
-const FFMPEG_EXECUTABLE = "ffmpeg";
-const FFMPEG_ARGUMENTS = "-i - -acodec libmp3lame -ac 2 -y -v 0";
+const FFMPEG_EXECUTABLE = "sox";
+const FFMPEG_ARGUMENTS = "-t au -";
 
 const MEMORY_CACHE_TIMEOUT = 10 * 60 * 1000;
 const DISK_CACHE_TIMEOUT = 3 * 24 * 60 * 60 * 1000;
