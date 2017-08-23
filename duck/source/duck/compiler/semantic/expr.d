@@ -21,8 +21,8 @@ struct ExprSemantic {
   }
 
   Expr makeModule(Type type, Expr ctor) {
-    auto decl = new VarDecl(type, context.temporary());
-    return new InlineDeclExpr(new VarDeclStmt(decl, ctor));
+    auto decl = new VarDecl(type, context.temporary(), ctor);
+    return new InlineDeclExpr(new VarDeclStmt(decl));
   }
 
   void implicitCall(ref Expr expr) {
@@ -290,23 +290,24 @@ struct ExprSemantic {
   }
 
   Node visit(ConstructExpr expr) {
-    accept(expr.target);
+    accept(expr.callable);
     accept(expr.arguments);
     debug(Semantic) log("=>", expr);
 
-    Decl decl = expr.target.getTypeDecl();
+    Decl decl = expr.callable.getTypeDecl();
 
     debug(Semantic) log("=> decl", decl);
-    if (expr.target.hasError || expr.arguments.hasError)
+    if (expr.callable.hasError || expr.arguments.hasError)
       return expr.taint;
 
     //TODO: Generate default constructor if no constructors are defined.
-    if (expr.arguments.length == 0) {
-      expr.exprType = expr.callable.getTypeDecl().declType;
-      return expr;
-    }
 
-    return expr.target.exprType.visit!(
+    return expr.callable.exprType.visit!(
+      delegate(FunctionType ft) {
+        //expr.arguments = coerce(expr.arguments, ft.decl);
+        return expr;
+      },
+
       delegate(TypeType type) {
         if (expr.arguments.length == 1 && expr.arguments[0].exprType == decl.declType) {
           return expr.arguments[0];
@@ -327,13 +328,23 @@ struct ExprSemantic {
               if (best.isMacro) {
                 return expandMacro(best, expr.arguments.elements, expr.context);
               }
+
+              expr.callable = best.reference();
+              accept(expr.callable);
               return expr;
             }
             else {
+              if (expr.arguments.length == 0) {
+                expr.exprType = expr.callable.getTypeDecl().declType;
+                expr.callable = null;
+                return expr;
+              }
               return expr.error("No constructor matches argument types " ~ expr.arguments.exprType.describe());
             }
           },
           (TypeDecl typeDecl) {
+            expr.exprType = expr.callable.getTypeDecl().declType;
+            expr.callable = null;
             return expr;
           }
         );
@@ -444,7 +455,7 @@ struct ExprSemantic {
           return expr;
         },
         delegate (TypeType tt) {
-          Expr e = new ConstructExpr(expr.callable, expr.arguments, expr.source);
+          Expr e = new ConstructExpr(expr.callable, expr.arguments, null, expr.source);
           accept(e);
           return e;
         },

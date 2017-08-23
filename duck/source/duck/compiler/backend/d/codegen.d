@@ -333,6 +333,23 @@ string symbolName(Decl decl) {
     emit("]");
   }
 
+    void visit(ConstructExpr expr) {
+    debug(CodeGen) log("ConstructExpr", expr);
+    auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
+    if (callable.isExternal) {
+      emit(callable.parentDecl.declType.typeString());
+      emit("(");
+      accept(expr.arguments);
+      emit(")");
+    } else {
+      emit(callable.parentDecl.declType.typeString());
+      emit("().");
+      accept(expr.callable);
+      emit("(");
+      accept(expr.arguments);
+      emit(")");
+    }
+  }
   void visit(CallExpr expr) {
     debug(CodeGen) log("CallExpr");
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
@@ -350,23 +367,35 @@ string symbolName(Decl decl) {
     }
   }
 
-  void visit(VarDeclStmt stmt) {
-    debug(CodeGen) log("VarDeclStmt");
+  void visit(VarDecl decl) {
+    debug(CodeGen) log("VarDecl");
+    if (decl.external) return;
 
-    VarDecl varDecl = cast(VarDecl)stmt.decl;
-    if (varDecl.external) return;
-
-    string typeName = stmt.decl.declType.typeString();
+    string typeName = decl.declType.typeString();
     emit(typeName);
     emit(" ");
-    emit(stmt.decl.name);
-    if (stmt.expr) {
-      emit(" = ");
-      accept(stmt.expr);
+    emit(decl.name);
+    if (decl.valueExpr) {
+      decl.valueExpr.visit!(
+        (ConstructExpr c) {
+          if (c.callable) {
+            emit(" = ");
+            accept(c);
+          }
+        },
+        (Expr e) {
+          emit(" = ");
+          accept(e);
+        }
+      );
     }
     emit(";\n");
-
   }
+
+  void visit(VarDeclStmt stmt) {
+    accept(stmt.decl);
+  }
+
   void visit(TypeDeclStmt stmt) {
     accept(stmt.decl);
   }
@@ -461,20 +490,13 @@ string symbolName(Decl decl) {
 
   void visit(FieldDecl fieldDecl) {
     line(fieldDecl.typeExpr);
+    debug(CodeGen) log("FieldDecl", fieldDecl.name);
 
     emit("__ConnDg ");
     emit(fieldDecl.name);
     emit("__dg; ");
 
-    emit("  ");
-    accept(fieldDecl.typeExpr);
-    emit(" ");
-    emit(fieldDecl.name);
-    if (fieldDecl.valueExpr) {
-      emit(" = ");
-      accept(fieldDecl.valueExpr);
-    }
-    emit(";\n");
+    visit(cast(VarDecl)fieldDecl);
   }
 
   void visit(ReturnStmt returnStmt) {
@@ -488,10 +510,14 @@ string symbolName(Decl decl) {
     debug(CodeGen) log("CallableDecl", funcDecl.name);
 
     if (!funcDecl.isExternal) {
-      if (funcDecl.returnExpr)
-        accept(funcDecl.returnExpr);
-      else
-        emit("void");
+      if (funcDecl.isConstructor) {
+        emit(funcDecl.parentDecl.name);
+      } else {
+        if (funcDecl.returnExpr)
+          accept(funcDecl.returnExpr);
+        else
+          emit("void");
+      }
       emit(" ");
 
       emit(symbolName(funcDecl));
@@ -506,8 +532,13 @@ string symbolName(Decl decl) {
         }
       }
       emit(") ");
-      //emit("{");
+      indent();
+      emit("{\n");
       accept(funcDecl.callableBody);
+      if (funcDecl.isConstructor)
+        emit("return this;");
+      outdent();
+      emit("\n}\n\n");
     }
   }
 
@@ -529,6 +560,11 @@ string symbolName(Decl decl) {
         foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
           accept(field);
         }
+
+        foreach(ctor ; moduleDecl.ctors.decls) {
+          accept(ctor);
+        }
+
         emit("ulong __sampleIndex = ulong.max;\n");
 
         emit("\n");

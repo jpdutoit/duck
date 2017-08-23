@@ -40,6 +40,8 @@ struct StmtSemantic {
   }
 
   Node visit(Stmts stmts) {
+    import duck.compiler.visitors.source;
+
     foreach(ref stmt ; stmts.stmts) {
       splitStatements = [];
       debug(Semantic) log("'", stmt.findSource().toString().yellow, "'");
@@ -54,11 +56,6 @@ struct StmtSemantic {
   }
 
   Node visit(VarDeclStmt stmt) {
-    //debug(Semantic) log("=>", stmt.expr);
-    if (stmt.expr) {
-      accept(stmt.expr);
-      debug(Semantic) log("=>", stmt.expr);
-    }
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 

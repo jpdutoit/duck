@@ -1,0 +1,63 @@
+extern function assertEquals(float, float);
+
+extern struct frequency {
+  constructor(float);
+}
+extern function raw(f: frequency) -> float;
+function hz(amount: float) -> frequency(amount);
+
+module A {
+  value: mono;
+  constructor() {
+    value = 1.0;
+  }
+  constructor(f: float) {
+    value = 2.0;
+  }
+}
+
+module B { }
+
+module S {
+  a1: A;
+  a2: A();
+  a3: A(100);
+  b1: B;
+  b2: B();
+  c1: frequency = hz(1);
+  c2: frequency(2);
+
+}
+
+s: S;
+assertEquals(s.a1.value, 1);
+assertEquals(s.a2.value, 1);
+assertEquals(s.a3.value, 2);
+assertEquals(raw(s.c1), 1);
+assertEquals(raw(s.c2), 2);
+
+a1: A;
+a2: A();
+a3: A(100);
+assertEquals(a1.value, 1);
+assertEquals(a2.value, 1);
+assertEquals(a3.value, 2);
+
+b1: frequency;
+b2: frequency();
+b3: frequency(3);
+b4: frequency = 4 hz;
+
+//assertEquals(raw(b1), 0);
+//assertEquals(raw(b2), 0);
+assertEquals(raw(b3), 3);
+assertEquals(raw(b4), 4);
+
+c1: mono;
+c2: mono = 2;
+c3: mono(3);
+
+//TODO: Built-in floats should default to zero instead of nan
+//assertEquals(c1, 0);
+assertEquals(c2, 2);
+assertEquals(c3, 3);

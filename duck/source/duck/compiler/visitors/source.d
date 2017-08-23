@@ -16,10 +16,13 @@ private alias V = Visitor!(
     }
     return s;
   },
-  (VarDeclStmt s) {
-    if (s.expr)
-      return s.expr.source;
-    return s.decl.name;
+  (VarDeclStmt stmt) {
+    Slice s = stmt.decl.name;
+    if (stmt.decl.valueExpr)
+      s = s + stmt.decl.valueExpr.source;
+    if (stmt.decl.typeExpr)
+      s = s + stmt.decl.typeExpr.source;
+    return s;
   },
   (IfStmt s) => s.condition.findSource(),
   (ImportStmt s) => s.identifier.slice,

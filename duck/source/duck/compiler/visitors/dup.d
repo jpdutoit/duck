@@ -29,11 +29,14 @@ private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
           : new RefExpr(expr.decl, cloneImpl(expr.context), expr.source);
       },
       (LiteralExpr expr) => expr,
+      (ConstructExpr expr) => new ConstructExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), cloneImpl(expr.context), expr.source),
       (CallExpr expr) => new CallExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), cloneImpl(expr.context), expr.source),
       (BinaryExpr expr) => new BinaryExpr(expr.operator, cloneImpl(expr.left), cloneImpl(expr.right), expr.source),
       (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array)
     );
   }
 
-  return cloneImpl(expr);
+  auto copy = cloneImpl(expr);
+  copy.exprType = expr._exprType;
+  return copy;
 }

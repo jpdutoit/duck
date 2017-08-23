@@ -130,16 +130,11 @@ class OverloadSet : Decl {
   }
 }
 
-class FieldDecl : Decl {
+class FieldDecl : VarDecl {
   mixin NodeMixin;
 
-  Expr typeExpr;
-  alias identifier = name;
-  Expr valueExpr;
-  StructDecl parentDecl;
-
   this(Expr typeExpr, Token identifier, Expr valueExpr, StructDecl parent) {
-    super(null, identifier);
+    super(cast(Type)null, identifier);
     this.typeExpr = typeExpr;
     this.valueExpr = valueExpr;
     this.parentDecl = parent;
@@ -166,7 +161,8 @@ class CallableDecl : Decl {
     struct {
       import std.bitmanip;
       mixin(bitfields!(
-          int,  "filler", 4,
+          int,  "filler", 3,
+          bool, "isConstructor", 1,
           bool, "isOperator", 1,
           bool, "isExternal", 1,
           bool, "isMethod", 1,
@@ -252,14 +248,18 @@ class VarDecl : Decl {
   mixin NodeMixin;
 
   bool external;
-  TypeExpr typeExpr;
+  Expr typeExpr;
+  Expr valueExpr;
+  StructDecl parentDecl;
 
-  this(Type type, Slice name) {
+  this(Type type, Slice name, Expr value = null) {
     super(type, name);
+    this.valueExpr = value;
   }
-  this(TypeExpr typeExpr, Slice identifier) {
+  this(TypeExpr typeExpr, Slice identifier, Expr value = null) {
     super(null, identifier);
     this.typeExpr = typeExpr;
+    this.valueExpr = value;
   }
 }
 
@@ -308,12 +308,10 @@ class ImportStmt : Stmt {
 class VarDeclStmt : Stmt {
   mixin NodeMixin;
 
-  Decl decl;
-  Expr expr;
+  VarDecl decl;
 
-  this(VarDecl decl, Expr expr) {
+  this(VarDecl decl) {
     this.decl = decl;
-    this.expr = expr;
   }
 }
 
@@ -625,8 +623,11 @@ class IndexExpr : Expr {
 class ConstructExpr : CallExpr {
   mixin NodeMixin;
 
-  alias target = callable;
-  this(Expr expr, TupleExpr arguments, Slice source = Slice()) {
-    super(expr, arguments, null, source);
+  this(Expr expr, TupleExpr arguments, Expr context = null, Slice source = Slice()) {
+    super(expr, arguments, context, source);
+  }
+
+  this(Expr callable, Expr[] arguments, Expr context = null, Slice source = Slice()) {
+    this(callable, new TupleExpr(arguments), context, source);
   }
 }

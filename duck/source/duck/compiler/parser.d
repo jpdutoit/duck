@@ -184,7 +184,7 @@ struct Parser {
       auto identifier = lexer.consume;
       lexer.expect(Tok!":", "Expected ':'");
       auto typeExpr = new TypeExpr(parseExpression(Precedence.Unary));
-      return new VarDecl(typeExpr, identifier);
+      return new VarDecl(typeExpr, identifier, null);
     }
     return null;
   }
@@ -245,7 +245,7 @@ struct Parser {
           ctor = null;
         }
 
-        return new InlineDeclExpr(new VarDeclStmt(new VarDecl(new TypeExpr(typeExpr), identifier.identifier), ctor));
+        return new InlineDeclExpr(new VarDeclStmt(new VarDecl(new TypeExpr(typeExpr), identifier.identifier, ctor)));
       case Tok!"(":
         // Call parenthesis
         return parseCall(left);
@@ -333,6 +333,7 @@ struct Parser {
     if (lexer.front.type == Tok!"constructor") {
       isCtor = true;
       decl = new CallableDecl(lexer.front);
+      decl.isConstructor = true;
       lexer.consume();
     }
     else {
@@ -340,9 +341,10 @@ struct Parser {
         return null;
       auto name = expect(Identifier, "Expected identifier");
       decl = new CallableDecl(name);
+      decl.isMethod = true;
     }
-    decl.isMethod = true;
 
+    decl.isExternal = structDecl.external;
     parseCallableArgumentList(decl, structDecl.external);
 
     Stmt methodBody;

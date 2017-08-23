@@ -61,6 +61,12 @@ struct ExprToString {
     }
     return s ~ ")".annot(expr._exprType);
   }
+  string visit(ConstructExpr expr) {
+    if (expr.callable) {
+      return "construct:" ~ visit(cast(CallExpr)expr);
+    }
+    return "construct:(defaultCtor)";
+  }
   string visit(CallExpr expr) {
     string s = "(" ~ expr.callable.accept(this) ~ "(";
     foreach (i, arg ; expr.arguments.elements) {

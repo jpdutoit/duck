@@ -22,6 +22,7 @@ public:
 
 string prettyName(T)(ref T t) {
   import std.regex;
+  if (!t) return "";
   return t.classinfo.name.replaceFirst(regex(r"^.*\."), "");
 }
 
@@ -78,7 +79,7 @@ struct SemanticAnalysis {
   void accept(E : Decl)(ref E target) {
     debug(Semantic) {
       logIndent();
-      log(target.prettyName.red, target, "'" ~ decl.name ~ "'");
+      log(target.prettyName.red, target, "'" ~ target.name ~ "'");
     }
     auto obj = target.accept(declSemantic);
     debug(Semantic)  logOutdent();

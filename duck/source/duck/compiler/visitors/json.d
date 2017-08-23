@@ -112,7 +112,9 @@ struct JsonOutput {
     field("type", "declaration.variable");
     field("name", decl.name);
     if (decl.typeExpr)
-      field("type-declaration", decl.typeExpr.decl);
+      field("type-expression", decl.typeExpr);
+    if (decl.valueExpr)
+      field("value-expression", decl.valueExpr);
     if (decl.external)
       field("is_external", decl.external);
   }
@@ -192,8 +194,6 @@ struct JsonOutput {
 
   void visit(VarDeclStmt stmt) {
    field("type", "statement.declaration.variable");
-   if (stmt.expr)
-    field("value_expression", stmt.expr);
    field("declaration", stmt.decl);
   }
 

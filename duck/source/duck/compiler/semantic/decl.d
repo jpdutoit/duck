@@ -43,6 +43,7 @@ struct DeclSemantic {
         auto type = FunctionType.create(t.type, TupleType.create(paramTypes));
         type.decl = decl;
         decl.declType = type;
+        debug(Semantic) log("=>", decl);
         return decl;
       },
       (Type t) {
@@ -51,6 +52,7 @@ struct DeclSemantic {
         type.decl = decl;
         decl.declType = type;
         decl.isMacro = true;
+        debug(Semantic) log("=>", decl);
         return decl;
       }
     );
@@ -67,19 +69,42 @@ struct DeclSemantic {
     return decl;
   }
 
+  Node visit(VarDecl decl) {
+    debug(Semantic) log("=>", decl.name, decl.typeExpr);
 
-  Node visit(FieldDecl decl) {
-    DeclTable funcScope = new DeclTable();
-    debug(Semantic) log("=> expansion", decl.typeExpr);
-    accept(decl.typeExpr);
-    debug(Semantic) log("=> expansion", decl.typeExpr);
-
-    if (decl.valueExpr)
+    if (!decl.typeExpr) {
+      ASSERT(decl.valueExpr, "Internal compiler error: Expected at least one of typeExpr or valueExpr");
       accept(decl.valueExpr);
+      decl.typeExpr = null;
+      decl.declType = decl.valueExpr.exprType;
+      return decl;
+    }
+
+    accept(decl.typeExpr);
+
+    if (auto ce = decl.typeExpr.as!ConstructExpr) {
+      if (!ce.callable) {
+        decl.declType = ce.exprType;
+        return decl;
+      }
+
+      decl.valueExpr = decl.typeExpr;
+      auto callable = ce.callable.enforce!RefExpr().decl.as!CallableDecl;
+      decl.typeExpr = callable.parentDecl.reference();
+      decl.declType = callable.parentDecl.declType;
+      accept(decl.typeExpr);
+      return decl;
+    }
+    if (decl.typeExpr.hasError)
+      return decl.taint();
 
     if (decl.typeExpr.exprType.kind == TypeType.Kind) {
       if (auto typeDecl = decl.typeExpr.getTypeDecl()) {
         decl.declType = typeDecl.declType;
+        if (!decl.valueExpr) {
+          decl.valueExpr = typeDecl.reference().call();
+        }
+        accept(decl.valueExpr);
         if (decl.valueExpr && decl.declType != decl.valueExpr.exprType && !decl.valueExpr.hasError) {
           error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.valueExpr.exprType) ~ ".");
           decl.valueExpr.taint();
@@ -100,29 +125,12 @@ struct DeclSemantic {
       return mac;
     }
 
-    decl.taint();
-    error(decl.typeExpr, "Expected type");
-    return decl;
-  }
-
-  Node visit(VarDecl decl) {
-    debug(Semantic) log("=>", decl.name, decl.typeExpr);
-
-    if (decl.typeExpr) {
-      accept(decl.typeExpr);
-
-      if (!decl.typeExpr.hasError) {
-        if (auto typeExpr = cast(TypeExpr)decl.typeExpr) {
-          decl.declType = typeExpr.decl.declType;
-          return decl;
-        }
-      }
-    }
     if (!decl.declType) {
       decl.taint();
       if (!decl.typeExpr.hasError)
         error(decl.typeExpr, "Expected type");
-      }
+    }
+
     return decl;
   }
 
