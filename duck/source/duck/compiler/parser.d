@@ -451,9 +451,8 @@ struct Parser {
     Token ident = expect(Identifier, "Expected identifier");
     expect(Tok!"{", "Expected '}'");
 
-    auto mod = ModuleType.create(ident);
-    ModuleDecl structDecl = new ModuleDecl(mod, ident);
-    mod.decl = structDecl;
+
+    ModuleDecl structDecl = new ModuleDecl(ident);
     structDecl.external = isExtern;
 
     while (lexer.front.type != Tok!"}") {

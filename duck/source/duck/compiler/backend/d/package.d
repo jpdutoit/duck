@@ -19,6 +19,7 @@ class DBackend : Backend, SourceToBinaryCompiler {
 
   Executable compile(string[] engines = []) {
     auto dfile = genFile(context, true);
+    dfile.context = context;
     if (context.hasErrors) return Executable("");
 
     if (context.instrument)

@@ -22,8 +22,7 @@ immutable POSTAMBLE_MAIN = q{
 
       void main(string[] args) {
         initialize(args);
-        MainModule m;
-        Duck(&m.run);
+        Duck(&run);
         Scheduler.run();
       }
 };
@@ -31,25 +30,13 @@ immutable POSTAMBLE_MAIN = q{
 //  This code generator is a bit of hack at the moment
 
 string generateCode(Node node, Context context, bool isMainFile) {
-  CodeGen cg = CodeGen(context);
+  CodeGen cg = CodeGen(context, isMainFile);
   node.accept(cg);
 
   auto code = cg.output.data;
   return isMainFile
       ? PREAMBLE ~ code ~ POSTAMBLE_MAIN
       : PREAMBLE ~ code;
-}
-
-string typeString(Type type) {
-  import std.conv: to;
-  return type.visit!(
-    (ModuleType m) => m.name,
-    (StructType t) => t.name,
-    (StringType t) => "string",
-    (NumberType t) => "float",
-    (ArrayType t) => typeString(t.elementType) ~ "[]",
-    (StaticArrayType t) => typeString(t.elementType) ~ "[" ~ t.size.to!string ~ "]"
-  );
 }
 
 string lvalueToString(Expr expr){
@@ -97,6 +84,7 @@ struct CodeGen {
   DAppender!CodeGen output;
 
   Context context;
+  bool isMainFile;
 
   string[size_t] symbols;
   int symbolCount = 0;
@@ -116,8 +104,34 @@ struct CodeGen {
     return *name;
   }
 
-  this(Context context) {
+  string name(Type type) {
+    import std.conv: to;
+    return type.visit!(
+      (ModuleType m) => m.name,
+      (StructType t) => t.name,
+      (StringType t) => "string",
+      (NumberType t) => "float",
+      (ArrayType t) => name(t.elementType) ~ "[]",
+      (StaticArrayType t) => name(t.elementType) ~ "[" ~ t.size.to!string ~ "]"
+    );
+  }
+
+  string name(Decl decl) {
+    return decl.visit!(
+      (Decl d) => d.name,
+      (CallableDecl d) {
+        if (d.isExternal) {
+          return d.isConstructor ? "initialize" : d.name;
+        }
+        return symbolName(d);
+      },
+      (TypeDecl d) => name(d.declType)
+    );
+  }
+
+  this(Context context, bool isMainFile) {
     this.context = context;
+    this.isMainFile = isMainFile;
     this.output = DAppender!CodeGen(&this);
   }
 
@@ -217,13 +231,38 @@ struct CodeGen {
     output.put(expr.expr, "[", expr.arguments, "]");
   }
 
+  void putDefaultValue(Type type) {
+    type.visit!(
+      (ModuleType t) => output.put(name(type), ".alloc()"),
+      (StructType t) => output.put(name(type), ".init"),
+      (StringType t) => output.put("\"\""),
+      (NumberType t) => output.put("0"),
+      (ArrayType t) => output.put("[]"),
+      (StaticArrayType t) {
+        output.put("[");
+        for (int i = 0; i < t.size; i++) {
+          if (i > 0) output.put(", ");
+          putDefaultValue(t.elementType);
+        }
+        output.put("]");
+      }
+    );
+  }
+
   void visit(ConstructExpr expr) {
-    auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
-    if (callable.isExternal) {
-      output.put(callable.parentDecl.declType.typeString(), "(", expr.arguments, ")");
-    } else {
-      output.put(callable.parentDecl.declType.typeString(), "().", expr.callable, "(", expr.arguments, ")");
+    auto typeName = name(expr.exprType);
+
+    // Default construction
+    if (!expr.callable) {
+      putDefaultValue(expr.exprType);
+      return;
     }
+
+    auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
+    if (expr.exprType.isModule || !callable.isExternal)
+      output.put(typeName, ".alloc().", expr.callable, "(", expr.arguments, ")");
+    else
+      output.put(typeName, "(", expr.arguments, ")");
   }
   void visit(CallExpr expr) {
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
@@ -237,16 +276,11 @@ struct CodeGen {
   void visit(VarDecl decl) {
     if (decl.external) return;
 
-    string typeName = decl.declType.typeString();
-    Expr value = decl.valueExpr ? decl.valueExpr.visit!(
-      (ConstructExpr c) => (c.callable ? c : null),
-      (Expr e) => e)
-      : null;
-
-    if (value)
-      output.statement(typeName, " ", decl.name, "=", value, ";");
+    output.statement(name(decl.declType), decl.declType.isModule ? "* " : " ", decl.name, " = ");
+    if (decl.valueExpr)
+      output.put(decl.valueExpr, ";");
     else
-      output.statement(typeName, " ", decl.name, ";");
+      output.put("void;");
   }
 
   void visit(VarDeclStmt stmt) {
@@ -295,11 +329,7 @@ struct CodeGen {
   }
 
   void visit(RefExpr expr) {
-    auto name = expr.decl.visit!(
-      (Decl d) => d.name,
-      (CallableDecl d) => d.isExternal ? d.name : symbolName(d),
-      (TypeDecl d) => typeString(d.declType)
-    );
+    auto name = name(expr.decl);
 
     if (expr.context)
       output.put(expr.context, ".", name);
@@ -314,15 +344,15 @@ struct CodeGen {
   }
 
   void visit(ParameterDecl decl) {
-    output.put(decl.name);
+    output.put(decl.declType.isModule ? "* " : " ", name(decl));
   }
 
-  void visit(FieldDecl fieldDecl) {
+  void visit(FieldDecl field) {
 
-    if (fieldDecl.declType.as!ModuleType is null)
-      output.statement("__ConnDg ", fieldDecl.name, "__dg; ");
+    if (!field.declType.isModule)
+      output.statement("__ConnDg ", field.name, "__dg = void; ");
 
-    visit(cast(VarDecl)fieldDecl);
+    output.statement(name(field.declType), field.declType.isModule ? "* " : " ", field.name, " = void;");
   }
 
   void visit(ReturnStmt returnStmt) {
@@ -333,21 +363,34 @@ struct CodeGen {
     if (funcDecl.isMacro) return;
 
     if (!funcDecl.isExternal) {
-      auto name = symbolName(funcDecl);
-      if (funcDecl.isConstructor)
-        output.functionDecl(funcDecl.parentDecl.name, name);
+
+      if (!funcDecl.parentDecl) {
+        output.statement("static");
+      }
+
+      auto callableName = name(funcDecl);
+      if (funcDecl.isConstructor) {
+        if (funcDecl.parentDecl.declType.isModule)
+          output.functionDecl(name(funcDecl.parentDecl) ~ "* ", callableName);
+        else
+          output.functionDecl(name(funcDecl.parentDecl), callableName);
+      }
       else if (funcDecl.returnExpr)
-        output.functionDecl(funcDecl.returnExpr, name);
+        output.functionDecl(funcDecl.returnExpr, callableName);
       else
-        output.functionDecl("void", name);
+        output.functionDecl("void", callableName);
 
       foreach (i, parameter; funcDecl.parameters)
         output.functionArgument(parameter.as!ParameterDecl().typeExpr, parameter.name);
 
       output.functionBody(() {
         accept(funcDecl.callableBody);
-        if (funcDecl.isConstructor)
-          output.statement("return this;");
+        if (funcDecl.isConstructor) {
+          if (funcDecl.parentDecl.declType.isModule)
+            output.statement("return &this;");
+          else
+            output.statement("return this;");
+        }
       });
     }
   }
@@ -360,11 +403,34 @@ struct CodeGen {
 
   void visit(ModuleDecl moduleDecl) {
     if (!moduleDecl.external) {
+
+        output.statement("static");
         output.structDecl(moduleDecl.name, () {
           foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) accept(field);
           foreach(ctor ; moduleDecl.ctors.decls) accept(ctor);
 
           output.statement("ulong __sampleIndex = ulong.max;");
+
+          auto typeName = name(moduleDecl);
+          output.functionDecl("static auto", "alloc");
+          output.functionBody((){
+            output.statement("return alloc(new ", typeName, "());");
+          });
+
+          output.functionDecl("static auto", "alloc");
+          output.functionArgument(typeName ~ "*", "instance");
+          output.functionBody((){
+            foreach(decl ; moduleDecl.decls.symbolsInDefinitionOrder) {
+              if (auto field = decl.as!FieldDecl) {
+
+                if (!field.declType.isModule)
+                  output.statement("instance.", field.name, "__dg = null;");
+                if (auto value = field.valueExpr)
+                  output.statement("instance.", name(field), " = ", value, ";");
+              }
+            }
+            output.statement("return instance;");
+          });
 
           output.functionDecl("void", "_tick");
           output.functionBody((){
@@ -392,11 +458,12 @@ struct CodeGen {
   }
 
   void visit(Library library) {
-    foreach (i, node; library.declarations) accept(node);
-
-    output.structDecl("MainModule", () {
+    if (this.isMainFile) {
       output.functionDecl("void", "run");
       output.functionBody(library.stmts);
-    });
+    } else {
+      foreach (i, node; library.declarations)
+        accept(node);
+    }
   }
 };

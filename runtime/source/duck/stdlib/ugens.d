@@ -12,8 +12,9 @@ struct Value(T) {
   alias value input;
   alias value output;
 
-  this(T t) {
+  auto initialize(T t) {
     value = t;
+    return &this;
   }
   mixin UGEN!(Value!T);
 };
@@ -48,9 +49,10 @@ struct Pat {
   mono output = 0;
 
   string pattern;
-  this(string s) {
+  auto initialize(string s) {
     pattern = s;
     phase = pattern.length - 0.000001;
+    return &this;
   }
   double phase = 1.0;
   ulong index = 0;
@@ -110,14 +112,16 @@ struct ScaleQuant {
   mono output = 0;
   mono input = 0;
 
-  this(Key)(Key key, short[] scale) {
+  auto initialize(Key)(Key key, short[] scale) {
     //key.output >> this.key;
     //pipe(key.output, this.key);
     scale = scale;
+    return &this;
   }
-  this(int key, short[] scale) {
+  auto initialize(int key, short[] scale) {
     key = key;
     scale = scale;
+    return &this;
   }
 
   void tick() {
@@ -254,13 +258,15 @@ struct AR {
 
 struct Delay {
   mixin UGEN!Delay;
-  this(duration samples) {
+
+  auto initialize(duration samples) {
     ulong s = cast(ulong)(samples);
     this.buffer.length = s;
     for (size_t i = 0; i < s; ++i) {
       this.buffer[i] = 0;
     }
     index = 0;
+    return &this;
   }
 
   mono input = 0;
@@ -281,8 +287,9 @@ private:
 struct Echo {
   mixin UGEN!Echo;
 
-  this(duration samples) {
-    delay = Delay(samples);
+  auto initialize(duration samples) {
+    delay = Delay.alloc().initialize(samples);
+    return &this;
   }
 
   mono input = 0;
@@ -295,7 +302,7 @@ struct Echo {
     output = delay.output + input;
   }
 private:
-  Delay delay;
+  Delay* delay;
   //mono[] buffer;
 };
 
@@ -323,18 +330,20 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Assert {
-  this(float[] expected, string file = __FILE__, int line = __LINE__) {
+  auto initialize(float[] expected, string file = __FILE__, int line = __LINE__) {
     this.expected = expected;
     this.received.length = expected.length;
     this.file = file;
     this.line = line;
+    return &this;
   }
 
-  this(float expected, string file = __FILE__, int line = __LINE__) {
+  auto initialize(float expected, string file = __FILE__, int line = __LINE__) {
     this.expected = [expected];
     this.received.length = this.expected.length;
     this.file = file;
     this.line = line;
+    return &this;
   }
 
   mono input;

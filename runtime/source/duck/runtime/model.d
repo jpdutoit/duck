@@ -34,6 +34,10 @@ public:
     UGenRegistry.deregister(&this);
   }
 
+  static Impl* alloc() {
+    return new Impl();
+  }
+
   template opDispatch(string name : "isEndPoint") {
     static enum opDispatch = false;
   }

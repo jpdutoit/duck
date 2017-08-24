@@ -170,6 +170,8 @@ final class StaticArrayType : Type {
 final class ModuleType : StructType {
   mixin TypeMixin;
 
+  ModuleDecl decl;
+
   override string describe() const {
     return "module." ~ name;
   }
@@ -252,4 +254,9 @@ class FunctionType : Type {
 
 string mangled(const Type type) {
   return type ? type.describe() : "?";
+}
+
+@property
+bool isModule(const Type type) {
+  return (cast(ModuleType)type) !is null;
 }

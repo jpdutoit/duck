@@ -239,7 +239,9 @@ class StructDecl : TypeDecl {
 class ModuleDecl : StructDecl {
   mixin NodeMixin;
 
-  this(Type type, Token name) {
+  this(Token name) {
+    auto type = ModuleType.create(name);
+    type.decl = this;
     super(type, name);
   }
 }

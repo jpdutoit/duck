@@ -1,5 +1,6 @@
 module duck.compiler.backend.d.dmd;
 import duck.compiler.backend.backend: Executable;
+import duck.compiler.context: Context;
 import std.algorithm: canFind;
 import std.exception: assumeUnique;
 import std.stdio: stdout, stdin, stderr;
@@ -74,6 +75,7 @@ struct DCompilerOptions {
 }
 
 struct DFile {
+  Context context = null;
   string filename;
   string name;
   DCompilerOptions options;
@@ -111,7 +113,7 @@ struct DFile {
   Executable compile(string output) {
     stdout.flush();
     auto command = "dmd -of=" ~ output ~ buildCommand(options);
-    debug(VERBOSE) writeln("EXECUTE: ", command);
+    if (context.verbose) stderr.writeln("EXECUTE: ", command);
     debug(duck_host) stderr.writefln("%s", command);
     Pid compile = spawnShell(command, stdin, stdout, stderr, null, Config.none, null);
     auto result = wait(compile);
