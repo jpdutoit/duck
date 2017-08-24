@@ -15,6 +15,7 @@
     "source/duck/compiler/backend/backend.d",
     "source/duck/compiler/backend/d/package.d",
     "source/duck/compiler/backend/d/codegen.d",
+    "source/duck/compiler/backend/d/appender.d",
     "source/duck/compiler/backend/d/dmd.d",
     "source/duck/compiler/buffer/package.d",
     "source/duck/compiler/buffer/slice.d",

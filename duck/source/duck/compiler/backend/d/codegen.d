@@ -12,6 +12,7 @@ import duck.compiler.visitors;
 import duck.compiler.semantic.helpers;
 
 import duck.compiler.dbg;
+import duck.compiler.backend.d.appender;
 
 immutable PREAMBLE = q{
   import duck.runtime, duck.stdlib, core.stdc.stdio : printf;
@@ -92,39 +93,15 @@ auto findModules(Expr expr) {
   return modules;
 }
 
-struct CodeAppender {
-  import std.array;
-  int depth = 0;
-  Appender!string output;
-
-  enum string PAD = "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-  void put(string s) {
-    import std.string;
-    output.put(s.replace("\n", PAD[0..depth+1]));
-  }
-
-  void indent() {
-    depth++;
-  }
-
-  void outdent() {
-    depth--;
-  }
-
-  auto data() {
-    return output.data;
-  }
-}
-
 struct CodeGen {
-  CodeAppender output;
+  DAppender!CodeGen output;
 
   Context context;
 
   string[size_t] symbols;
   int symbolCount = 0;
 
-string symbolName(Decl decl) {
+  string symbolName(Decl decl) {
     import std.conv : to;
     size_t addr = cast(size_t)cast(void*)decl;
     string* name = addr in symbols;
@@ -139,78 +116,42 @@ string symbolName(Decl decl) {
     return *name;
   }
 
-  bool isInfixOperator(CallableDecl callable) {
-    if (callable.isExternal && callable.isOperator) {
-      return true;
-    }
-    return false;
-  }
-
   this(Context context) {
     this.context = context;
+    this.output = DAppender!CodeGen(&this);
   }
-
-  void emit(string s) {
-    output.put(s);
-  }
-
-  void indent() { output.indent(); }
-  void outdent() { output.outdent(); }
 
   void accept(Node n) {
-    debug(CodeGen) logIndent();
+    debug(CodeGen) {
+      logIndent();
+      log(n.prettyName.red, n);
+    }
     n.accept(this);
     debug(CodeGen) logOutdent();
   }
 
   void visit(IdentifierExpr expr) {
-    debug(CodeGen) log("IdentifierExpr");
-    emit(expr.identifier);
+    output.put(expr.identifier);
   }
 
   void visit(LiteralExpr expr) {
-    debug(CodeGen) log("LiteralExpr");
-    emit(expr.value);
+    output.put(expr.value);
   }
 
   void visit(ArrayLiteralExpr expr) {
-    debug(CodeGen) log("ArrayLiteralExpr");
-    emit("[");
-    foreach (i, expr1 ; expr.exprs) {
-      if (i != 0) emit(",");
-      expr1.accept(this);
-    }
-    emit("]");
+    output.expression("[", expr.exprs, "]");
   }
 
   void visit(BinaryExpr expr) {
-    debug(CodeGen) log("BinaryExpr");
-    emit("(");
-    accept(expr.left);
-    emit(expr.operator.value);
-    accept(expr.right);
-    emit(")");
+    output.expression(expr.left, expr.operator.value, expr.right);
   }
 
   void instrument(Expr value, Expr target) {
     auto slice = value.source;
-    emit("\n");
-    emit("instrument(\"");
-    emit(slice.toLocationString());
-    emit(": ");
-    emit(slice.toString());
-    emit("\"");
-    emit(", cast(void*)&");
-    accept(target);
-    emit(", ");
-    accept(value);
-    emit(");");
+    output.statement("instrument(\"", slice.toLocationString(), ": ", slice.toString(), "\", cast(void*)&", target, ", ", value, ");");
   }
 
   void visit(PipeExpr expr) {
-    debug(CodeGen) log("PipeExpr", expr);
-
-    string target = expr.right.findTarget();
     auto modules = findModules(expr.left);
 
     if (modules.length == 0) {
@@ -223,173 +164,89 @@ string symbolName(Decl decl) {
     debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
 
     if ((cast(ModuleDecl)owner is null)) {
-      accept(expr.right);
-      emit(" = ");
-      accept(expr.left);
-      emit(";");
+      output.statement(expr.right, " = ", expr.left, ";");
       return;
     }
 
-    if (!owner.external) {
-      emit(expr.right.lvalueToString());
-      emit("__dg = ");
-      emit("() {");
-      indent();
+    if (owner.external)
+      output.statement(expr.right.findTarget(), ".__add( () ");
+    else
+      output.statement(expr.right.lvalueToString(), "__dg = ()");
 
-      foreach(mod; modules) {
-        //if (auto declExpr = cast(DeclExpr)gen) {
-        emit("\n");
-        emit(mod);
-        emit("._tick(); ");
-        //}
-      }
-      emit("\n");
-      accept(expr.right);
-      emit(" = ");
-      accept(expr.left);
-      emit(";");
-      if (context.instrument) {
-        instrument(expr.left, expr.right);
-      }
-      outdent();
-      emit("\n}");
-    }
-    else {
-      emit(target);
-      emit(".__add((){ ");
-      indent();
+    output.block(() {
+      foreach(mod; modules)
+        output.statement(mod, "._tick();");
 
-      foreach(mod; modules) {
-        //if (auto declExpr = cast(DeclExpr)gen) {
-        emit("\n");
-        emit(mod);
-        emit("._tick(); ");
-        //}
-      }
-      emit("\n");
-      accept(expr.right);
-      emit(" = ");
-      accept(expr.left);
-      emit(";");
-      if (context.instrument) {
-        instrument(expr.left, expr.right);
-      }
-      outdent();
-      emit("\n})");
+      output.statement(expr.right, " = ", expr.left, ";");
+      if (context.instrument) instrument(expr.left, expr.right);
+    });
 
-    }
+    if (owner.external)
+      output.put(")");
   }
-  void visit(AssignExpr expr) {
-    debug(CodeGen) log("AssignExpr", expr);
 
+  void visit(AssignExpr expr) {
     StructDecl owner = findOwnerDecl(expr.left);
-    string target = expr.left.findTarget();
     auto modules = findModules(expr.right);
 
     debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
 
     if (cast(ModuleDecl)owner !is null) {
       if (!owner.external) {
-        emit(expr.left.lvalueToString());
-        emit("__dg = ");
-        emit("null;\n");
+        output.statement(expr.left.lvalueToString(), "__dg = null;");
       }
     }
 
     foreach(mod; modules) {
       if (mod == "this") continue;
-      emit(mod);
-      emit("._tick(); ");
+      output.statement(mod, "._tick(); ");
     }
 
-    debug(CodeGen) log("=> LHS:");
-    accept(expr.left);
-    emit(expr.operator.value);
-    debug(CodeGen) log("=> RHS:");
-    accept(expr.right);
-    //return "assign!\""~expr.operator.value~"\"(" ~ expr.left.accept(this) ~ "," ~  expr.right.accept(this) ~ ")";
+    output.statement(expr.left, expr.operator.value, expr.right);
   }
+
   void visit(UnaryExpr expr) {
-    debug(CodeGen) log("UnaryExpr");
-    emit("(");
-    emit(expr.operator.value);
-    accept(expr.operand);
-    emit(")");
+    output.expression(expr.operator.value, expr.operand);
   }
 
   void visit(TupleExpr expr) {
-    foreach (i, arg ; expr.elements) {
-      if (i != 0) emit(",");
-      accept(arg);
-    }
+    output.put(expr.elements);
   }
 
   void visit(IndexExpr expr) {
-    debug(CodeGen) log("IndexExpr");
-
-    accept(expr.expr);
-    emit("[");
-    accept(expr.arguments);
-    emit("]");
+    output.put(expr.expr, "[", expr.arguments, "]");
   }
 
-    void visit(ConstructExpr expr) {
-    debug(CodeGen) log("ConstructExpr", expr);
+  void visit(ConstructExpr expr) {
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
     if (callable.isExternal) {
-      emit(callable.parentDecl.declType.typeString());
-      emit("(");
-      accept(expr.arguments);
-      emit(")");
+      output.put(callable.parentDecl.declType.typeString(), "(", expr.arguments, ")");
     } else {
-      emit(callable.parentDecl.declType.typeString());
-      emit("().");
-      accept(expr.callable);
-      emit("(");
-      accept(expr.arguments);
-      emit(")");
+      output.put(callable.parentDecl.declType.typeString(), "().", expr.callable, "(", expr.arguments, ")");
     }
   }
   void visit(CallExpr expr) {
-    debug(CodeGen) log("CallExpr");
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
-    if (callable && isInfixOperator(callable) && expr.arguments.length == 2) {
-      emit("(");
-      accept(expr.arguments[0]);
-      accept(expr.callable);
-      accept(expr.arguments[1]);
-      emit(")");
+    if (callable.isExternal && callable.isOperator && expr.arguments.length == 2) {
+      output.expression(expr.arguments[0], expr.callable, expr.arguments[1]);
     } else {
-      accept(expr.callable);
-      emit("(");
-      accept(expr.arguments);
-      emit(")");
+      output.put(expr.callable, "(", expr.arguments, ")");
     }
   }
 
   void visit(VarDecl decl) {
-    debug(CodeGen) log("VarDecl");
     if (decl.external) return;
 
     string typeName = decl.declType.typeString();
-    emit(typeName);
-    emit(" ");
-    emit(decl.name);
-    if (decl.valueExpr) {
-      decl.valueExpr.visit!(
-        (ConstructExpr c) {
-          if (c.callable) {
-            emit(" = ");
-            accept(c);
-          }
-        },
-        (Expr e) {
-          emit(" = ");
-          accept(e);
-        }
-      );
-    }
-    emit(";\n");
+    Expr value = decl.valueExpr ? decl.valueExpr.visit!(
+      (ConstructExpr c) => (c.callable ? c : null),
+      (Expr e) => e)
+      : null;
+
+    if (value)
+      output.statement(typeName, " ", decl.name, "=", value, ";");
+    else
+      output.statement(typeName, " ", decl.name, ";");
   }
 
   void visit(VarDeclStmt stmt) {
@@ -401,10 +258,7 @@ string symbolName(Decl decl) {
   }
 
   void visit(ExprStmt stmt) {
-
-    debug(CodeGen) log("ExprStmt");
-    accept(stmt.expr);
-    emit(";\n");
+    output.statement(stmt.expr, ";");
   }
 
   void visit(IfStmt stmt) {
@@ -412,39 +266,24 @@ string symbolName(Decl decl) {
 
     foreach(mod; modules) {
       if (mod == "this") continue;
-      emit(mod);
-      emit("._tick(); ");
+      output.statement(mod, "._tick(); ");
     }
 
-    debug(CodeGen) log("IfStmt");
-    emit("if (");
-    accept(stmt.condition);
-    emit(") ");
-    accept(stmt.trueBody);
-    if (stmt.falseBody) {
-      emit(" else ");
-      accept(stmt.falseBody);
-    }
-    emit("\n");
+    output.ifStatement(stmt.condition, stmt.trueBody);
+    output.elseStatement(stmt.falseBody);
   }
 
   void line(Node node) {
     auto slice = node.source;
     if (cast(FileBuffer)slice.buffer) {
       import std.conv : to;
-      emit("#line ");
-      emit(slice.lineNumber.to!string);
-      emit(" \"");
-      emit(slice.buffer.name);
-      emit("\" ");
-      emit("\n");
+      output.line(slice.lineNumber, slice.buffer.name);
+    } else {
+      output.line(0, null);
     }
   }
 
   void visit(Stmts expr) {
-    debug(CodeGen) log("Stmts");
-    emit("\n");
-
     foreach (i, Stmt stmt; expr.stmts) {
       if (!cast(Stmts)stmt) line(stmt);
       accept(stmt);
@@ -452,176 +291,112 @@ string symbolName(Decl decl) {
   }
 
   void visit(TypeExpr expr) {
-    accept(expr.expr);
+    output.put(expr.expr);
   }
 
   void visit(RefExpr expr) {
-    debug(CodeGen) log("RefExpr");
-    if (expr.context) {
-      accept(expr.context);
-      emit(".");
-    }
-
-    emit(expr.decl.visit!(
+    auto name = expr.decl.visit!(
       (Decl d) => d.name,
-      (CallableDecl d) {
-        if (d.isExternal)
-          return d.name;
-        else
-          return symbolName(d);
-      },
+      (CallableDecl d) => d.isExternal ? d.name : symbolName(d),
       (TypeDecl d) => typeString(d.declType)
-    ));
+    );
+
+    if (expr.context)
+      output.put(expr.context, ".", name);
+    else
+      output.put(name);
   }
 
   void visit(ScopeStmt expr) {
-    debug(CodeGen) log("ScopeStmt");
-    indent();
-    emit("{\n");
-    accept(expr.stmts);
-    outdent();
-    emit("\n}\n");
+    output.block(() {
+      accept(expr.stmts);
+    });
   }
 
   void visit(ParameterDecl decl) {
-    debug(CodeGen) log("ParameterDecl", decl.name);
-    emit(decl.name);
+    output.put(decl.name);
   }
 
   void visit(FieldDecl fieldDecl) {
-    line(fieldDecl.typeExpr);
-    debug(CodeGen) log("FieldDecl", fieldDecl.name);
 
-    emit("__ConnDg ");
-    emit(fieldDecl.name);
-    emit("__dg; ");
+    if (fieldDecl.declType.as!ModuleType is null)
+      output.statement("__ConnDg ", fieldDecl.name, "__dg; ");
 
     visit(cast(VarDecl)fieldDecl);
   }
 
   void visit(ReturnStmt returnStmt) {
-    emit("return ");
-    accept(returnStmt.expr);
-    emit(";\n");
+    output.statement("return ", returnStmt.expr, ";");
   }
 
   void visit(CallableDecl funcDecl) {
     if (funcDecl.isMacro) return;
-    debug(CodeGen) log("CallableDecl", funcDecl.name);
 
     if (!funcDecl.isExternal) {
-      if (funcDecl.isConstructor) {
-        emit(funcDecl.parentDecl.name);
-      } else {
-        if (funcDecl.returnExpr)
-          accept(funcDecl.returnExpr);
-        else
-          emit("void");
-      }
-      emit(" ");
-
-      emit(symbolName(funcDecl));
-
-      emit("(");
-      foreach (i, parameter; funcDecl.parameters) {
-        accept(parameter.as!ParameterDecl().typeExpr);
-        emit(" ");
-        emit(parameter.name);
-        if (i + 1 < funcDecl.parameters.length) {
-          emit(", ");
-        }
-      }
-      emit(") ");
-      indent();
-      emit("{\n");
-      accept(funcDecl.callableBody);
+      auto name = symbolName(funcDecl);
       if (funcDecl.isConstructor)
-        emit("return this;");
-      outdent();
-      emit("\n}\n\n");
+        output.functionDecl(funcDecl.parentDecl.name, name);
+      else if (funcDecl.returnExpr)
+        output.functionDecl(funcDecl.returnExpr, name);
+      else
+        output.functionDecl("void", name);
+
+      foreach (i, parameter; funcDecl.parameters)
+        output.functionArgument(parameter.as!ParameterDecl().typeExpr, parameter.name);
+
+      output.functionBody(() {
+        accept(funcDecl.callableBody);
+        if (funcDecl.isConstructor)
+          output.statement("return this;");
+      });
     }
   }
 
   void visit(StructDecl structDecl) {
-   debug(CodeGen) log("StructDecl", structDecl.name);
    if (!structDecl.external) {
      assert(false, "Structs not yet supported");
    }
   }
 
   void visit(ModuleDecl moduleDecl) {
-    debug(CodeGen) log("ModuleDecl", moduleDecl.name);
     if (!moduleDecl.external) {
-        emit("struct ");
-        emit(moduleDecl.name);
-        emit(" {");
-        indent();
-        emit("\n");
-        foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
-          accept(field);
-        }
+        output.structDecl(moduleDecl.name, () {
+          foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) accept(field);
+          foreach(ctor ; moduleDecl.ctors.decls) accept(ctor);
 
-        foreach(ctor ; moduleDecl.ctors.decls) {
-          accept(ctor);
-        }
+          output.statement("ulong __sampleIndex = ulong.max;");
 
-        emit("ulong __sampleIndex = ulong.max;\n");
+          output.functionDecl("void", "_tick");
+          output.functionBody((){
+            output.statement("if (__sampleIndex == __idx) return;");
+            output.statement("__sampleIndex = __idx;");
 
-        emit("\n");
-        emit("void _tick() {");
-        indent();
-        emit("\n");
-        emit(
-          "if (__sampleIndex == __idx) return;\n"
-          "__sampleIndex = __idx;\n\n"
-        );
-
-        foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
-          if (auto fd = cast(FieldDecl)field) {
-            emit("if (");
-            emit(fd.name);
-            emit("__dg) ");
-            emit(fd.name);
-            emit("__dg();\n");
-          }
-        }
-        if (Decl decl = moduleDecl.decls.lookup("tick")) {
-          decl.visit!(
-            (CallableDecl decl) { emit(symbolName(decl) ~ "();"); },
-            (OverloadSet os) { emit(symbolName(os.decls[0]) ~ "();"); }
-          );
-        }
-        outdent();
-        emit("\n}");
-        outdent();
-        emit("\n}\n\n");
+            foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
+              if (auto fd = cast(FieldDecl)field) {
+                if (fd.declType.as!ModuleType is null) {
+                  output.statement("if (", fd.name, "__dg) ", fd.name, "__dg();");
+                }
+              }
+            }
+            if (auto os = moduleDecl.decls.lookup("tick").as!OverloadSet) {
+              output.statement(symbolName(os.decls[0]), "();");
+            }
+          });
+        });
     }
   }
 
   void visit(ImportStmt importStatement) {
     line(importStatement);
-    emit("import ");
-    emit(importStatement.targetContext.moduleName);
-    emit(";\n");
+    output.statement("import ", importStatement.targetContext.moduleName, ";");
   }
 
   void visit(Library library) {
-    debug(CodeGen) log("Library");
+    foreach (i, node; library.declarations) accept(node);
 
-    foreach (i, node; library.declarations) {
-      accept(node);
-    }
-
-    //emit ("void start() {\n");
-
-    emit("struct MainModule {");
-    indent();
-    emit("\n\nvoid run() {\n");
-    indent();
-    accept(library.stmts);
-    outdent();
-    emit("\n}");
-    outdent();
-    emit("\n}");
+    output.structDecl("MainModule", () {
+      output.functionDecl("void", "run");
+      output.functionBody(library.stmts);
+    });
   }
 };

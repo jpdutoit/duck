@@ -20,13 +20,6 @@ protected:
 
 public:
 
-string prettyName(T)(ref T t) {
-  import std.regex;
-  if (!t) return "";
-  return t.classinfo.name.replaceFirst(regex(r"^.*\."), "");
-}
-
-
 Expr error(Expr expr, lazy string message) {
   if (expr.hasError) return expr;
   Context.current.error(expr.source, message);

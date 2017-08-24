@@ -17,3 +17,9 @@ struct DCode {
     return this.code != null;
   }
 }
+
+string prettyName(T)(ref T t) {
+  import std.regex;
+  if (!t) return "";
+  return t.classinfo.name.replaceFirst(regex(r"^.*\."), "");
+}
