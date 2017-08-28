@@ -37,6 +37,6 @@ private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
   }
 
   auto copy = cloneImpl(expr);
-  copy.exprType = expr._exprType;
+  copy.type = expr._type;
   return copy;
 }

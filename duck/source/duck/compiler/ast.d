@@ -30,22 +30,19 @@ alias NodeTypes = AliasSeq!(
   IndexExpr,
 
   ExprStmt,
-  VarDeclStmt,
-  TypeDeclStmt,
+  DeclStmt,
   ScopeStmt,
   ImportStmt,
   ReturnStmt,
   IfStmt,
   Stmts,
 
-  Decl,
   OverloadSet,
   ParameterDecl,
   CallableDecl,
   VarDecl,
   TypeDecl,
   ArrayDecl,
-  ConstDecl,
   FieldDecl,
   StructDecl,
   ModuleDecl,
@@ -96,27 +93,25 @@ class Library : Node {
 }
 
 abstract class Decl : Node {
-  mixin NodeMixin;
-
   Slice name;
-
-  Type declType;
+  Type type;
 
   RefExpr reference() {
       return new RefExpr(this);
   }
 
-  this(Type type, Slice name) {
+  this(Slice name, Type type) {
+    this.type = type;
     this.name = name;
-    this.declType = type;
   }
 
-  this(Slice name) {
-    this.name = name;
+  @property
+  bool hasError() {
+    return false;
   }
 }
 
-class OverloadSet : Decl {
+class OverloadSet : ValueDecl {
   mixin NodeMixin;
 
   CallableDecl[] decls;
@@ -141,7 +136,7 @@ class FieldDecl : VarDecl {
   }
 }
 
-class ParameterDecl : Decl {
+class ParameterDecl : ValueDecl {
   mixin NodeMixin;
 
   TypeExpr typeExpr;
@@ -153,8 +148,13 @@ class ParameterDecl : Decl {
   }
 }
 
-class CallableDecl : Decl {
+class CallableDecl : ValueDecl {
   mixin NodeMixin;
+
+  @property
+  FunctionType type() { return cast(FunctionType)super.type; }
+  @property
+  void type(FunctionType type) { super.type = type; }
 
   union {
     uint flags;
@@ -187,12 +187,12 @@ class CallableDecl : Decl {
   }
 
   this(Slice identifier) {
-    super(identifier);
+    super(null, identifier);
     this.parameters = new ParameterList();
   }
 
   this(Slice identifier, TypeExpr contextType, TypeExpr[] argTypes, Expr expansion, StructDecl parentDecl) {
-    super(identifier);
+    super(null, identifier);
     //this.contextType = contextType;
     this.parameters = new ParameterList();
     this.returnExpr = null;
@@ -202,12 +202,11 @@ class CallableDecl : Decl {
   }
 }
 
-
 class ArrayDecl : TypeDecl {
   mixin NodeMixin;
 
   TypeDecl elementDecl;
-  Type elementType() { return elementDecl.declType; }
+  Type elementType() { return elementDecl.declaredType; }
 
   this(TypeDecl elementDecl) {
     this.elementDecl = elementDecl;
@@ -246,7 +245,18 @@ class ModuleDecl : StructDecl {
   }
 }
 
-class VarDecl : Decl {
+abstract class ValueDecl : Decl {
+  this(Type type, Slice name) {
+    super(name, type);
+  }
+
+  @property
+  final override bool hasError() {
+    return (cast(ErrorType)type) !is null;
+  }
+}
+
+class VarDecl : ValueDecl {
   mixin NodeMixin;
 
   bool external;
@@ -268,22 +278,21 @@ class VarDecl : Decl {
 class TypeDecl : Decl {
   mixin NodeMixin;
 
+  Type declaredType;
+
+  @property
+  override bool hasError() {
+    return (cast(ErrorType)declaredType) !is null;
+  }
+
   this(Type type, Slice name = Slice()) {
-    super(type, name);
+    super(name, MetaType.create(type));
+    this.declaredType = type;
   }
 
   this(Type type, string name) {
-    super(type, Slice(name));
-  }
-}
-
-class ConstDecl : Decl {
-  mixin NodeMixin;
-  Expr value;
-
-  this(Type type, Token name, Expr value) {
-    super(type, name);
-    this.value = value;
+    super(Slice(name), MetaType.create(type));
+    this.declaredType = type;
   }
 }
 
@@ -307,28 +316,14 @@ class ImportStmt : Stmt {
   }
 }
 
-class VarDeclStmt : Stmt {
+class DeclStmt: Stmt {
   mixin NodeMixin;
-
-  VarDecl decl;
-
-  this(VarDecl decl) {
-    this.decl = decl;
-  }
-}
-
-class TypeDeclStmt : Stmt {
-  mixin NodeMixin;
-
-  Slice identifier;
   Decl decl;
 
-  this(Slice identifier, Decl decl) {
-    this.identifier = identifier;
+  this(Decl decl) {
     this.decl = decl;
   }
 }
-
 
 class ScopeStmt : Stmt {
   mixin NodeMixin;
@@ -340,19 +335,17 @@ class ScopeStmt : Stmt {
 }
 
 abstract class Expr : Node {
-  Type _exprType;
+  Type _type;
 
-  @property bool exprTypeSet() {
-    return _exprType !is null;
+  @property
+  final Type type(string file = __FILE__, int line = __LINE__) {
+    ASSERT(_type, "Trying to use expression type before it is calculated", line, file);
+    return _type;
   }
 
-  @property Type exprType(string file = __FILE__, int line = __LINE__) {
-    ASSERT(_exprType, "Trying to use expression type before it is calculated", line, file);
-    return _exprType;
-  }
-
-  @property void exprType(Type type) {
-    _exprType = type;
+  @property
+  final void type(Type type) {
+    _type = type;
   }
 
   override string toString() {
@@ -382,6 +375,16 @@ abstract class Expr : Node {
     return this;
   }
 
+  @property
+  final bool hasError() {
+    return (cast(ErrorType)this._type) !is null;
+  }
+
+  @property
+  final bool hasType() {
+    return this._type !is null;
+  }
+
   Slice source;
 }
 
@@ -389,7 +392,7 @@ class ErrorExpr : Expr {
     mixin NodeMixin;
     this(Slice source) {
       this.source = source;
-      this.exprType = ErrorType.create;
+      this.type = ErrorType.create;
     }
 }
 
@@ -427,9 +430,9 @@ class IfStmt: Stmt {
 class InlineDeclExpr : IdentifierExpr {
   mixin NodeMixin;
 
-  VarDeclStmt declStmt;
+  DeclStmt declStmt;
 
-  this(VarDeclStmt declStmt) {
+  this(DeclStmt declStmt) {
     super(declStmt.decl.name);
     this.declStmt = declStmt;
   }
@@ -474,9 +477,9 @@ class LiteralExpr : Expr {
     super();
     this.source = token;
     if (token.type == Number)
-      this.exprType = NumberType.create;
+      this.type = NumberType.create;
     else if (token.type == StringLiteral)
-      this.exprType = StringType.create;
+      this.type = StringType.create;
   }
 }
 

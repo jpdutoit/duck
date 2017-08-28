@@ -55,40 +55,43 @@ struct StmtSemantic {
     return stmts;
   }
 
-  Node visit(VarDeclStmt stmt) {
+  Node visit(DeclStmt stmt) {
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 
-    auto name = stmt.decl.name;
-    debug(Semantic) log("Add to symbol table:", name, mangled(stmt.decl.declType));
-    // Add identifier to symbol table
-    if (symbolTable.defines(name)) {
-      error(name, "Cannot redefine " ~ name);
-    }
-    else {
-      symbolTable.define(name, stmt.decl);
-      if (symbolTable.top is library.globals) {
-        library.exports ~= stmt.decl;
+    stmt.decl.visit!(
+      delegate(VarDecl decl) {
+        auto name = stmt.decl.name;
+        debug(Semantic) log("Add to symbol table:", name, stmt.decl.type.mangled);
+
+        if (this.symbolTable.defines(name)) {
+          error(name, "Cannot redefine " ~ name);
+        }
+        else {
+          this.symbolTable.define(name, stmt.decl);
+          if (this.symbolTable.top is this.library.globals) {
+            this.library.exports ~= stmt.decl;
+          }
+        }
+      },
+      delegate(CallableDecl decl) {
+        this.library.globals.define(stmt.decl.name, stmt.decl);
+        if (!stmt.decl.hasError) {
+          this.library.exports ~= stmt.decl;
+        }
+      },
+      delegate(TypeDecl decl) {
+        if (this.library.globals.defines(stmt.decl.name)) {
+          error(decl.name, "Cannot redefine " ~ stmt.decl.name);
+        } else {
+          this.library.globals.define(stmt.decl.name, stmt.decl);
+        }
+        if (!stmt.decl.hasError) {
+          this.library.exports ~= stmt.decl;
+        }
       }
-    }
+    );
 
-    return stmt;
-  }
-
-
-  Node visit(TypeDeclStmt stmt) {
-    accept(stmt.decl);
-
-    if (!stmt.decl.as!CallableDecl && library.globals.defines(stmt.decl.name)) {
-      error(stmt.identifier, "Cannot redefine " ~ stmt.decl.name);
-    }
-    else {
-      library.globals.define(stmt.decl.name, stmt.decl);
-    }
-
-    if (stmt.decl.declType.kind != ErrorType.Kind) {
-      library.exports ~= stmt.decl;
-    }
     return stmt;
   }
 

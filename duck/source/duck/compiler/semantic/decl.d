@@ -16,12 +16,12 @@ struct DeclSemantic {
 
   void accept(E)(ref E target) { semantic.accept!E(target); }
 
-  Decl analyzeCallableParams(CallableDecl decl) {
+  Node visit(CallableDecl decl) {
     Type[] paramTypes;
 
     foreach(parameter; decl.parameters) {
-        accept(parameter);
-        paramTypes ~= parameter.declType;
+      accept(parameter);
+      paramTypes ~= parameter.type;
     }
 
     semantic.symbolTable.pushScope(decl.parameters.readonly());
@@ -37,34 +37,23 @@ struct DeclSemantic {
 
     debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnExpr);
 
-    auto returnType = decl.returnExpr ? decl.returnExpr.exprType : TypeType.create(VoidType.create);
-    return returnType.visit!(
-      (TypeType t) {
-        auto type = FunctionType.create(t.type, TupleType.create(paramTypes));
-        type.decl = decl;
-        decl.declType = type;
-        debug(Semantic) log("=>", decl);
-        return decl;
-      },
-      (Type t) {
+    if (decl.returnExpr) {
+      if (auto metaType = decl.returnExpr.type.as!MetaType) {
+        decl.type = FunctionType.create(metaType.type, TupleType.create(paramTypes));
+      } else {
         expect(!decl.callableBody, decl.returnExpr, "Cannot specify a function body along with an inline return expression");
-        auto type = FunctionType.create(returnType, TupleType.create(paramTypes));
-        type.decl = decl;
-        decl.declType = type;
         decl.isMacro = true;
-        debug(Semantic) log("=>", decl);
-        return decl;
+        decl.type = FunctionType.create(decl.returnExpr.type, TupleType.create(paramTypes));
       }
-    );
-  }
-
-   Node visit(CallableDecl decl) {
-    return analyzeCallableParams(decl);
+    } else {
+      decl.type = FunctionType.create(VoidType.create, TupleType.create(paramTypes));
+    }
+    return decl;
   }
 
   Node visit(ParameterDecl decl) {
     accept(decl.typeExpr);
-    decl.declType = decl.typeExpr.decl.declType;
+    decl.type = decl.typeExpr.decl.declaredType;
     if (decl.typeExpr.hasError) decl.taint();
     return decl;
   }
@@ -76,7 +65,7 @@ struct DeclSemantic {
       ASSERT(decl.valueExpr, "Internal compiler error: Expected at least one of typeExpr or valueExpr");
       accept(decl.valueExpr);
       decl.typeExpr = null;
-      decl.declType = decl.valueExpr.exprType;
+      decl.type = decl.valueExpr.type;
       return decl;
     }
 
@@ -84,29 +73,29 @@ struct DeclSemantic {
 
     if (auto ce = decl.typeExpr.as!ConstructExpr) {
       if (!ce.callable) {
-        decl.declType = ce.exprType;
+        decl.type = ce.type;
         return decl;
       }
 
       decl.valueExpr = decl.typeExpr;
       auto callable = ce.callable.enforce!RefExpr().decl.as!CallableDecl;
       decl.typeExpr = callable.parentDecl.reference();
-      decl.declType = callable.parentDecl.declType;
+      decl.type = callable.parentDecl.declaredType;
       accept(decl.typeExpr);
       return decl;
     }
     if (decl.typeExpr.hasError)
       return decl.taint();
 
-    if (decl.typeExpr.exprType.kind == TypeType.Kind) {
+    if (decl.typeExpr.type.kind == MetaType.Kind) {
       if (auto typeDecl = decl.typeExpr.getTypeDecl()) {
-        decl.declType = typeDecl.declType;
+        decl.type = typeDecl.declaredType;
         if (!decl.valueExpr) {
           decl.valueExpr = typeDecl.reference().call();
         }
         accept(decl.valueExpr);
-        if (decl.valueExpr && decl.declType != decl.valueExpr.exprType && !decl.valueExpr.hasError) {
-          error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.declType) ~ " not of type " ~ mangled(decl.valueExpr.exprType) ~ ".");
+        if (decl.valueExpr && decl.type != decl.valueExpr.type && !decl.valueExpr.hasError) {
+          error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.type) ~ " not of type " ~ mangled(decl.valueExpr.type) ~ ".");
           decl.valueExpr.taint();
         }
 
@@ -125,7 +114,7 @@ struct DeclSemantic {
       return mac;
     }
 
-    if (!decl.declType) {
+    if (!decl.type) {
       decl.taint();
       if (!decl.typeExpr.hasError)
         error(decl.typeExpr, "Expected type");

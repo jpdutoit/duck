@@ -192,14 +192,9 @@ struct JsonOutput {
    field("expression", stmt.expr);
   }
 
-  void visit(VarDeclStmt stmt) {
-   field("type", "statement.declaration.variable");
-   field("declaration", stmt.decl);
-  }
-
-  void visit(TypeDeclStmt stmt) {
-   field("type", "statement.declaration.type");
-   field("name", stmt.identifier.toString());
+  void visit(DeclStmt stmt) {
+   field("type", "statement.declaration");
+   //field("name", stmt.identifier.toString());
    field("declaration", stmt.decl);
   }
 

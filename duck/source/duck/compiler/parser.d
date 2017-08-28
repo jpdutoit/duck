@@ -245,7 +245,7 @@ struct Parser {
           ctor = null;
         }
 
-        return new InlineDeclExpr(new VarDeclStmt(new VarDecl(new TypeExpr(typeExpr), identifier.identifier, ctor)));
+        return new InlineDeclExpr(new DeclStmt(new VarDecl(new TypeExpr(typeExpr), identifier.identifier, ctor)));
       case Tok!"(":
         // Call parenthesis
         return parseCall(left);
@@ -403,7 +403,7 @@ struct Parser {
       lexer.expect(Tok!";", "Expected ';'");
     }
 
-    auto stmt = new TypeDeclStmt(ident, func);
+    auto stmt = new DeclStmt(func);
     this.decls ~= stmt;
 
 
@@ -441,7 +441,7 @@ struct Parser {
     }
 
      //new NamedType(ident.value.idup, new ModuleType())
-    auto stmt = new TypeDeclStmt(ident, structDecl);
+    auto stmt = new DeclStmt(structDecl);
     this.decls ~= stmt;
     return stmt;
   }
@@ -473,7 +473,7 @@ struct Parser {
     expect(Tok!"}", "Expected '}'");
 
     //new NamedType(ident.value.idup, new ModuleType())
-    auto stmt = new TypeDeclStmt(ident, structDecl);
+    auto stmt = new DeclStmt(structDecl);
     this.decls ~= stmt;
     return stmt;
     //decls ~= structDecl;

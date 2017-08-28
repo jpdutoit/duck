@@ -45,14 +45,14 @@ Cost coercionCost(Type type, Type target) {
   // Coerce an overload set by automatically calling it with not arguments
   if (auto overloadSetType = cast(OverloadSetType)type) {
     if (overloadSetType.overloadSet.decls.length == 1) {
-      auto functionType = cast(FunctionType)overloadSetType.overloadSet.decls[0].declType;
+      auto functionType = cast(FunctionType)overloadSetType.overloadSet.decls[0].type;
       auto returnType = functionType.returnType;
       return Cost.implicitCall + coercionCost(returnType, target);
     }
   }
   // Coerce type by constructing instance of that type
-  if (auto typeType = cast(TypeType)type) {
-    if (auto moduleType = cast(ModuleType)typeType.type) {
+  if (auto metaType = cast(MetaType)type) {
+    if (auto moduleType = cast(ModuleType)metaType.type) {
       return Cost.implicitConstruct + coercionCost(moduleType, target);
     }
   }
@@ -71,7 +71,7 @@ Cost coercionCost(Type[] args, Type contextType, CallableDecl F) {
     if (contextType is null) {
       return Cost.infinity;
     }
-    Type targetContextType = F.contextType.getTypeDecl.declType;
+    Type targetContextType = F.contextType.getTypeDecl.declaredType;
     if (contextType != targetContextType) {
       return Cost.infinity;
     }
@@ -85,7 +85,7 @@ Cost coercionCost(Type[] args, Type contextType, CallableDecl F) {
   for (int i = 0; i < len; ++i) {
     if (!cost) return cost;
 
-    Type paramType = F.parameterTypes[i].getTypeDecl.declType;
+    Type paramType = F.parameterTypes[i].getTypeDecl.declaredType;
     Type argType  = args[i];
     cost = cost + coercionCost(argType, paramType);
   }
@@ -105,25 +105,23 @@ all arguments of F1 are not worse than the implicit conversions for all argument
 
 
 CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, CallableDecl[]* viable) {
-  assert(args.exprType.as!TupleType, "Internal error: Expected args to have tuple type");
-  auto elementTypes = args.exprType.as!TupleType().elementTypes;
-  auto contextType = contextExpr ? contextExpr.exprType : null;
+  assert(args.type.as!TupleType, "Internal error: Expected args to have tuple type");
+  auto elementTypes = args.type.as!TupleType().elementTypes;
+  auto contextType = contextExpr ? contextExpr.type : null;
 
   Cost lowestCost = Cost.max;
   int matches = 0;
   CallableDecl[32] overloads;
-  foreach(decl; os.decls) {
+  foreach(callable; os.decls) {
 
-    auto functionType = cast(FunctionType)decl.declType;
-
-    Cost cost = elementTypes.coercionCost(contextType, decl);
-    debug(Semantic) log("=> Cost:", cost, "for", args.exprType.describe(), "to", functionType.parameters.describe);
+    Cost cost = elementTypes.coercionCost(contextType, callable);
+    debug(Semantic) log("=> Cost:", cost, "for", args.type.describe(), "to", callable.type.parameters.describe);
     if (cost <= lowestCost) {
       if (cost != lowestCost) {
         lowestCost = cost;
         matches = 0;
       }
-      overloads[matches++] = decl;
+      overloads[matches++] = callable;
     }
   }
 

@@ -30,28 +30,28 @@ struct ExprToString {
   }
   string visit(RefExpr expr) {
     auto source = expr.source.value;
-    return "Ref".blue ~ "(" ~ (expr.context ? expr.context.toString() ~ "." : "") ~ expr.source.annot(expr._exprType) ~ ")";
+    return "Ref".blue ~ "(" ~ (expr.context ? expr.context.toString() ~ "." : "") ~ expr.source.annot(expr._type) ~ ")";
   }
   string visit(MemberExpr expr) {
-    return "(" ~ expr.context.accept(this) ~ "." ~ expr.name ~ ")".annot(expr._exprType);
+    return "(" ~ expr.context.accept(this) ~ "." ~ expr.name ~ ")".annot(expr._type);
   }
   string visit(IdentifierExpr expr) {
-    return ""  ~ expr.identifier.blue ~ "".annot(expr._exprType) ~ "";
+    return ""  ~ expr.identifier.blue ~ "".annot(expr._type) ~ "";
   }
   string visit(LiteralExpr expr) {
-    return ""  ~ expr.value.blue ~ "".annot(expr._exprType) ~ "";
+    return ""  ~ expr.value.blue ~ "".annot(expr._type) ~ "";
   }
   string visit(BinaryExpr expr) {
-    return ("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")").annot(expr._exprType);
+    return ("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")").annot(expr._type);
   }
   string visit(PipeExpr expr) {
-    return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._exprType);
+    return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._type);
   }
   string visit(AssignExpr expr) {
-    return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._exprType);
+    return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._type);
   }
   string visit(UnaryExpr expr) {
-    return "(" ~ expr.operator.value ~ expr.operand.accept(this) ~ ")".annot(expr._exprType);
+    return "(" ~ expr.operator.value ~ expr.operand.accept(this) ~ ")".annot(expr._type);
   }
   string visit(TupleExpr expr) {
     string s = "(";
@@ -59,7 +59,7 @@ struct ExprToString {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);
     }
-    return s ~ ")".annot(expr._exprType);
+    return s ~ ")".annot(expr._type);
   }
   string visit(ConstructExpr expr) {
     if (expr.callable) {
@@ -73,7 +73,7 @@ struct ExprToString {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);
     }
-    return s ~ "))".annot(expr._exprType);
+    return s ~ "))".annot(expr._type);
   }
   string visit(IndexExpr expr) {
     string s = "(" ~ expr.expr.accept(this) ~ "[";
@@ -81,6 +81,6 @@ struct ExprToString {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);
     }
-    return s ~ "])".annot(expr._exprType);
+    return s ~ "])".annot(expr._type);
   }
 }

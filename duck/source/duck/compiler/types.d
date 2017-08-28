@@ -7,9 +7,9 @@ private import std.typetuple: staticIndexOf;
 private import std.conv;
 
 alias BasicTypes = AliasSeq!("number", "string", "nothing", "error");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType, TypeType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType, MetaType);
 
-alias Types = AliasSeq!(NumberType, StringType, TypeType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
+alias Types = AliasSeq!(NumberType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -187,7 +187,7 @@ final class ModuleType : StructType {
 
 }
 
-class TypeType : Type {
+class MetaType : Type {
   mixin TypeMixin;
 
   Type type;
@@ -197,12 +197,12 @@ class TypeType : Type {
   }
 
   static auto create(Type type) {
-    return new TypeType().init(type);
+    return new MetaType().init(type);
   }
 
   override
   bool isSameType(Type other) {
-    TypeType a = cast(TypeType)other;
+    MetaType a = cast(MetaType)other;
     return a && a.type.isSameType(type);
   }
 
@@ -240,7 +240,6 @@ class FunctionType : Type {
   Type returnType;
   //Type[] parameterTypes;
   TupleType parameters;
-  CallableDecl decl;
 
   override string describe() const {
     auto s = "ƒ(";

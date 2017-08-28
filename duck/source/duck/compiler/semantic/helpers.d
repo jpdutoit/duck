@@ -44,22 +44,13 @@ struct ImportPaths
   }
 }
 
-
-bool hasError(Expr expr) {
-  return (cast(ErrorType)expr._exprType) !is null;
-}
-
-bool hasType(Expr expr) {
-  return expr._exprType !is null;
-}
-
-auto taint(Expr expr) {
-  expr.exprType = ErrorType.create;
+T taint(T: Expr)(T expr) {
+  expr.type = ErrorType.create;
   return expr;
 }
 
-auto taint(Decl decl) {
-  decl.declType = ErrorType.create;
+D taint(D: ValueDecl)(D decl) {
+  decl.type = ErrorType.create;
   return decl;
 }
 
@@ -90,7 +81,7 @@ bool isPipeTarget(Expr expr) {
   return expr.visit!(
     (IndexExpr i) => isPipeTarget(i.expr),
     (IdentifierExpr i) => true,
-    (RefExpr r) => r.context && r.context.exprType.as!ModuleType && r.decl.as!FieldDecl,
+    (RefExpr r) => r.context && r.context.type.as!ModuleType && r.decl.as!FieldDecl,
     (Expr e) => false
   );
 }
@@ -110,11 +101,8 @@ Type getResultType(Decl decl, int line = __LINE__, string file = __FILE__) {
         return os.decls[0].getResultType(line, file);
       return ErrorType.create();
     },
-    (FieldDecl fd) => fd.declType,
-    (CallableDecl cd) {
-      auto ft = cast(FunctionType)cd.declType;
-      return ft.returnType;
-    }
+    (FieldDecl fd) => fd.type,
+    (CallableDecl cd) => cd.type.returnType
   );
 }
 
@@ -178,7 +166,7 @@ bool isImplictlyConvertible(Type sourceType, Type targetType) {
 /*
 for (int i = 0; i < type.parameterTypes.length; ++i) {
   Type paramType = type.parameterTypes[i];
-  Type argType = expr.arguments[i].exprType;
+  Type argType = expr.arguments[i].type;
   if (paramType != argType)
   {
     if (isModule(expr.arguments[i]))

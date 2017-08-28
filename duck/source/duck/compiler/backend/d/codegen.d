@@ -58,7 +58,7 @@ StructDecl findOwnerDecl(Expr expr) {
     (Expr expr) => cast(StructDecl)null,
     (RefExpr e) {
       if (e.context) {
-        if (auto ge = cast(ModuleType)e.context.exprType) {
+        if (auto ge = cast(ModuleType)e.context.type) {
           return ge.decl;
         }
         return e.context.findOwnerDecl();
@@ -70,7 +70,7 @@ StructDecl findOwnerDecl(Expr expr) {
 auto findModules(Expr expr) {
   string[] modules;
   expr.traverse((RefExpr e) {
-    if (e.context && e.context.exprType.kind == ModuleType.Kind) {
+    if (e.context && e.context.type.kind == ModuleType.Kind) {
       modules ~= e.findTarget();
       //return false;
     }
@@ -97,10 +97,10 @@ struct CodeGen {
       symbolCount++;
       string s = "__symbol_" ~ symbolCount.to!string();
       symbols[addr] = s;
-      debug(CodeGen) log("symbolName", mangled(decl.declType), s, decl.name.toString());
+      debug(CodeGen) log("symbolName", s, decl.name.toString());
       return s;
     }
-    debug(CodeGen) log("symbolName", mangled(decl.declType), *name,decl.name.toString());
+    debug(CodeGen) log("symbolName", *name,decl.name.toString());
     return *name;
   }
 
@@ -125,7 +125,7 @@ struct CodeGen {
         }
         return symbolName(d);
       },
-      (TypeDecl d) => name(d.declType)
+      (TypeDecl d) => name(d.declaredType)
     );
   }
 
@@ -250,16 +250,16 @@ struct CodeGen {
   }
 
   void visit(ConstructExpr expr) {
-    auto typeName = name(expr.exprType);
+    auto typeName = name(expr.type);
 
     // Default construction
     if (!expr.callable) {
-      putDefaultValue(expr.exprType);
+      putDefaultValue(expr.type);
       return;
     }
 
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
-    if (expr.exprType.isModule || !callable.isExternal)
+    if (expr.type.isModule || !callable.isExternal)
       output.put(typeName, ".alloc().", expr.callable, "(", expr.arguments, ")");
     else
       output.put(typeName, "(", expr.arguments, ")");
@@ -276,18 +276,14 @@ struct CodeGen {
   void visit(VarDecl decl) {
     if (decl.external) return;
 
-    output.statement(name(decl.declType), decl.declType.isModule ? "* " : " ", decl.name, " = ");
+    output.statement(name(decl.type), decl.type.isModule ? "* " : " ", decl.name, " = ");
     if (decl.valueExpr)
       output.put(decl.valueExpr, ";");
     else
       output.put("void;");
   }
 
-  void visit(VarDeclStmt stmt) {
-    accept(stmt.decl);
-  }
-
-  void visit(TypeDeclStmt stmt) {
+  void visit(DeclStmt stmt) {
     accept(stmt.decl);
   }
 
@@ -344,15 +340,15 @@ struct CodeGen {
   }
 
   void visit(ParameterDecl decl) {
-    output.put(decl.declType.isModule ? "* " : " ", name(decl));
+    output.put(decl.type.isModule ? "* " : " ", name(decl));
   }
 
   void visit(FieldDecl field) {
 
-    if (!field.declType.isModule)
+    if (!field.type.isModule)
       output.statement("__ConnDg ", field.name, "__dg = void; ");
 
-    output.statement(name(field.declType), field.declType.isModule ? "* " : " ", field.name, " = void;");
+    output.statement(name(field.type), field.type.isModule ? "* " : " ", field.name, " = void;");
   }
 
   void visit(ReturnStmt returnStmt) {
@@ -370,7 +366,7 @@ struct CodeGen {
 
       auto callableName = name(funcDecl);
       if (funcDecl.isConstructor) {
-        if (funcDecl.parentDecl.declType.isModule)
+        if (funcDecl.parentDecl.declaredType.isModule)
           output.functionDecl(name(funcDecl.parentDecl) ~ "* ", callableName);
         else
           output.functionDecl(name(funcDecl.parentDecl), callableName);
@@ -386,7 +382,7 @@ struct CodeGen {
       output.functionBody(() {
         accept(funcDecl.callableBody);
         if (funcDecl.isConstructor) {
-          if (funcDecl.parentDecl.declType.isModule)
+          if (funcDecl.parentDecl.declaredType.isModule)
             output.statement("return &this;");
           else
             output.statement("return this;");
@@ -423,7 +419,7 @@ struct CodeGen {
             foreach(decl ; moduleDecl.decls.symbolsInDefinitionOrder) {
               if (auto field = decl.as!FieldDecl) {
 
-                if (!field.declType.isModule)
+                if (!field.type.isModule)
                   output.statement("instance.", field.name, "__dg = null;");
                 if (auto value = field.valueExpr)
                   output.statement("instance.", name(field), " = ", value, ";");
@@ -439,7 +435,7 @@ struct CodeGen {
 
             foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
               if (auto fd = cast(FieldDecl)field) {
-                if (fd.declType.as!ModuleType is null) {
+                if (fd.type.as!ModuleType is null) {
                   output.statement("if (", fd.name, "__dg) ", fd.name, "__dg();");
                 }
               }
