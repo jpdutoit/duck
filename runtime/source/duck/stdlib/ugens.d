@@ -24,8 +24,6 @@ alias Stereo = Value!stereo;
 alias Float = Value!float;
 alias Frequency = Value!frequency;
 
-public import std.random : uniform;
-
 ///////////////////////////////////////////////////////////////////////////////
  uint bigEndian(uint value) {
         return value << 24

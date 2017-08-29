@@ -69,7 +69,8 @@ struct DCompilerOptions {
         "duck/stdlib/package",
         "duck/stdlib/scales",
         "duck/stdlib/units",
-        "duck/stdlib/ugens"
+        "duck/stdlib/ugens",
+        "duck/stdlib/random"
       ]
       };
 }
