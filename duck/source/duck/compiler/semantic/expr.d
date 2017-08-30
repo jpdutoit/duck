@@ -177,7 +177,12 @@ struct ExprSemantic {
 
     implicitConstructCall(expr.right);
 
-    debug(Semantic) log("=>", expr);
+    // Piping to a function is the same as calling that function
+    if (auto os = expr.right.type.as!OverloadSetType) {
+      Expr call = expr.right.call([expr.left]);
+      accept(call);
+      return call;
+    }
 
     Expr originalRHS = expr.right;
     expr.type = expr.right.type;
@@ -267,6 +272,8 @@ struct ExprSemantic {
       replacements[macroDecl.parentDecl.context] = contextExpr;
 
     Expr expansion = macroDecl.returnExpr;
+    if (expansion.hasError) return expansion;
+
     debug(Semantic) log("=> expansion", expansion);
     expansion = expansion.dupWithReplacements(replacements);
     debug(Semantic) log("=> expansion", expansion);

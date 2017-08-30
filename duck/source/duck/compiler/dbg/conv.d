@@ -25,6 +25,9 @@ struct ExprToString {
     }
     return s ~ "]";
   }
+  string visit(ErrorExpr expr) {
+    return "ERROR";
+  }
   string visit(TypeExpr expr) {
     return expr.expr.accept(this);
   }
