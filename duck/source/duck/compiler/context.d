@@ -2,6 +2,9 @@ module duck.compiler.context;
 
 import std.exception : assumeUnique;
 import std.stdio, std.conv;
+
+import duck.util.stack: Stack;
+
 import duck.compiler.lexer;
 import duck.compiler.buffer;
 import duck.compiler;
@@ -13,13 +16,21 @@ import duck.host;
 import duck.compiler.parser, duck.compiler.ast, duck.compiler.visitors, duck.compiler.semantic, duck.compiler.context;
 import duck.compiler.dbg;
 
+@property
+Context context() {
+  return Context.stack.top;
+}
+
 struct CompileError {
   Slice location;
   string message;
 }
 
 class Context {
-  static Context current = null;
+  static Stack!Context stack = [];
+  static void push(Context context) { stack.push(context); }
+  static void pop() { stack.pop(); }
+
 
   this () {
     temp = new TempBuffer("");
@@ -52,13 +63,15 @@ class Context {
     auto phaseFlatten = Flatten();
     auto phaseSemantic = SemanticAnalysis(this, buffer.path);
 
-    Context previous = Context.current;
-    Context.current = this;
+
+    Context.push(this);
+
     _library = cast(Library)(Parser(this, buffer)
       .parseLibrary()
       .flatten()
       .accept(phaseSemantic));
-    Context.current = previous;
+
+    Context.pop();
 
     for (int i = 0; i < dependencies.length; ++i) {
       dependencies[i].library;
