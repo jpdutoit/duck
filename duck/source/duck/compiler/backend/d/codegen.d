@@ -14,29 +14,12 @@ import duck.compiler.semantic.helpers;
 import duck.compiler.dbg;
 import duck.compiler.backend.d.appender;
 
-immutable PREAMBLE = q{
-  import duck.runtime, duck.stdlib, core.stdc.stdio : printf;
-
-};
-immutable POSTAMBLE_MAIN = q{
-
-      void main(string[] args) {
-        initialize(args);
-        Duck(&run);
-        Scheduler.run();
-      }
-};
-
 //  This code generator is a bit of hack at the moment
 
-string generateCode(Node node, Context context, bool isMainFile) {
-  CodeGen cg = CodeGen(context, isMainFile);
+string generateCode(Node node, Optimizer metrics) {
+  auto cg = CodeGen(context, metrics);
   node.accept(cg);
-
-  auto code = cg.output.data;
-  return isMainFile
-      ? PREAMBLE ~ code ~ POSTAMBLE_MAIN
-      : PREAMBLE ~ code;
+  return cg.output.data;
 }
 
 string lvalueToString(Expr expr){
@@ -84,7 +67,6 @@ struct CodeGen {
   DAppender!CodeGen output;
 
   Context context;
-  bool isMainFile;
 
   string[size_t] symbols;
   int symbolCount = 0;
@@ -129,9 +111,8 @@ struct CodeGen {
     );
   }
 
-  this(Context context, bool isMainFile) {
+  this(Context context) {
     this.context = context;
-    this.isMainFile = isMainFile;
     this.output = DAppender!CodeGen(&this);
   }
 
@@ -192,7 +173,7 @@ struct CodeGen {
         output.statement(mod, "._tick();");
 
       output.statement(expr.right, " = ", expr.left, ";");
-      if (context.instrument) instrument(expr.left, expr.right);
+      if (context.options.instrument) instrument(expr.left, expr.right);
     });
 
     if (owner.external)
@@ -264,6 +245,7 @@ struct CodeGen {
     else
       output.put(typeName, "(", expr.arguments, ")");
   }
+
   void visit(CallExpr expr) {
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
     if (callable.isExternal && callable.isOperator && expr.arguments.length == 2) {
@@ -454,12 +436,28 @@ struct CodeGen {
   }
 
   void visit(Library library) {
-    if (this.isMainFile) {
+    if (context.isMain) {
+      output.put(PREAMBLE);
       output.functionDecl("void", "run");
       output.functionBody(library.stmts);
+      output.put(POSTAMBLE_MAIN);
     } else {
+      output.put(PREAMBLE);
       foreach (i, node; library.declarations)
         accept(node);
     }
   }
+};
+
+
+private immutable PREAMBLE = q{
+  import duck.runtime, duck.stdlib, core.stdc.stdio : printf;
+};
+
+private immutable POSTAMBLE_MAIN = q{
+      void main(string[] args) {
+        initialize(args);
+        Duck(&run);
+        Scheduler.run();
+      }
 };

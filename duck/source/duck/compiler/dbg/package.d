@@ -3,9 +3,7 @@ module duck.compiler.dbg;
 public import duck.compiler.dbg.colors;
 public import duck.compiler.dbg.conv;
 
-import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
-import duck.compiler.transforms;
-import duck.compiler.visitors;
+import duck.compiler.ast, duck.compiler.types;
 
 auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import core.exception;
@@ -25,6 +23,12 @@ void ASSERT(T)(T value, lazy string message, int line = __LINE__, string file = 
 
 string describe(const Type type) {
   return type ? type.mangled() : "?";
+}
+
+string prettyName(T)(ref T t) {
+  import std.regex;
+  if (!t) return "";
+  return t.classinfo.name.replaceFirst(regex(r"^.*\."), "");
 }
 
 struct TreeLogger {

@@ -1,7 +1,38 @@
 module duck.compiler.backend.backend;
-import duck.host : Process;
-import duck.compiler.context : Context;
+
 import std.stdio : File;
+import std.process: spawnProcess, tryWait, kill, wait, Pid;
+
+import duck.compiler.context : Context;
+
+struct Process {
+    string filename;
+    Pid pid;
+
+    this(string filename) {
+        this.filename = filename;
+        this.pid = spawnProcess(this.filename);
+    }
+
+    void stop() {
+        if (tryWait(pid).terminated)
+            return;
+
+        import core.sys.posix.signal : SIGKILL;
+        kill(this.pid, SIGKILL);
+        .wait(this.pid);
+
+        pid = Pid.init;
+    }
+
+    @property bool alive() {
+        return !tryWait(pid).terminated;
+    }
+
+    void wait() {
+      .wait(this.pid);
+    }
+}
 
 struct SourceFile {
   string filename;

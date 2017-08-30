@@ -11,39 +11,6 @@ import duck.compiler.dbg;
 
 import std.stdio;
 
-struct ImportPaths
-{
-  string target;
-  string sourcePath;
-  string[] packageRoots;
-
-  this(string _target, string _sourcePath, string[] _packageRoots) {
-    target = _target;
-    sourcePath = _sourcePath;
-    packageRoots = _packageRoots;
-  }
-
-  int opApply(int delegate(size_t i, string path) dg)
-  {
-    import std.path : buildNormalizedPath;
-
-    // Handle local includes
-    if (target[0] == '.' || target[0] == '/') {
-      return dg(0, buildNormalizedPath(sourcePath, "..", target ~ ".duck"));
-    }
-
-    // Handle package includes
-    int result = 0;
-    for (size_t i = 0; i < packageRoots.length; ++i) {
-      result = dg(i, buildNormalizedPath(packageRoots[i], "duck_packages", target ~ ".duck"));
-      if (result)
-        return result;
-    }
-
-    return result;
-  }
-}
-
 T taint(T: Expr)(T expr) {
   expr.type = ErrorType.create;
   return expr;

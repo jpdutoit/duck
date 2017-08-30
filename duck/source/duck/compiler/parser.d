@@ -576,11 +576,13 @@ struct Parser {
   }
 
   Library parseLibrary() {
-    auto prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""));
-    if (context.includePrelude)
+    ImportStmt prelude;
+    if (context.options.includePrelude) {
+      prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""), context.createStdlibContext());
       decls ~= prelude;
+    }
     Stmts stmts = cast(Stmts)parseStatements(false);
-    auto prog = new Library(context.includePrelude ? new Stmts(prelude ~ stmts.stmts) : stmts, decls);
+    auto prog = new Library(prelude ? new Stmts(prelude ~ stmts.stmts) : stmts, decls);
     //auto prog = new Library([prelude, parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;

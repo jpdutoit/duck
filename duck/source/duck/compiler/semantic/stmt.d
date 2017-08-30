@@ -113,34 +113,19 @@ struct StmtSemantic {
       return new Stmts([]);
     }
 
-    auto paths = ImportPaths(stmt.identifier[1..$-1], sourcePath, context.packageRoots);
-    string lastPath;
-    foreach (i, string path ; paths) {
-      lastPath = path;
-      if (path.exists()) {
-        Context context  = Duck.contextForFile(path);
-        stmt.targetContext = context;
-        if (i == 0)
-          context.includePrelude = false;
+    if (!stmt.targetContext)
+      stmt.targetContext = this.context.createImportContext(stmt.identifier[1..$-1]);
 
-        context.verbose = semantic.context.verbose;
-
-        auto library = context.library;
-
-        if (library) {
-          foreach(decl; library.exports) {
-            semantic.library.imports.define(decl.name, decl);
-          }
+    if (stmt.targetContext) {
+      if (auto library = stmt.targetContext.library) {
+        foreach(decl; library.exports) {
+          semantic.library.imports.define(decl.name, decl);
         }
-
-        semantic.context.errors ~= context.errors;
-        semantic.context.dependencies ~= context;
-
-        return stmt;
       }
+      semantic.context.errors ~= context.errors;
+      return stmt;
     }
-    context.error(stmt.identifier, "Cannot find library at '%s'", lastPath);
-    //return stmt;
+
     return new Stmts([]);
   }
 }

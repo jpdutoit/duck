@@ -71,6 +71,12 @@ struct Slice {
     this = this + other;
   }
 
+  Slice opSlice(uint x, uint y) {
+    return Slice(buffer, start + x, start + y);
+  }
+
+  @property int opDollar(size_t dim : 0)() { return end-start; }
+
   Slice opBinary(string op : "+")(Slice other){
     if (buffer != other.buffer) {
       if (cast(FileBuffer)buffer)

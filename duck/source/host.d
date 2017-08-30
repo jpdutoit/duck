@@ -3,7 +3,6 @@ module host;
 immutable VERSION = import("VERSION");
 
 import duck.compiler;
-import duck.host;
 import std.file : getcwd;
 import std.path : buildPath, dirName;
 import std.stdio;
@@ -102,17 +101,18 @@ int main(string[] args) {
       printHelp(result);
     }
 
+    Context root = Context.createRootContext();
+    root.options.instrument = instrument;
+    root.options.verbose = verbose;
+    root.options.includePrelude = !noStdLib;
+
     Context context;
     if (args[1] == "--") {
-      context = Duck.contextForString(args[2..$].join(" "));
+      context = root.createStringContext(args[2..$].join(" "));
     } else {
-      context = Duck.contextForFile(args[1]);
+      context = root.createFileContext(args[1]);
     }
-    if (context.hasErrors) return cast(int)context.errors.length;
-
-    context.instrument = instrument;
-    context.verbose = verbose;
-    context.includePrelude = !noStdLib;
+    if (root.errors.length > 0) return cast(int)root.errors.length;
 
     context.library;
 

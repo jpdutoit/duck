@@ -4,6 +4,7 @@ import duck.compiler.ast, duck.compiler.lexer, duck.compiler.buffer;
 import duck.compiler.context;
 import duck.compiler;
 import duck.compiler.visitors;
+import duck.compiler.transforms;
 
 struct Flatten {
   void merge(ref Stmt[] all, Stmt stmt) {

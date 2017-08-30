@@ -313,8 +313,9 @@ class ImportStmt : Stmt {
   Token identifier;
   Context targetContext;
 
-  this(Token identifier) {
+  this(Token identifier, Context context = null) {
     this.identifier = identifier;
+    this.targetContext = context;
   }
 }
 

@@ -43,8 +43,7 @@
     "source/duck/compiler/input.d",
     "source/duck/compiler/dbg/package.d",
     "source/duck/compiler/dbg/colors.d",
-    "source/duck/compiler/dbg/conv.d",
-    "source/duck/host/package.d"
+    "source/duck/compiler/dbg/conv.d"
   ],
   "stringImportPaths": [
     "source"

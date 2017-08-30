@@ -39,6 +39,7 @@ auto findFiles(string where) {
   string[] files;
   auto dFiles = dirEntries(where, "*.{lst}", SpanMode.depth);
   foreach(d; dFiles) {
+    if (d.name.indexOf("-dbg-") >= 0) continue;
     files ~= d.name;
   }
   return files;

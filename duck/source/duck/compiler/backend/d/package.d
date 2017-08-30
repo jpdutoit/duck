@@ -4,8 +4,7 @@ public import duck.compiler.backend.backend;
 import duck.compiler.backend.d.codegen;
 
 import duck.compiler.ast;
-import duck.compiler.context: Context;
-//import duck.host: DFile, DCompilerOptions;
+import duck.compiler.context: Context, ContextType;
 import duck.compiler: DCode;
 import duck.compiler.backend.d.dmd: DFile, DCompilerOptions;
 
@@ -18,11 +17,11 @@ class DBackend : Backend, SourceToBinaryCompiler {
   }
 
   Executable compile(string[] engines = []) {
-    auto dfile = genFile(context, true);
+    auto dfile = genFile(context);
     dfile.context = context;
     if (context.hasErrors) return Executable("");
 
-    if (context.instrument)
+    if (context.options.instrument)
       dfile.options.merge(DCompilerOptions.Instrumentation);
 
     import std.algorithm.searching: canFind;
@@ -43,11 +42,14 @@ class DBackend : Backend, SourceToBinaryCompiler {
   }
 }
 
-private DFile genFile(Context context, bool isMainFile) {
-  auto code = generateCode(context.library, context, isMainFile);
+private DFile genFile(Context context) {
+  Context.push(context);
+  auto code = context.library.generateCode();
+  Context.pop();
+
   if (context.hasErrors) return DFile();
 
-  auto dfile = DFile.tempFromHash(isMainFile ? context.buffer.hashOf * 9129491 : context.buffer.hashOf);
+  auto dfile = DFile.tempFromHash(context.isMain ? context.buffer.hashOf * 9129491 : context.buffer.hashOf);
 
   dfile.write(code);
 
@@ -55,7 +57,7 @@ private DFile genFile(Context context, bool isMainFile) {
     stderr.writeln("Compiled: ", context.buffer.path, " to ", dfile.filename);
 
   for (int i = 0; i < context.dependencies.length; ++i) {
-    auto dep = genFile(context.dependencies[i], false);
+    auto dep = genFile(context.dependencies[i]);
     dfile.options.merge(dep.options);
   }
   return dfile;
