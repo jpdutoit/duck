@@ -22,13 +22,41 @@ function testfn() -> float {
 function fn1(p1 : float, p2: "hello", p3: 123) {  }
 function fn1(p3: 123) {  }
 
+extern module A {
+	input:mono;
+	output:mono;
+}
+
+extern function a(mono) -> mono;
+extern function b(mono) -> mono;
+extern function b(mono) -> mono;
+extern function c(mono, mono) -> mono;
+extern function d(mono, mono) -> mono;
+extern function d(mono, mono, mono) -> mono;
+
+m: mono;
+a(m);
+b(m);
+c(m);
+d(m);
+
 /**
 OUTPUT:
 ---
-tests/not-compilable/functions.duck(9:1-10): Error: No functions matches arguments.
-tests/not-compilable/functions.duck(10:1-13): Error: No functions matches arguments.
+tests/not-compilable/functions.duck(9:1-10): Error: Function does not match arguments:
+tests/not-compilable/functions.duck(3:8-38):   function hz(float) -> frequency
+tests/not-compilable/functions.duck(10:1-13): Error: Function does not match arguments:
+tests/not-compilable/functions.duck(3:8-38):   function hz(float) -> frequency
 tests/not-compilable/functions.duck(22:30-36): Error: Expected a type
 tests/not-compilable/functions.duck(22:43-45): Error: Expected a type
 tests/not-compilable/functions.duck(23:18-20): Error: Expected a type
+tests/not-compilable/functions.duck(39:1-4): Error: Multiple functions matches arguments:
+tests/not-compilable/functions.duck(31:8-31):   function b(mono) -> mono
+tests/not-compilable/functions.duck(32:8-31):   function b(mono) -> mono
+tests/not-compilable/functions.duck(40:1-4): Error: Function does not match arguments:
+tests/not-compilable/functions.duck(33:8-37):   function c(mono, mono) -> mono
+tests/not-compilable/functions.duck(41:1-4): Error: No function matches arguments:
+tests/not-compilable/functions.duck(34:8-37):   function d(mono, mono) -> mono
+tests/not-compilable/functions.duck(35:8-43):   function d(mono, mono, mono) -> mono
 ---
 */

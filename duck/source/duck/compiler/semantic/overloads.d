@@ -131,7 +131,10 @@ CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, 
   }
   if (matches > 1) {
     debug(Semantic) log("=>", matches, "match at cost", lowestCost);
-    foreach (overload; overloads) *viable ~= overload;
+    if (viable) {
+      (*viable).reserve(matches);
+      foreach (overload; overloads[0..matches]) *viable ~= overload;
+    }
     return null;
   }
   debug(Semantic) log("=> 0 matches");

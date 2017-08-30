@@ -31,6 +31,10 @@ void error(Slice token, string message) {
   context.error(token, message);
 }
 
+void info(Slice slice, lazy string message) {
+  context.info(slice, message);
+}
+
 bool expect(T)(T expectation, Expr expr, lazy string message) {
   if (!expectation) {
     error(expr, message);

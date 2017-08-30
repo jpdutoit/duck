@@ -360,7 +360,8 @@ struct Parser {
 
   }
 
-  Stmt parseFunction(bool isExtern = false) {
+  DeclStmt parseFunction(bool isExtern = false) {
+    Token start = lexer.front;
     lexer.expect(Tok!"function", "Expected module");
     Token ident = expect(Identifier, "Expected identifier");
     CallableDecl func = new CallableDecl(ident);
@@ -394,6 +395,8 @@ struct Parser {
     if (lexer.consume(Tok!"->")) {
       func.returnExpr = expect(parseExpression(Precedence.Comparison), "Expected expression.");
     }
+
+    func.headerSource = lexer.sliceFrom(start);
 
     if (!isExtern) {
       func.callableBody = parseBlock();

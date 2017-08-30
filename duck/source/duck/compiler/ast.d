@@ -170,6 +170,8 @@ class CallableDecl : ValueDecl {
     }
   }
 
+  Slice headerSource;
+
   @property bool isFunction() { return !isMethod; }
 
 

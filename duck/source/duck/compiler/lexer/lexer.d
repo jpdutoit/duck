@@ -9,6 +9,7 @@ enum LOOKAHEAD = 2;
 
 struct Lexer {
   Input input;
+  Token last;
   Token[LOOKAHEAD] tokens;
   Context context;
 
@@ -31,7 +32,7 @@ struct Lexer {
   }
 
   Slice sliceFrom(Slice from) {
-    return input.slice(from, front);
+    return input.slice(from, last);
   }
 
   void expect(Token.Type type, string message) {
@@ -61,6 +62,7 @@ struct Lexer {
   }
 
   void popFront() {
+    last = front;
     frontIndex = (frontIndex + 1) % LOOKAHEAD;
     do {
       back = tokenizeNext();

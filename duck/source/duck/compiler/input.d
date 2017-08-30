@@ -49,7 +49,7 @@ struct Input {
 
   Slice slice(Slice from, Slice to) {
     if (!from) return Slice();
-    return this.buffer[from.start .. to.start];
+    return this.buffer[from.start .. to.end];
   }
 
   auto save() {

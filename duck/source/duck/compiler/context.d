@@ -63,7 +63,6 @@ class Context {
     auto phaseFlatten = Flatten();
     auto phaseSemantic = SemanticAnalysis(this, buffer.path);
 
-
     Context.push(this);
 
     _library = cast(Library)(Parser(this, buffer)
@@ -101,6 +100,19 @@ class Context {
   void error(Slice slice, string str) {
     stderr.write(slice.toLocationString());
     stderr.write(": Error: ");
+    stderr.writeln(str);
+
+    errors ~= CompileError(slice, str);
+  }
+
+  void info(Args...)(Slice slice, string formatString, Args args) {
+    import std.format: format;
+    info(slice, format(formatString, args));
+  }
+
+  void info(Slice slice, string str) {
+    stderr.write(slice.toLocationString());
+    stderr.write(": ");
     stderr.writeln(str);
 
     errors ~= CompileError(slice, str);

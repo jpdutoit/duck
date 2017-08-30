@@ -64,6 +64,11 @@ abstract class Type {
   bool isSameType(Type other) {
     return (this is other);
   }
+
+  @property
+  final bool hasError() {
+    return cast(ErrorType)this !is null;
+  }
 };
 
 final class TupleType : Type {

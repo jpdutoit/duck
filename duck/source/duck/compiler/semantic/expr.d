@@ -1,4 +1,5 @@
 module duck.compiler.semantic.expr;
+
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
 import duck.compiler.semantic.overloads;
@@ -25,14 +26,16 @@ struct ExprSemantic {
     return new InlineDeclExpr(new DeclStmt(decl));
   }
 
-  void implicitCall(ref Expr expr) {
-    expr.type.visit!(
-      delegate(OverloadSetType os) {
-        expr = expr.call();
+  bool implicitCall(ref Expr expr) {
+    if (auto r = expr.as!RefExpr)
+    if (auto os = r.type.as!OverloadSetType) {
+      if (auto callable = resolveCall(expr, os.overloadSet, [])) {
+        expr = callable.reference().withContext(r.context).withSource(r).call();
         accept(expr);
-      },
-      (Type type) { }
-    );
+        return true;
+      }
+    }
+    return false;
   }
 
   void implicitConstruct(ref Expr expr) {
@@ -82,9 +85,10 @@ struct ExprSemantic {
 
     // Coerce an overload set by automatically calling it
     if (sourceType.as!OverloadSetType) {
-      implicitCall(sourceExpr);
-      return coerce(sourceExpr, targetType);
+      if (implicitCall(sourceExpr))
+        return coerce(sourceExpr, targetType);
     }
+
     // Coerce type by constructing instance of that type
     if (auto metaType = sourceType.as!MetaType) {
       if (auto moduleType = metaType.type.as!ModuleType) {
@@ -101,6 +105,8 @@ struct ExprSemantic {
         return coerce(sourceExpr, targetType);
       }
     }
+
+    if (targetType.hasError || sourceType.hasError) return sourceExpr.taint;
     return sourceExpr.error("Cannot coerce " ~ describe(sourceType) ~ " to " ~ describe(targetType));
   }
 
@@ -120,21 +126,17 @@ struct ExprSemantic {
     return result;
   }
 
-  CallableDecl resolveCall(Expr expr, OverloadSet overloadSet, Expr[] arguments, Expr context = null) {
-    if (!overloadSet) return null;
-
+  CallableDecl resolveCall(Expr expr, OverloadSet overloadSet, Expr[] arguments, Expr context = null, CallableDecl[]* viable = null) {
     TupleExpr args = new TupleExpr(arguments.dup);
     accept(args);
-    CallableDecl[] viable;
-    auto best = findBestOverload(overloadSet, context, args, &viable);
-    if (expect(viable.length == 0, expr, "Ambigious call.") && best) {
-      return best;
-    }
-    return null;
+    auto best = findBestOverload(overloadSet, context, args, viable);
+    return best;
   }
 
   CallableDecl resolveCall(Expr expr, SymbolTable searchScope, string identifier, Expr[] arguments, Expr context = null) {
-    return resolveCall(expr, cast(OverloadSet)searchScope.lookup(identifier).decl, arguments);
+    if (auto overloadSet = searchScope.lookup(identifier).decl.as!OverloadSet)
+      return resolveCall(expr, overloadSet, arguments);
+    return null;
   }
 
   Node visit(ErrorExpr expr) {
@@ -250,7 +252,6 @@ struct ExprSemantic {
       elementTypes ~= e.type;
     }
     if (tupleError) return expr.taint;
-
     expr.type = TupleType.create(elementTypes);
     return expr;
   }
@@ -429,16 +430,32 @@ struct ExprSemantic {
         delegate (OverloadSetType ot) {
           debug(Semantic) log("=>", "context", expr.context);
 
-          auto best = resolveCall(expr, ot.overloadSet, expr.arguments.elements, expr.context);
-          if (expect(best, expr, "No functions matches arguments.")) {
-            expr.callable = expr.callable.visit!(
-              (RefExpr r) => best.reference().withContext(r.context).withSource(r)
-            );
-
+          CallableDecl[] viable = [];
+          auto best = resolveCall(expr, ot.overloadSet, expr.arguments.elements, expr.context, &viable);
+          if (best) {
+            auto r = expr.callable.enforce!RefExpr;
+            expr.callable = best.reference().withContext(r.context).withSource(r);
             accept(expr.callable);
             return resolve(expr);
           }
-          return expr;
+          else {
+            CallableDecl[] candidates;
+            if (viable.length == 0) {
+              if (ot.overloadSet.decls.length > 1)
+                error(expr, "No function matches arguments:");
+              else
+                error(expr, "Function does not match arguments:");
+              candidates = ot.overloadSet.decls;
+            }
+            else {
+              error(expr, "Multiple functions matches arguments:");
+              candidates = viable;
+            }
+            foreach(CallableDecl callable; candidates) {
+              info(callable.headerSource, "  " ~ callable.headerSource);
+            }
+            return expr.taint;
+          }
         },
         delegate (MetaType tt) {
           Expr e = new ConstructExpr(expr.callable, expr.arguments, null, expr.source);
