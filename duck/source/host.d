@@ -45,6 +45,8 @@ void printHelp(GetoptResult result, string error = null) {
   if (error) {
     stderr.writeln("\nError: ",error);
   }
+  import core.runtime: Runtime;
+  Runtime.terminate();
   exit(1);
 }
 
