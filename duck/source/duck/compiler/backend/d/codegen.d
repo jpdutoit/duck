@@ -22,45 +22,27 @@ string generateCode(Node node, Optimizer metrics) {
   return cg.output.data;
 }
 
-string lvalueToString(Expr expr){
-  return expr.visit!(
-    (RefExpr re) => re.context
-      ? lvalueToString(re.context) ~ "." ~ re.decl.name
-      : re.decl.name,
-    (IdentifierExpr ie) => ie.identifier);
-}
-
-string findTarget(Expr expr) {
-  return expr.visit!(
-    (Expr expr) => cast(string)null,
-    (RefExpr expr) => expr.context ? lvalueToString(expr.context) : null);
-}
-
-StructDecl findOwnerDecl(Expr expr) {
-  return expr.visit!(
-    (Expr expr) => cast(StructDecl)null,
-    (RefExpr e) {
-      if (e.context) {
-        if (auto ge = cast(ModuleType)e.context.type) {
-          return ge.decl;
-        }
-        return e.context.findOwnerDecl();
-      }
-      return null;
-    });
+ModuleDecl moduleDecl(RefExpr expr) {
+  if (expr)
+  if (auto mt = expr.type.as!ModuleType)
+    return mt.decl;
+  return null;
 }
 
 auto findModules(Expr expr) {
-  string[] modules;
-  expr.traverse((RefExpr e) {
-    if (e.context && e.context.type.kind == ModuleType.Kind) {
-      modules ~= e.findTarget();
-      //return false;
-    }
-    return true;
-  });
+  return expr.traverseCollect!(
+    (RefExpr r) => r.context && r.context.type.isModule ? r.context.as!RefExpr : null
+  );
+}
 
-  return modules;
+RefExpr findModuleContext(Expr expr) {
+  return expr.traverseFind!(
+    (RefExpr e) => e.context && e.context.type.isModule ? e.context.as!RefExpr : null
+  );
+}
+
+auto findField(Expr expr) {
+  return expr.traverseFind!((RefExpr e) => e.decl.as!FieldDecl);
 }
 
 struct CodeGen {
@@ -147,6 +129,7 @@ struct CodeGen {
   }
 
   void visit(PipeExpr expr) {
+    auto targetModule = expr.right.findModuleContext();
     auto modules = findModules(expr.left);
 
     if (modules.length == 0) {
@@ -155,46 +138,49 @@ struct CodeGen {
       return;
     }
 
-    StructDecl owner = findOwnerDecl(expr.right);
-    debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
+    ModuleDecl typeDecl = targetModule.moduleDecl;
+    debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
 
-    if ((cast(ModuleDecl)owner is null)) {
-      output.statement(expr.right, " = ", expr.left, ";");
+    if (typeDecl is null) {
+      output.statement(expr.right, " = ", expr.left);
       return;
     }
 
-    if (owner.external)
-      output.statement(expr.right.findTarget(), ".__add( () ");
+    if (typeDecl.external)
+      output.statement(targetModule, ".__add( () ");
     else
-      output.statement(expr.right.lvalueToString(), "__dg = ()");
+      output.statement(expr.right, "__dg = ()");
 
     output.block(() {
-      foreach(mod; modules)
-        output.statement(mod, "._tick();");
+      foreach(mod; modules) {
+        if (targetModule.decl != mod.decl)
+          output.statement(mod, "._tick();");
+      }
 
       output.statement(expr.right, " = ", expr.left, ";");
       if (context.options.instrument) instrument(expr.left, expr.right);
     });
 
-    if (owner.external)
+    if (typeDecl.external)
       output.put(")");
   }
 
   void visit(AssignExpr expr) {
-    StructDecl owner = findOwnerDecl(expr.left);
+    auto targetModule = expr.left.findModuleContext();
+    ModuleDecl typeDecl = targetModule.moduleDecl;
     auto modules = findModules(expr.right);
 
-    debug(CodeGen) if (owner) log("=> Property Owner:", owner.name);
+    debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
 
-    if (cast(ModuleDecl)owner !is null) {
-      if (!owner.external) {
-        output.statement(expr.left.lvalueToString(), "__dg = null;");
+    if (typeDecl !is null) {
+      if (!typeDecl.external) {
+        output.statement(expr.left, "__dg = null;");
       }
     }
 
     foreach(mod; modules) {
-      if (mod == "this") continue;
-      output.statement(mod, "._tick(); ");
+      if (targetModule.decl != mod.decl)
+        output.statement(mod, "._tick(); ");
     }
 
     output.statement(expr.left, expr.operator.value, expr.right);
@@ -374,9 +360,9 @@ struct CodeGen {
   }
 
   void visit(StructDecl structDecl) {
-   if (!structDecl.external) {
-     assert(false, "Structs not yet supported");
-   }
+    if (!structDecl.external) {
+      assert(false, "Structs not yet supported");
+    }
   }
 
   void visit(ModuleDecl moduleDecl) {

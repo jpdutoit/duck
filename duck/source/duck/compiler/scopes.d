@@ -94,6 +94,17 @@ class DeclTable : DefinitionScope {
     }
     return null;
   }
+
+  @property
+  auto filtered(D: Decl)() {
+    import std.algorithm.iteration;
+    return symbolsInDefinitionOrder.map!(d => cast(D)d).filter!(d => d !is null);
+  }
+
+  @property
+  auto fields() {
+    return filtered!FieldDecl;
+  }
 }
 
 class ParameterList : Scope {

@@ -172,14 +172,14 @@ extern module DAC {
   right: mono;
 }
 
-extern module Mono {
-  output: mono;
+module Mono {
   input: mono;
+  output: input;
 }
 
-extern module Frequency {
-  output: frequency;
+module Frequency {
   input: frequency;
+  output: input;
 }
 
 extern module Assert {
