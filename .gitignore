@@ -5,3 +5,5 @@ lib/
 reports/coverage/
 *.o
 *.obj
+coverage/
+tools/server/built/

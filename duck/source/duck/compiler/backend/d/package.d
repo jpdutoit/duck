@@ -2,6 +2,7 @@ module duck.compiler.backend.d;
 public import duck.compiler.backend.backend;
 
 import duck.compiler.backend.d.codegen;
+import duck.compiler.backend.d.optimizer;
 
 import duck.compiler.ast;
 import duck.compiler.context: Context, ContextType;
@@ -17,7 +18,7 @@ class DBackend : Backend, SourceToBinaryCompiler {
   }
 
   Executable compile(string[] engines = []) {
-    auto dfile = genFile(context);
+    auto dfile = genFile(context, new Optimizer(context.library));
     dfile.context = context;
     if (context.hasErrors) return Executable("");
 
@@ -42,9 +43,9 @@ class DBackend : Backend, SourceToBinaryCompiler {
   }
 }
 
-private DFile genFile(Context context) {
+private DFile genFile(Context context, Optimizer metrics) {
   Context.push(context);
-  auto code = context.library.generateCode();
+  auto code = context.library.generateCode(metrics);
   Context.pop();
 
   if (context.hasErrors) return DFile();
@@ -57,7 +58,7 @@ private DFile genFile(Context context) {
     stderr.writeln("Compiled: ", context.buffer.path, " to ", dfile.filename);
 
   for (int i = 0; i < context.dependencies.length; ++i) {
-    auto dep = genFile(context.dependencies[i]);
+    auto dep = genFile(context.dependencies[i], metrics);
     dfile.options.merge(dep.options);
   }
   return dfile;

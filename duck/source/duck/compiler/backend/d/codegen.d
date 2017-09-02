@@ -13,6 +13,7 @@ import duck.compiler.semantic.helpers;
 
 import duck.compiler.dbg;
 import duck.compiler.backend.d.appender;
+import duck.compiler.backend.d.optimizer;
 
 //  This code generator is a bit of hack at the moment
 
@@ -48,19 +49,20 @@ auto findField(Expr expr) {
 struct CodeGen {
   DAppender!CodeGen output;
 
+  Optimizer metrics;
+
   Context context;
 
-  string[size_t] symbols;
+  string[Decl] symbols;
   int symbolCount = 0;
 
   string symbolName(Decl decl) {
     import std.conv : to;
-    size_t addr = cast(size_t)cast(void*)decl;
-    string* name = addr in symbols;
+    string* name = decl in symbols;
     if (name is null) {
       symbolCount++;
       string s = "__symbol_" ~ symbolCount.to!string();
-      symbols[addr] = s;
+      symbols[decl] = s;
       debug(CodeGen) log("symbolName", s, decl.name.toString());
       return s;
     }
@@ -93,7 +95,8 @@ struct CodeGen {
     );
   }
 
-  this(Context context) {
+  this(Context context, Optimizer metrics) {
+    this.metrics = metrics;
     this.context = context;
     this.output = DAppender!CodeGen(&this);
   }
@@ -141,7 +144,7 @@ struct CodeGen {
     ModuleDecl typeDecl = targetModule.moduleDecl;
     debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
 
-    if (typeDecl is null) {
+    if (!metrics.isDynamicField(expr.right.findField())) {
       output.statement(expr.right, " = ", expr.left);
       return;
     }
@@ -153,7 +156,7 @@ struct CodeGen {
 
     output.block(() {
       foreach(mod; modules) {
-        if (targetModule.decl != mod.decl)
+        if (targetModule.decl != mod.decl && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
           output.statement(mod, "._tick();");
       }
 
@@ -172,14 +175,14 @@ struct CodeGen {
 
     debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
 
-    if (typeDecl !is null) {
+    if (metrics.isDynamicField(expr.left.findField())) {
       if (!typeDecl.external) {
         output.statement(expr.left, "__dg = null;");
       }
     }
 
     foreach(mod; modules) {
-      if (targetModule.decl != mod.decl)
+      if (targetModule.decl != mod.decl && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
         output.statement(mod, "._tick(); ");
     }
 
@@ -263,7 +266,8 @@ struct CodeGen {
     auto modules = findModules(stmt.condition);
 
     foreach(mod; modules) {
-      if (mod == "this") continue;
+      //if (mod == "this") continue;
+      if (metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
       output.statement(mod, "._tick(); ");
     }
 
@@ -312,8 +316,8 @@ struct CodeGen {
   }
 
   void visit(FieldDecl field) {
-
-    if (!field.type.isModule)
+    if (!metrics.isReferenced(field)) return;
+    if (metrics.isDynamicField(field))
       output.statement("__ConnDg ", field.name, "__dg = void; ");
 
     output.statement(name(field.type), field.type.isModule ? "* " : " ", field.name, " = void;");
@@ -366,14 +370,16 @@ struct CodeGen {
   }
 
   void visit(ModuleDecl moduleDecl) {
+    if (!metrics.isReferenced(moduleDecl)) return;
     if (!moduleDecl.external) {
 
         output.statement("static");
         output.structDecl(moduleDecl.name, () {
+          if (metrics.hasDynamicFields(moduleDecl))
+            output.statement("ulong __sampleIndex = void;");
+
           foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) accept(field);
           foreach(ctor ; moduleDecl.ctors.decls) accept(ctor);
-
-          output.statement("ulong __sampleIndex = ulong.max;");
 
           auto typeName = name(moduleDecl);
           output.functionDecl("static auto", "alloc");
@@ -384,34 +390,35 @@ struct CodeGen {
           output.functionDecl("static auto", "alloc");
           output.functionArgument(typeName ~ "*", "instance");
           output.functionBody((){
-            foreach(decl ; moduleDecl.decls.symbolsInDefinitionOrder) {
-              if (auto field = decl.as!FieldDecl) {
-
-                if (!field.type.isModule)
-                  output.statement("instance.", field.name, "__dg = null;");
-                if (auto value = field.valueExpr)
-                  output.statement("instance.", name(field), " = ", value, ";");
-              }
+            if (metrics.hasDynamicFields(moduleDecl))
+              output.statement("instance.__sampleIndex = ulong.max;");
+            foreach(field; moduleDecl.decls.fields) {
+              if (!metrics.isReferenced(field)) continue;
+              if (metrics.isDynamicField(field))
+                output.statement("instance.", field.name, "__dg = null;");
+              if (auto value = field.valueExpr)
+                output.statement("instance.", name(field), " = ", value, ";");
             }
             output.statement("return instance;");
           });
 
-          output.functionDecl("void", "_tick");
-          output.functionBody((){
-            output.statement("if (__sampleIndex == __idx) return;");
-            output.statement("__sampleIndex = __idx;");
+          if (metrics.hasDynamicFields(moduleDecl)) {
+            output.functionDecl("void", "_tick");
+            output.functionBody((){
+              output.statement("if (__sampleIndex == __idx) return;");
+              output.statement("__sampleIndex = __idx;");
 
-            foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) {
-              if (auto fd = cast(FieldDecl)field) {
-                if (fd.type.as!ModuleType is null) {
-                  output.statement("if (", fd.name, "__dg) ", fd.name, "__dg();");
+              foreach(field; moduleDecl.decls.fields) {
+                if (!metrics.isReferenced(field)) continue;
+                if (metrics.isDynamicField(field)) {
+                  output.statement("if (", field.name, "__dg) ", field.name, "__dg();");
                 }
               }
-            }
-            if (auto os = moduleDecl.decls.lookup("tick").as!OverloadSet) {
-              output.statement(symbolName(os.decls[0]), "();");
-            }
-          });
+              if (auto os = moduleDecl.decls.lookup("tick").as!OverloadSet) {
+                output.statement(symbolName(os.decls[0]), "();");
+              }
+            });
+          }
         });
     }
   }
