@@ -24,7 +24,9 @@ class Optimizer {
   }
 
   bool isDynamicField(FieldDecl field) {
-    return field && field.parentDecl.declaredType.isModule && !field.type.isModule && (field in fieldDependencyCount) !is null;
+    //TODO: Reenable this at a later stage once it works correctly.
+    return field && field.parentDecl.declaredType.isModule && !field.type.isModule;
+    //return field && field.parentDecl.declaredType.isModule && !field.type.isModule && (field in fieldDependencyCount) !is null;
   }
 
   bool hasDynamicFields(ModuleDecl mod) {
