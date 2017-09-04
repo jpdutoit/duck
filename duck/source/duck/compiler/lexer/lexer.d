@@ -77,7 +77,14 @@ struct Lexer {
       case ' ': input.consume(); tokenType = Tok!" "; break;
       case '\n': input.consume(); tokenType = Tok!"\n"; break;
       case ',': input.consume(); tokenType = Tok!","; break;
-      case ':': input.consume(); tokenType = Tok!":"; break;
+      case ':':
+        input.consume();
+        if (input.consume('=')) {
+          tokenType = Tok!":=";
+        } else {
+          tokenType = Tok!":";
+        }
+        break;
       case '%': input.consume(); tokenType = Tok!"%"; break;
       case '+':
         input.consume();

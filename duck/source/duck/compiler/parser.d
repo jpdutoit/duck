@@ -54,6 +54,7 @@ struct Parser {
       case Tok!">>": return Precedence.Pipe;
 
       case Tok!"=":
+      case Tok!":=":
       case Tok!"+=": return Precedence.Assignment;
 
       case Tok!"==":
@@ -256,6 +257,15 @@ struct Parser {
         //writefln("%s %s", Identifier, Identifier);
         Token identifier = expect(Identifier, "Expected identifier following '.'");
         return left.member(identifier);
+      }
+      case Tok!":=": {
+        IdentifierExpr identifier = cast(IdentifierExpr)left;
+        expect(identifier, "Expected identifier.");
+        lexer.consume(Tok!":=");
+        if (!identifier) return null;
+
+        Expr value = expect(parseExpression(prec), "Expected expression on right side of declaration opertaor");
+        return new InlineDeclExpr(new DeclStmt(new VarDecl(cast(TypeExpr)null, identifier.identifier, value)));
       }
       case Tok!"=":
       case Tok!"+=":

@@ -61,10 +61,12 @@ struct DeclSemantic {
   Node visit(VarDecl decl) {
     debug(Semantic) log("=>", decl.name, decl.typeExpr);
 
-    if (!decl.typeExpr) {
+    if (!decl.typeExpr && !decl.valueExpr) {
       ASSERT(decl.valueExpr, "Internal compiler error: Expected at least one of typeExpr or valueExpr");
+    }
+
+    if (!decl.typeExpr) {
       accept(decl.valueExpr);
-      decl.typeExpr = null;
       decl.type = decl.valueExpr.type;
       return decl;
     }
