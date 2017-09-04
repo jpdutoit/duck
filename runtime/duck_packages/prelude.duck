@@ -152,7 +152,7 @@ module Triangle {
   }
 }
 
-module SawTooth {
+module SawOsc {
   phasor: Phasor;
   freq: this.phasor.freq;
   input: this.phasor.freq;
