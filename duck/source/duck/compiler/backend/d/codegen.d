@@ -182,7 +182,7 @@ struct CodeGen {
     }
 
     foreach(mod; modules) {
-      if (targetModule.decl != mod.decl && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
+      if ((!targetModule || targetModule.decl != mod.decl) && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
         output.statement(mod, "._tick(); ");
     }
 
