@@ -50,6 +50,7 @@ struct CodeGen {
   DAppender!CodeGen output;
 
   Optimizer metrics;
+  Stack!Node stack;
 
   Context context;
 
@@ -106,7 +107,9 @@ struct CodeGen {
       logIndent();
       log(n.prettyName.red, n);
     }
+    stack.push(n);
     n.accept(this);
+    stack.pop();
     debug(CodeGen) logOutdent();
   }
 
@@ -169,20 +172,21 @@ struct CodeGen {
   }
 
   void visit(AssignExpr expr) {
-    auto targetModule = expr.left.findModuleContext();
-    ModuleDecl typeDecl = targetModule.moduleDecl;
+    auto ownerDecl = expr.left.findModuleContext().moduleDecl;
+    ModuleDecl thisDecl = stack.find!ModuleDecl;
+
     auto modules = findModules(expr.right);
 
     debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
 
     if (metrics.isDynamicField(expr.left.findField())) {
-      if (!typeDecl.external) {
+      if (!ownerDecl.external) {
         output.statement(expr.left, "__dg = null;");
       }
     }
-
     foreach(mod; modules) {
-      if ((!targetModule || targetModule.decl != mod.decl) && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
+      auto modDecl = mod.moduleDecl;
+      if ((thisDecl !is modDecl) && (ownerDecl != modDecl) && metrics.hasDynamicFields(modDecl))
         output.statement(mod, "._tick(); ");
     }
 
