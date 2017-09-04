@@ -49,6 +49,7 @@ extern function printf(string, float) -> float;
 extern function printf(string, float, float) -> float;
 
 extern function sin(float) -> float;
+extern function cos(float) -> float;
 extern function abs(float) -> float;
 
 extern function raw(f: frequency) -> float;
@@ -305,4 +306,42 @@ module SampleAndHold {
       output = input;
     }
   }
+}
+
+module RisingEdge {
+  input: mono;
+  output: mono;
+
+  function tick() {
+    output = input > last;
+    last = input;
+  }
+
+  last: mono = 0;
+}
+
+
+
+module FallingEdge {
+  input: mono;
+  output: mono;
+
+  function tick() {
+    output = input > last;
+    last = input;
+  }
+
+  last: mono = 0;
+}
+
+module Edge {
+  input: mono;
+  output: mono;
+
+  function tick() {
+    output = input != last;
+    last = input;
+  }
+
+  last: mono = 0;
 }
