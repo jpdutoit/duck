@@ -200,28 +200,6 @@ struct Parser {
     return null;
   }
 
-  void parseCallableArgumentList(CallableDecl callable, bool isExtern) {
-    expect(Tok!"(", "Expected '('");
-    if (lexer.front.type != Tok!")") {
-      do {
-        ParameterDecl decl = parseParameterDecl(callable);
-        if (decl) {
-          callable.parameters.add(decl);
-          callable.parameterTypes ~= decl.typeExpr;
-        }
-        else {
-          if (!isExtern) {
-            context.error(lexer.front, "Expected parameter name");
-          }
-          auto typeExpr = new TypeExpr(parseExpression(Precedence.Unary));
-          callable.parameterTypes ~= typeExpr;
-          callable.parameters.add(new ParameterDecl(typeExpr, Slice()));
-        }
-      } while (lexer.consume(Tok!","));
-    }
-    expect(Tok!")", "Expected ')'");
-  }
-
   Expr parsePostfix(Expr left) {
     if (cast(InlineDeclExpr)left && lexer.front.type == Identifier) {
       return null;
@@ -336,46 +314,18 @@ struct Parser {
     return null;
   }
 
-  CallableDecl parseMethod(StructDecl structDecl)
-  {
-    bool isCtor = false;
-    CallableDecl decl;
+  void parseCallableName(CallableDecl callable) {
     if (lexer.front.type == Tok!"constructor") {
-      isCtor = true;
-      decl = new CallableDecl(lexer.front);
-      decl.isConstructor = true;
+      callable.name = lexer.front;
+      callable.isConstructor = true;
       lexer.consume();
-    }
-    else {
-      if (!expect(Tok!"function", "Expected keyword function"))
-        return null;
-      auto name = expect(Identifier, "Expected identifier");
-      decl = new CallableDecl(name);
-      decl.isMethod = true;
+      return;
     }
 
-    decl.isExternal = structDecl.external;
-    parseCallableArgumentList(decl, structDecl.external);
-
-    Stmt methodBody;
-    if (structDecl.external) {
-      expect(Tok!";", "Expected ';'");
-    } else {
-      methodBody = expect(parseBlock(), "Expected function body");
-    }
-
-    decl.callableBody = methodBody;
-    decl.parentDecl = structDecl;
-    return decl;
-
-  }
-
-  DeclStmt parseFunction(bool isExtern = false) {
-    Token start = lexer.front;
-    lexer.expect(Tok!"function", "Expected module");
+    expect(Tok!"function", "Expected keyword function");
     Token ident = expect(Identifier, "Expected identifier");
-    CallableDecl func = new CallableDecl(ident);
     if (ident.value == "operator") {
+      callable.isOperator = true;
       switch (lexer.front.type) {
         case Tok!"-":
         case Tok!"+":
@@ -389,37 +339,84 @@ struct Parser {
         case Tok!"<=":
         case Tok!">":
         case Tok!"<":
-          func.isOperator = true;
           ident = lexer.consume();
           break;
         default:
           context.error(lexer.front, "Expected an overridable operator.");
       }
     }
-    func.name = ident;
+    callable.name = ident;
+  }
+
+  void parseCallableArgumentList(CallableDecl callable) {
+    expect(Tok!"(", "Expected '('");
+    if (lexer.front.type != Tok!")") {
+      do {
+        ParameterDecl decl = parseParameterDecl(callable);
+        if (decl) {
+          callable.parameters.add(decl);
+          callable.parameterTypes ~= decl.typeExpr;
+        }
+        else {
+          if (!callable.isExternal) {
+            context.error(lexer.front, "Expected parameter name");
+          }
+          auto typeExpr = new TypeExpr(parseExpression(Precedence.Unary));
+          callable.parameterTypes ~= typeExpr;
+          callable.parameters.add(new ParameterDecl(typeExpr, Slice()));
+        }
+      } while (lexer.consume(Tok!","));
+    }
+    expect(Tok!")", "Expected ')'");
+  }
+
+  CallableDecl parseCallable(CallableDecl callable) {
+      Token start = lexer.front;
+
+      parseCallableName(callable);
+
+      callable.isMethod = callable.parentDecl !is null && !callable.isConstructor;
+
+      parseCallableArgumentList(callable);
+
+      if (lexer.consume(Tok!"->")) {
+        if (callable.isConstructor) {
+          context.error(lexer.last, "Constructors may not have a return value.");
+        }
+        callable.returnExpr = expect(parseExpression(Precedence.Comparison), "Expected expression.");
+      }
+      callable.headerSource = lexer.sliceFrom(start);
+
+      if (!callable.isExternal) {
+        callable.callableBody = parseBlock();
+      }
+      if (!callable.callableBody) {
+        lexer.expect(Tok!";", "Expected ';'");
+      }
+      return callable;
+  }
+
+  CallableDecl parseMethod(StructDecl structDecl) {
+    Token start = lexer.front;
+    CallableDecl decl = new CallableDecl();
+    decl.isExternal = structDecl.external;
+    decl.parentDecl = structDecl;
+    decl = parseCallable(decl);
+    return decl;
+  }
+
+  DeclStmt parseFunction(bool isExtern = false) {
+    Token start = lexer.front;
+    CallableDecl func = new CallableDecl();
     func.isExternal = isExtern;
+    func = parseCallable(func);
 
-    parseCallableArgumentList(func, isExtern);
-
-
-    if (lexer.consume(Tok!"->")) {
-      func.returnExpr = expect(parseExpression(Precedence.Comparison), "Expected expression.");
-    }
-
-    func.headerSource = lexer.sliceFrom(start);
-
-    if (!isExtern) {
-      func.callableBody = parseBlock();
-    }
-
-    if (!func.callableBody) {
-      lexer.expect(Tok!";", "Expected ';'");
+    if (func && func.isConstructor) {
+      context.error(func.headerSource, "Constructors may only appear in structs or modules");
     }
 
     auto stmt = new DeclStmt(func);
     this.decls ~= stmt;
-
-
     return stmt;
   }
 

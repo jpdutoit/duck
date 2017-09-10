@@ -189,6 +189,11 @@ class CallableDecl : ValueDecl {
     return this.reference().call(arguments);
   }
 
+  this() {
+    super(null, Slice());
+    this.parameters = new ParameterList();
+  }
+
   this(Slice identifier) {
     super(null, identifier);
     this.parameters = new ParameterList();
