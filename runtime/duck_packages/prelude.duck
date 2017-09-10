@@ -239,24 +239,47 @@ extern module AR {
   output: mono;
 }
 
-extern module Echo {
-  constructor(duration);
+module Delay {
+  constructor(length: duration) {
+    this.length = length;
+  }
 
-  input: mono;
-  output: mono;
-  gain: mono;
+  input: mono = 0;
+  output: mono = 0;
+  length: duration;
+
+  function tick() {
+    buffer.length = length;
+    output = buffer[index];
+    buffer[index] = input;
+    index = (index + 1) % buffer.length;
+  }
+
+  buffer: SampleBuffer;
+  index: int = 0;
+}
+
+
+module Echo {
+  constructor(length: duration) {
+  	this.length = length;
+  }
+
+  delay: Delay;
+  length: delay.length;
+  input: mono = 0;
+  gain: mono = 0.5;
+  output: mono = 0;
+
+  function tick() {
+    delay.input = input + output * gain;
+    output = input + delay.output;
+  }
 }
 
 extern module OSCValue {
   output: mono;
 }
-
-extern module Delay {
-  constructor(duration);
-  input: mono;
-  output: mono;
-}
-
 
 module WhiteNoise {
   output: mono = 0;

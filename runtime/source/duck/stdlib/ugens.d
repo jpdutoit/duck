@@ -254,58 +254,6 @@ struct AR {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct Delay {
-  mixin UGEN!Delay;
-
-  auto initialize(duration samples) {
-    ulong s = cast(ulong)(samples);
-    this.buffer.length = s;
-    for (size_t i = 0; i < s; ++i) {
-      this.buffer[i] = 0;
-    }
-    index = 0;
-    return &this;
-  }
-
-  mono input = 0;
-  mono output = 0;
-
-  void tick() {
-    output = buffer[index];
-    buffer[index] = input;
-    index = (index + 1) % buffer.length;
-  }
-private:
-  size_t index = 0;
-  mono[] buffer;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
-struct Echo {
-  mixin UGEN!Echo;
-
-  auto initialize(duration samples) {
-    delay = Delay.alloc().initialize(samples);
-    return &this;
-  }
-
-  mono input = 0;
-  mono output = 0;
-  float gain = 0.5;
-
-  void tick() {
-    delay.input = input + delay.output * gain;
-    delay.tick();
-    output = delay.output + input;
-  }
-private:
-  Delay* delay;
-  //mono[] buffer;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-
 struct ADC {
   mono output;
 
