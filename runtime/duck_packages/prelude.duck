@@ -6,6 +6,11 @@ extern struct duration {
   constructor(float);
 }
 
+extern struct SampleBuffer {
+  length: int;
+  function operator[](int) -> float;
+}
+
 extern struct Time;
 
 extern SAMPLE_RATE: frequency;
