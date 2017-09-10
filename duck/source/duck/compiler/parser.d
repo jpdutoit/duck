@@ -341,6 +341,13 @@ struct Parser {
         case Tok!"<":
           ident = lexer.consume();
           break;
+        case Tok!"[":
+          ident = lexer.consume();
+          if (lexer.front.type == Tok!"]") {
+            ident = ident + lexer.front;
+          }
+          expect(Tok!"]", "Expected ']'");
+          break;
         default:
           context.error(lexer.front, "Expected an overridable operator.");
       }

@@ -178,10 +178,10 @@ struct CodeGen {
 
     auto modules = findModules(expr.right);
 
-    debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
+    debug(CodeGen) if (ownerDecl) log("=> Property Owner:", ownerDecl.name);
 
     if (metrics.isDynamicField(expr.left.findField())) {
-      if (!ownerDecl.external) {
+      if (!ownerDecl.external && expr.left.as!RefExpr) {
         output.statement(expr.left, "__dg = null;");
       }
     }
@@ -250,8 +250,15 @@ struct CodeGen {
 
   void visit(CallExpr expr) {
     auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
-    if (callable.isExternal && callable.isOperator && expr.arguments.length == 2) {
-      output.expression(expr.arguments[0], expr.callable, expr.arguments[1]);
+    if (callable.isExternal && callable.isOperator) {
+      auto re = expr.callable.enforce!RefExpr;
+      if (re.decl.name == "[]" && re.context) {
+        output.expression(re.context, "[", expr.arguments, "]");
+      } else if (expr.arguments.length == 2) {
+        output.expression(expr.arguments[0], expr.callable, expr.arguments[1]);
+      } else {
+        context.error(expr.source, "Interal compiler error");
+      }
     } else {
       output.put(expr.callable, "(", expr.arguments, ")");
     }

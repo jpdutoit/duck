@@ -146,6 +146,12 @@ struct ExprSemantic {
     return null;
   }
 
+  CallableDecl resolveCall(Scope searchScope, string identifier, Expr[] arguments, Expr context = null) {
+    if (auto overloadSet = searchScope.lookup(identifier).as!OverloadSet)
+      return resolveCall(overloadSet, arguments);
+    return null;
+  }
+
   Node visit(ErrorExpr expr) {
     return expr;
   }
@@ -380,6 +386,21 @@ struct ExprSemantic {
       return expr.taint;
 
     return expr.expr.type.visit!(
+      (StructType t) {
+        if (expr.expr.hasError) {
+          expr.taint;
+        }
+        else {
+          auto callable = resolveCall(t.decl.decls, "[]", expr.arguments.elements);
+          if (callable) {
+            Expr e = callable.reference().withContext(expr.expr).call(expr.arguments).withSource(expr);
+            return accept(e);
+          }
+        }
+        if (!expr.hasError)
+          expr.error("Cannot index type " ~ mangled(expr.expr.type) ~ " with " ~ mangled(expr.arguments.type) ~ ".");
+        return expr;
+      },
       (StaticArrayType t) {
         if (expr.arguments.length != 1) {
           expr.arguments.error("Only one index accepted");

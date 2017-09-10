@@ -189,6 +189,10 @@ class CallableDecl : ValueDecl {
     return this.reference().call(arguments);
   }
 
+  CallExpr call(TupleExpr arguments) {
+    return this.reference().call(arguments);
+  }
+
   this() {
     super(null, Slice());
     this.parameters = new ParameterList();
@@ -363,6 +367,10 @@ abstract class Expr : Node {
   }
 
   CallExpr call(Expr[] arguments = []) {
+    return new CallExpr(this, arguments, null, this.source);
+  }
+
+  CallExpr call(TupleExpr arguments) {
     return new CallExpr(this, arguments, null, this.source);
   }
 
