@@ -288,6 +288,18 @@ module WhiteNoise {
   }
 }
 
+module PairwiseAvg {
+  input: mono = 0;
+  output: mono = 0;
+
+  inputHistory: mono = 0;
+
+  function tick() {
+    output = (inputHistory + input) * 0.5;
+    inputHistory = input;
+  }
+}
+
 module TriggerDivider {
   input: mono;
   trigger: input;
