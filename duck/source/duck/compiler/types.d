@@ -176,7 +176,8 @@ final class StaticArrayType : Type {
 final class ModuleType : StructType {
   mixin TypeMixin;
 
-  ModuleDecl decl;
+  ModuleDecl decl() { return cast(ModuleDecl)super.decl; }
+  void decl(ModuleDecl decl) { super.decl = decl; }
 
   override string describe() const {
     return "module." ~ name;

@@ -568,9 +568,7 @@ struct ExprSemantic {
     if (expr.context.hasError) return expr.taint;
 
     return expr.context.type.visit!(
-      (ModuleType type) {
-        ASSERT(isLValue(expr.context), "Modules can not be temporaries.");
-
+      (StructType type) {
         auto member = type.decl.decls.lookup(expr.name);
         if (!member) {
           return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
@@ -578,10 +576,10 @@ struct ExprSemantic {
 
         auto refExpr = member.reference().withContext(expr.context).withSource(expr);
         return accept(refExpr);
-    },
-    (Type t) {
-      expr.context.error("Cannot access members of " ~ expr.context.type.mangled());
-      return expr.taint;
+      },
+      (Type t) {
+        expr.context.error("Cannot access members of " ~ expr.context.type.mangled());
+        return expr.taint;
     });
   }
 
