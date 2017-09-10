@@ -18,6 +18,7 @@ struct Cost {
   static Cost max()  { return Cost(int.max-1); }
   static Cost infinity() { return Cost(int.max); }
   static Cost zero() { return Cost(0); }
+  static Cost intToFloat() { return Cost(1); }
   static Cost implicitCall() { return Cost(100); }
   static Cost implicitOutput() { return Cost(10000); }
   static Cost implicitConstruct() { return Cost(10000); }
@@ -62,6 +63,11 @@ Cost coercionCost(Type type, Type target) {
     if (output) {
       return Cost.implicitOutput + coercionCost(output.getResultType, target);
     }
+  }
+
+  // Coerce int by automatically converting it to float
+  if (type.as!IntegerType && target.as!FloatType) {
+    return Cost.intToFloat;
   }
   return Cost.infinity;
 }

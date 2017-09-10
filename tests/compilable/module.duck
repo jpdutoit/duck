@@ -7,7 +7,7 @@ extern module A {
 }
 
 A(2);
-A([2, 3, 4]);
+A([2.0, 3, 4]);
 
 a:A + A;
 A + b:A;

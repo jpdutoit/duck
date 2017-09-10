@@ -124,8 +124,9 @@ struct SemanticAnalysis {
 
     symbolTable.pushScope(library.imports);
 
-    library.globals.define("mono", new TypeDecl(NumberType.create, "mono"));
-    library.globals.define("float", new TypeDecl(NumberType.create, "float"));
+    library.globals.define("int", new TypeDecl(IntegerType.create, "int"));
+    library.globals.define("mono", new TypeDecl(FloatType.create, "mono"));
+    library.globals.define("float", new TypeDecl(FloatType.create, "float"));
     library.globals.define("string", new TypeDecl(StringType.create, "string"));
 
     symbolTable.pushScope(library.globals);

@@ -34,10 +34,10 @@ A >> a >> a >> a >> A >> a >> A;
 /*
 OUTPUT:
 ---
-tests/not-compilable/pipe.duck(9:1-5): Error: Cannot coerce type number to a value of type number
-tests/not-compilable/pipe.duck(10:1): Error: Cannot coerce a value of type number to type number
+tests/not-compilable/pipe.duck(9:1-5): Error: Cannot coerce type float to a value of type float
+tests/not-compilable/pipe.duck(10:1): Error: Cannot coerce a value of type float to type float
 tests/not-compilable/pipe.duck(12:6-11): Error: Right hand side of connection must be a module field
-tests/not-compilable/pipe.duck(13:1-7): Error: Cannot coerce a value of type string to a value of type number
+tests/not-compilable/pipe.duck(13:1-7): Error: Cannot coerce a value of type string to a value of type float
 tests/not-compilable/pipe.duck(27:6): Error: Multiple functions matches arguments:
 tests/not-compilable/pipe.duck(17:8-31):   function b(mono) -> mono
 tests/not-compilable/pipe.duck(18:8-31):   function b(mono) -> mono

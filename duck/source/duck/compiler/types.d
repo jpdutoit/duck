@@ -6,10 +6,10 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.conv;
 
-alias BasicTypes = AliasSeq!("number", "string", "nothing", "error");
+alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int");
 alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType, MetaType);
 
-alias Types = AliasSeq!(NumberType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
+alias Types = AliasSeq!(FloatType, IntegerType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -40,7 +40,8 @@ template BasicType(string desc) {
   //static __gshared BasicType = new BasicTypeT();
 }
 
-alias NumberType = BasicType!("number");
+alias FloatType = BasicType!("float");
+alias IntegerType = BasicType!("int");
 alias StringType = BasicType!("string");
 alias VoidType = BasicType!("nothing");
 alias ErrorType = BasicType!("error");
@@ -160,8 +161,8 @@ final class StaticArrayType : Type {
 
   override
   bool isSameType(Type other) {
-    ArrayType a = cast(ArrayType)other;
-    return a && a.elementType.isSameType((elementType));
+    StaticArrayType a = cast(StaticArrayType)other;
+    return a && a.size == this.size && a.elementType.isSameType((elementType));
   }
 
   auto init(Type elementType, uint size) {

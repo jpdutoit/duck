@@ -24,8 +24,8 @@ module B {
   }
 }
 
-B >> Assert([1,2,3,4,5]);
-B >> Assert([1,2,3,4,0]);
+B >> Assert([1.0,2,3,4,5]);
+B >> Assert([1.0,2,3,4,0]);
 
 now += 10 samples;
 

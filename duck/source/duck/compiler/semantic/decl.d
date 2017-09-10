@@ -96,6 +96,7 @@ struct DeclSemantic {
           decl.valueExpr = typeDecl.reference().call();
         }
         accept(decl.valueExpr);
+        decl.valueExpr = exprSemantic.coerce(decl.valueExpr, decl.type);
         if (decl.valueExpr && decl.type != decl.valueExpr.type && !decl.valueExpr.hasError) {
           error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.type) ~ " not of type " ~ mangled(decl.valueExpr.type) ~ ".");
           decl.valueExpr.taint();

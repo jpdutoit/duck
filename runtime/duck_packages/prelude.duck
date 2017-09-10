@@ -12,11 +12,18 @@ extern SAMPLE_RATE: frequency;
 extern struct Now;
 extern now: Now;
 
+extern function operator+(int, int) -> int;
+extern function operator*(int, int) -> int;
+extern function operator-(int, int) -> int;
+extern function operator/(int, int) -> int;
+extern function operator%(int, int) -> int;
+
 extern function operator+(float, float) -> float;
 extern function operator*(float, float) -> float;
 extern function operator-(float, float) -> float;
 extern function operator/(float, float) -> float;
 extern function operator%(float, float) -> float;
+extern function operator%(duration, duration) -> duration;
 
 //TODO: Introduce bool type
 extern function operator!=(float, float) -> float;

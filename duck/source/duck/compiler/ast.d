@@ -480,8 +480,13 @@ class LiteralExpr : Expr {
   this(Token token) {
     super();
     this.source = token;
-    if (token.type == Number)
-      this.type = NumberType.create;
+    if (token.type == Number) {
+      import std.string: indexOf;
+      if (token.slice.indexOf(".") >= 0)
+        this.type = FloatType.create;
+      else
+        this.type = IntegerType.create;
+    }
     else if (token.type == StringLiteral)
       this.type = StringType.create;
   }

@@ -77,7 +77,8 @@ struct CodeGen {
       (ModuleType m) => m.name,
       (StructType t) => t.name,
       (StringType t) => "string",
-      (NumberType t) => "float",
+      (FloatType t) => "float",
+      (IntegerType t) => "int",
       (ArrayType t) => name(t.elementType) ~ "[]",
       (StaticArrayType t) => name(t.elementType) ~ "[" ~ t.size.to!string ~ "]"
     );
@@ -194,7 +195,10 @@ struct CodeGen {
   }
 
   void visit(CastExpr expr) {
-    output.expression("cast(", name(expr.targetType), ")", expr.expr);
+    if (expr.sourceType.as!IntegerType && expr.targetType.as!FloatType)
+      output.expression(expr.expr);
+    else
+      output.expression("cast(", name(expr.targetType), ")", expr.expr);
   }
 
   void visit(UnaryExpr expr) {
@@ -214,7 +218,8 @@ struct CodeGen {
       (ModuleType t) => output.put(name(type), ".alloc()"),
       (StructType t) => output.put(name(type), ".init"),
       (StringType t) => output.put("\"\""),
-      (NumberType t) => output.put("0"),
+      (FloatType t) => output.put("0"),
+      (IntegerType t) => output.put("0"),
       (ArrayType t) => output.put("[]"),
       (StaticArrayType t) {
         output.put("[");

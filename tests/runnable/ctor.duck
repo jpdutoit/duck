@@ -57,7 +57,6 @@ c1: mono;
 c2: mono = 2;
 c3: mono(3);
 
-//TODO: Built-in floats should default to zero instead of nan
-//assertEquals(c1, 0);
+assertEquals(c1, 0);
 assertEquals(c2, 2);
 assertEquals(c3, 3);

@@ -106,6 +106,13 @@ struct ExprSemantic {
       }
     }
 
+    // Coerce int by automatically converting it to float
+    if (sourceExpr.type.as!IntegerType && targetType.as!FloatType) {
+      auto castExpr = new CastExpr(sourceExpr, targetType);
+      accept(castExpr);
+      return coerce(castExpr, targetType);
+    }
+
     if (targetType.hasError || sourceType.hasError) return sourceExpr.taint;
     return sourceExpr.error("Cannot coerce " ~ describe(sourceType) ~ " to " ~ describe(targetType));
   }
@@ -161,7 +168,7 @@ struct ExprSemantic {
       if (!elementType) {
         elementType = e.type;
       } else if (elementType != e.type) {
-        e.error("Expected array element to have type " ~ elementType.mangled);
+        e = coerce(e, elementType);
       }
     }
     expr.type = ArrayType.create(expr.exprs[0].type);
@@ -216,6 +223,12 @@ struct ExprSemantic {
       expr.targetType = ErrorType.create;
     }
     expr.type = expr.targetType;
+
+    if (expr.sourceType.as!IntegerType || expr.sourceType.as!FloatType) {
+      if (expr.targetType.as!IntegerType || expr.targetType.as!FloatType) {
+        return expr;
+      }
+    }
 
     if (!expr.type.hasError && !expr.expr.type.hasError)
       expr.error("Cast from " ~ mangled(expr.expr.type) ~ " to " ~ mangled(expr.targetType) ~ " not allowed");
