@@ -18,7 +18,7 @@ class DBackend : Backend, SourceToBinaryCompiler {
   }
 
   Executable compile(string[] engines = []) {
-    auto dfile = genFile(context, new Optimizer(context.library));
+    auto dfile = genFile(context, new CodeGenContext(context));
     dfile.context = context;
     if (context.hasErrors) return Executable("");
 
@@ -43,9 +43,10 @@ class DBackend : Backend, SourceToBinaryCompiler {
   }
 }
 
-private DFile genFile(Context context, Optimizer metrics) {
-  Context.push(context);
-  auto code = context.library.generateCode(metrics);
+private DFile genFile(Context library, CodeGenContext context) {
+  Context.push(library);
+  context.context = library;
+  auto code = context.library.generateCode(context);
   Context.pop();
 
   if (context.hasErrors) return DFile();
@@ -58,7 +59,7 @@ private DFile genFile(Context context, Optimizer metrics) {
     stderr.writeln("Compiled: ", context.buffer.path, " to ", dfile.filename);
 
   for (int i = 0; i < context.dependencies.length; ++i) {
-    auto dep = genFile(context.dependencies[i], metrics);
+    auto dep = genFile(context.dependencies[i], context);
     dfile.options.merge(dep.options);
   }
   return dfile;

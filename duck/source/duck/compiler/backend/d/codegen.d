@@ -17,8 +17,39 @@ import duck.compiler.backend.d.optimizer;
 
 //  This code generator is a bit of hack at the moment
 
-string generateCode(Node node, Optimizer metrics) {
-  auto cg = CodeGen(context, metrics);
+class CodeGenContext {
+  Context context;
+  alias context this;
+
+  Optimizer metrics;
+
+  this(Context root) {
+    this.context = root;
+    this.metrics = new Optimizer(root.library);
+  }
+
+  private {
+    string[Decl] uniqueNames;
+    int declCount = 0;
+  }
+
+  final string uniqueName(Decl decl) {
+    import std.conv : to;
+    string* name = decl in uniqueNames;
+    if (name is null) {
+      declCount++;
+      string s = "__symbol_" ~ declCount.to!string();
+      uniqueNames[decl] = s;
+      debug(CodeGen) log("symbolName", s, decl.name.toString());
+      return s;
+    }
+    debug(CodeGen) log("symbolName", *name,decl.name.toString());
+    return *name;
+  }
+}
+
+string generateCode(Node node, CodeGenContext context) {
+  auto cg = CodeGen(context);
   node.accept(cg);
   return cg.output.data;
 }
@@ -47,29 +78,9 @@ auto findField(Expr expr) {
 }
 
 struct CodeGen {
+  CodeGenContext context;
   DAppender!CodeGen output;
-
-  Optimizer metrics;
   Stack!Node stack;
-
-  Context context;
-
-  string[Decl] symbols;
-  int symbolCount = 0;
-
-  string symbolName(Decl decl) {
-    import std.conv : to;
-    string* name = decl in symbols;
-    if (name is null) {
-      symbolCount++;
-      string s = "__symbol_" ~ symbolCount.to!string();
-      symbols[decl] = s;
-      debug(CodeGen) log("symbolName", s, decl.name.toString());
-      return s;
-    }
-    debug(CodeGen) log("symbolName", *name,decl.name.toString());
-    return *name;
-  }
 
   string name(Type type) {
     import std.conv: to;
@@ -91,15 +102,15 @@ struct CodeGen {
         if (d.isExternal) {
           return d.isConstructor ? "initialize" : d.name;
         }
-        return symbolName(d);
+        return context.uniqueName(d);
       },
       (TypeDecl d) => name(d.declaredType)
     );
   }
 
-  this(Context context, Optimizer metrics) {
-    this.metrics = metrics;
-    this.context = context;
+  auto metrics() { return context.metrics; }
+  this(CodeGenContext codeGenContext) {
+    this.context = codeGenContext;
     this.output = DAppender!CodeGen(&this);
   }
 
@@ -439,7 +450,7 @@ struct CodeGen {
                 }
               }
               if (auto os = moduleDecl.decls.lookup("tick").as!OverloadSet) {
-                output.statement(symbolName(os.decls[0]), "();");
+                output.statement(name(os.decls[0]), "();");
               }
             });
           }
