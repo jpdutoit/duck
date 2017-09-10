@@ -116,6 +116,8 @@ module Pitch {
   }
 }
 
+extern function log2(float) -> float;
+extern function log2(frequency) -> float;
 extern function sum(buffer: float[]) -> float;
 extern function max(float, float) -> float;
 extern function min(float, float) -> float;

@@ -10,8 +10,9 @@ version (USE_INSTRUMENTATION) {
 }
 
 public import core.math;
-public import core.stdc.math: ceilf, floorf, roundf, powf, fabs;
+public import core.stdc.math: ceilf, floorf, roundf, powf, fabs, log2f;
 alias abs = fabs;
+alias log2 = log2f;
 
 private struct FixedSizeBufferFreeList(int size, int ChunkSize = 64, int Capacity = 1024) {
   static void*[Capacity] available = void;
