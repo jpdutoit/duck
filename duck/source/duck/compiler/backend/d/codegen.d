@@ -237,7 +237,11 @@ struct CodeGen {
 
     // Default construction
     if (!expr.callable) {
-      putDefaultValue(expr.type);
+      if (expr.arguments.length == 0)
+        putDefaultValue(expr.type);
+      else {
+        output.put(typeName, "(", expr.arguments, ")");
+      }
       return;
     }
 
