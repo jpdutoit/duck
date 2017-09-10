@@ -210,6 +210,19 @@ struct ExprSemantic {
     return expr;
   }
 
+  Node visit(CastExpr expr) {
+    accept(expr.expr);
+    if (!expr.targetType) {
+      expr.targetType = ErrorType.create;
+    }
+    expr.type = expr.targetType;
+
+    if (!expr.type.hasError && !expr.expr.type.hasError)
+      expr.error("Cast from " ~ mangled(expr.expr.type) ~ " to " ~ mangled(expr.targetType) ~ " not allowed");
+
+    return expr.taint;
+  }
+
   Node visit(UnaryExpr expr) {
     accept(expr.operand);
 

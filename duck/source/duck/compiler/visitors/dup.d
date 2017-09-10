@@ -28,6 +28,7 @@ private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
           ? *replacement
           : new RefExpr(expr.decl, cloneImpl(expr.context), expr.source);
       },
+      (CastExpr expr) => new CastExpr(cloneImpl(expr.expr), expr.targetType),
       (LiteralExpr expr) => expr,
       (ConstructExpr expr) => new ConstructExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), cloneImpl(expr.context), expr.source),
       (CallExpr expr) => new CallExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), cloneImpl(expr.context), expr.source),

@@ -193,6 +193,10 @@ struct CodeGen {
     output.statement(expr.left, expr.operator.value, expr.right);
   }
 
+  void visit(CastExpr expr) {
+    output.expression("cast(", name(expr.targetType), ")", expr.expr);
+  }
+
   void visit(UnaryExpr expr) {
     output.expression(expr.operator.value, expr.operand);
   }

@@ -28,6 +28,7 @@ alias NodeTypes = AliasSeq!(
   ConstructExpr,
   TupleExpr,
   IndexExpr,
+  CastExpr,
 
   ExprStmt,
   DeclStmt,
@@ -593,6 +594,19 @@ class MemberExpr : Expr {
     this.source = source;
   }
 
+}
+
+class CastExpr: Expr {
+  mixin NodeMixin;
+  Expr expr;
+  ref Type sourceType() { return expr._type; }
+  Type targetType;
+
+  this(Expr expr, Type targetType) {
+    this.source = expr.source;
+    this.expr = expr;
+    this.targetType = targetType;
+  }
 }
 
 class CallExpr : Expr {

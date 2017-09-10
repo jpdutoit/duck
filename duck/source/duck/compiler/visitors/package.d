@@ -77,6 +77,10 @@ mixin template RecursiveAccept() {
     throw new Exception("Node type " ~ node.prettyName ~ " unhandled in ExprTraverse");
   }
 
+  void recurse(CastExpr expr) {
+    accept(expr.expr);
+  }
+
   void recurse(BinaryExpr expr) {
     accept(expr.left);
     accept(expr.right);
