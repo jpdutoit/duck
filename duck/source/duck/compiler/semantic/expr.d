@@ -29,7 +29,7 @@ struct ExprSemantic {
   bool implicitCall(ref Expr expr) {
     if (auto r = expr.as!RefExpr)
     if (auto os = r.type.as!OverloadSetType) {
-      if (auto callable = resolveCall(expr, os.overloadSet, [])) {
+      if (auto callable = resolveCall(os.overloadSet, [])) {
         expr = callable.reference().withContext(r.context).withSource(r).call();
         accept(expr);
         return true;
@@ -133,16 +133,16 @@ struct ExprSemantic {
     return result;
   }
 
-  CallableDecl resolveCall(Expr expr, OverloadSet overloadSet, Expr[] arguments, Expr context = null, CallableDecl[]* viable = null) {
+  CallableDecl resolveCall(OverloadSet overloadSet, Expr[] arguments, Expr context = null, CallableDecl[]* viable = null) {
     TupleExpr args = new TupleExpr(arguments.dup);
     accept(args);
     auto best = findBestOverload(overloadSet, context, args, viable);
     return best;
   }
 
-  CallableDecl resolveCall(Expr expr, SymbolTable searchScope, string identifier, Expr[] arguments, Expr context = null) {
+  CallableDecl resolveCall(SymbolTable searchScope, string identifier, Expr[] arguments, Expr context = null) {
     if (auto overloadSet = searchScope.lookup(identifier).decl.as!OverloadSet)
-      return resolveCall(expr, overloadSet, arguments);
+      return resolveCall(overloadSet, arguments);
     return null;
   }
 
@@ -241,7 +241,7 @@ struct ExprSemantic {
 
     if (expr.operand.hasError) return expr.taint;
 
-    auto callable = resolveCall(expr, symbolTable, expr.operator, expr.arguments);
+    auto callable = resolveCall(symbolTable, expr.operator, expr.arguments);
     if (callable) {
       Expr e = callable.call(expr.arguments).withSource(expr);
       return accept(e);
@@ -258,7 +258,7 @@ struct ExprSemantic {
       expr.taint;
     }
     else {
-      auto callable = resolveCall(expr, symbolTable, expr.operator, expr.arguments);
+      auto callable = resolveCall(symbolTable, expr.operator, expr.arguments);
       if (callable) {
         Expr e = callable.call(expr.arguments).withSource(expr);
         return accept(e);
@@ -339,7 +339,7 @@ struct ExprSemantic {
             expr.context = structDecl.reference().withSource(expr);
             accept(expr.context);
 
-            auto best = resolveCall(expr, os, expr.arguments.elements, expr.context);
+            auto best = resolveCall(os, expr.arguments.elements, expr.context);
             if (best) {
               expr.arguments = coerce(expr.arguments, best.type.parameters);
               expr.type = decl.declaredType;
@@ -464,7 +464,7 @@ struct ExprSemantic {
           debug(Semantic) log("=>", "context", expr.context);
 
           CallableDecl[] viable = [];
-          auto best = resolveCall(expr, ot.overloadSet, expr.arguments.elements, expr.context, &viable);
+          auto best = resolveCall(ot.overloadSet, expr.arguments.elements, expr.context, &viable);
           if (best) {
             auto r = expr.callable.enforce!RefExpr;
             expr.callable = best.reference().withContext(r.context).withSource(r);
