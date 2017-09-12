@@ -17,6 +17,10 @@ import duck.compiler.backend.d.optimizer;
 
 //  This code generator is a bit of hack at the moment
 
+CallableDecl callableDecl(CallExpr expr) {
+  return expr.callable.enforce!RefExpr().decl.enforce!CallableDecl;
+}
+
 class CodeGenContext {
   Context context;
   alias context this;
@@ -256,7 +260,7 @@ struct CodeGen {
       return;
     }
 
-    auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
+    auto callable = expr.callableDecl;
     if (expr.type.isModule || !callable.isExternal)
       output.put(typeName, ".alloc().", expr.callable, "(", expr.arguments, ")");
     else
@@ -264,7 +268,7 @@ struct CodeGen {
   }
 
   void visit(CallExpr expr) {
-    auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
+    auto callable = expr.callableDecl;
     if (callable.isExternal && callable.isOperator) {
       auto re = expr.callable.enforce!RefExpr;
       if (re.decl.name == "[]" && re.context) {
@@ -413,8 +417,7 @@ struct CodeGen {
           if (metrics.hasDynamicFields(moduleDecl))
             output.statement("ulong __sampleIndex = void;");
 
-          foreach(field ; moduleDecl.decls.symbolsInDefinitionOrder) accept(field);
-          foreach(ctor ; moduleDecl.ctors.decls) accept(ctor);
+          foreach(field ; moduleDecl.members.all) accept(field);
 
           auto typeName = name(moduleDecl);
           output.functionDecl("static auto", "alloc");
@@ -427,7 +430,7 @@ struct CodeGen {
           output.functionBody((){
             if (metrics.hasDynamicFields(moduleDecl))
               output.statement("instance.__sampleIndex = ulong.max;");
-            foreach(field; moduleDecl.decls.fields) {
+            foreach(field; moduleDecl.members.fields.as!FieldDecl) {
               if (!metrics.isReferenced(field)) continue;
               if (metrics.isDynamicField(field))
                 output.statement("instance.", field.name, "__dg = null;");
@@ -443,13 +446,13 @@ struct CodeGen {
               output.statement("if (__sampleIndex == __idx) return;");
               output.statement("__sampleIndex = __idx;");
 
-              foreach(field; moduleDecl.decls.fields) {
+              foreach(field; moduleDecl.members.fields.as!FieldDecl) {
                 if (!metrics.isReferenced(field)) continue;
                 if (metrics.isDynamicField(field)) {
                   output.statement("if (", field.name, "__dg) ", field.name, "__dg();");
                 }
               }
-              if (auto os = moduleDecl.decls.lookup("tick").as!OverloadSet) {
+              if (auto os = moduleDecl.members.lookup("tick").as!OverloadSet) {
                 output.statement(name(os.decls[0]), "();");
               }
             });

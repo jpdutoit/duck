@@ -45,7 +45,7 @@ struct ExprToString {
     return ""  ~ expr.value.blue ~ "".annot(expr._type) ~ "";
   }
   string visit(CastExpr expr) {
-    return ("(cast " ~ expr.expr.accept(this).annot(expr.expr._type) ~ ")").annot(expr.targetType);
+    return ("(cast " ~ expr.expr.accept(this) ~ ")").annot(expr.targetType);
   }
   string visit(BinaryExpr expr) {
     return ("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")").annot(expr._type);

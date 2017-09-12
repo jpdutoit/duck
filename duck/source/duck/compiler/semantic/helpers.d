@@ -21,6 +21,18 @@ D taint(D: ValueDecl)(D decl) {
   return decl;
 }
 
+bool isCallable(Type type) {
+  return type.visit!(
+    (OverloadSetType o) => true,
+    (FunctionType o) => true,
+    (Type t) => false
+  );
+}
+
+bool isCallable(Expr e) {
+  return e.type.isCallable;
+}
+
 Expr findTarget(Expr expr) {
   return expr.visit!(
     (Expr expr) => cast(Expr)null,
@@ -81,23 +93,6 @@ enum MatchResult {
 
 bool isFunctionViable(Type[] args, FunctionType A) {
   return false;
-}
-
-N as(N : Node)(Node node) { return cast(N) node; }
-T as(T : Type)(Type type) { return cast(T) type; }
-D as(D : Decl)(Decl decl) { return cast(D) decl; }
-
-
-O enforce(O : Object)(Object o, string file = __FILE__, int line = __LINE__) {
-  auto c = cast(O)o;
-  ASSERT(c !is null, "Expected object to be of type " ~ O.stringof ~ " not be " ~ o.classinfo.name, line, file);
-  return c;
-}
-
-
-O enforce(O : Object)(O o, string file = __FILE__, int line = __LINE__) {
-   ASSERT(o !is null, "Expected object to not be null", line, file);
-   return o;
 }
 
 /*

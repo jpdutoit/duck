@@ -56,7 +56,7 @@ struct SemanticAnalysis {
     auto obj = target.accept(stmtSemantic);
     debug(Semantic) logOutdent();
 
-    ASSERT(cast(E)obj, "expected StmtSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ Expr.stringof ~ " and not a " ~ obj.prettyName);
+    ASSERT(cast(E)obj, "expected StmtSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ E.stringof ~ " and not a " ~ obj.prettyName);
     target = cast(E)obj;
   }
 
@@ -70,7 +70,7 @@ struct SemanticAnalysis {
       log("=>", obj);
       logOutdent();
     }
-    ASSERT(cast(E)obj, "expected ExprSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ Expr.stringof ~ " and not a " ~ obj.prettyName);
+    ASSERT(cast(E)obj, "expected ExprSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ E.stringof ~ " and not a " ~ obj.prettyName);
     target = cast(E)obj;
   }
 
@@ -82,7 +82,7 @@ struct SemanticAnalysis {
     auto obj = target.accept(declSemantic);
     debug(Semantic)  logOutdent();
 
-    ASSERT(cast(E)obj, "expected DeclSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ Expr.stringof ~ " and not a " ~ obj.prettyName);
+    ASSERT(cast(E)obj, "expected DeclSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ E.stringof ~ " and not a " ~ obj.prettyName);
     target = cast(E)obj;
   }
 

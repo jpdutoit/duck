@@ -5,6 +5,18 @@ public import duck.compiler.dbg.conv;
 
 import duck.compiler.ast, duck.compiler.types;
 
+O enforce(O : Object)(Object o, string file = __FILE__, int line = __LINE__) {
+  ASSERT(o, "Expected object to be of type " ~ O.stringof ~ " not null", line, file);
+  auto c = cast(O)o;
+  ASSERT(c !is null, "Expected object to be of type " ~ O.stringof ~ " not be " ~ o.classinfo.name, line, file);
+  return c;
+}
+
+O enforce(O : Object)(O o, string file = __FILE__, int line = __LINE__) {
+   ASSERT(o !is null, "Expected object to not be null", line, file);
+   return o;
+}
+
 auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   import core.exception;
   import std.conv;

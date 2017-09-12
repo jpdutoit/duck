@@ -125,7 +125,7 @@ struct Parser {
         // Unit parsing
         if (lexer.front.type == Identifier) {
           auto unit = new IdentifierExpr(lexer.consume);
-          return new CallExpr(unit, new TupleExpr([literal]), null, token + unit.source);
+          return new CallExpr(unit, new TupleExpr([literal]), token + unit.source);
         }
         return literal;
       }
@@ -168,7 +168,7 @@ struct Parser {
     lexer.expect(Tok!"(", "Expected '['");
     Expr[] arguments = parseExpressionTuple(Tok!")", "Expected function parameter");
     auto close = expect(Tok!")", "Expected ')'");
-    auto call = new CallExpr(target, new TupleExpr(arguments), null, target.source + close);
+    auto call = new CallExpr(target, new TupleExpr(arguments), target.source + close);
     return call;
   }
 
@@ -316,7 +316,7 @@ struct Parser {
 
   void parseCallableName(CallableDecl callable) {
     if (lexer.front.type == Tok!"constructor") {
-      callable.name = lexer.front;
+      callable.name = Slice("__ctor");
       callable.isConstructor = true;
       lexer.consume();
       return;
@@ -427,28 +427,15 @@ struct Parser {
     return stmt;
   }
 
-  Stmt parseStruct(bool isExtern = false) {
-    lexer.expect(Tok!"struct", "Expected struct");
-    Token ident = expect(Identifier, "Expected identifier");
-
-    auto mod = StructType.create(ident);
-    StructDecl structDecl = new StructDecl(mod, ident);
-    mod.decl = structDecl;
-    structDecl.external = isExtern;
-
+  void parseStructMembers(StructDecl structDecl) {
     if (lexer.consume(Tok!"{")) {
       while (lexer.front.type != Tok!"}") {
         if (lexer.front.type == Tok!"constructor" || lexer.front.type == Tok!"function") {
-          CallableDecl method = parseMethod(structDecl);
-          if (method.name == "constructor") {
-              structDecl.ctors.add(method);
-          }
-          else
-            structDecl.decls.define(method.name, method);
+          structDecl.members.define(parseMethod(structDecl));
         } else {
           Decl field = parseField(structDecl);
           if (!field) break;
-          structDecl.decls.define(field.name, field);
+          structDecl.members.define(field);
           lexer.expect(Tok!";", "Expected ';'");
         }
       }
@@ -456,8 +443,16 @@ struct Parser {
     } else {
       lexer.expect(Tok!";", "Expected ';'");
     }
+  }
 
-     //new NamedType(ident.value.idup, new ModuleType())
+  Stmt parseStruct(bool isExtern = false) {
+    lexer.expect(Tok!"struct", "Expected struct");
+    Token ident = expect(Identifier, "Expected identifier");
+
+    StructDecl structDecl = new StructDecl(ident, isExtern);
+
+    parseStructMembers(structDecl);
+
     auto stmt = new DeclStmt(structDecl);
     this.decls ~= stmt;
     return stmt;
@@ -466,34 +461,13 @@ struct Parser {
   Stmt parseModule(bool isExtern = false) {
     lexer.expect(Tok!"module", "Expected module");
     Token ident = expect(Identifier, "Expected identifier");
-    expect(Tok!"{", "Expected '}'");
 
+    ModuleDecl structDecl = new ModuleDecl(ident, isExtern);
+    parseStructMembers(structDecl);
 
-    ModuleDecl structDecl = new ModuleDecl(ident);
-    structDecl.external = isExtern;
-
-    while (lexer.front.type != Tok!"}") {
-      if (lexer.front.type == Tok!"constructor" || lexer.front.type == Tok!"function") {
-        CallableDecl method = parseMethod(structDecl);
-        if (method.name == "constructor") {
-            structDecl.ctors.add(method);
-        }
-        else
-          structDecl.decls.define(method.name, method);
-      } else {
-        Decl field = parseField(structDecl);
-        if (!field) break;
-        structDecl.decls.define(field.name, field);
-        lexer.expect(Tok!";", "Expected ';'");
-      }
-    }
-    expect(Tok!"}", "Expected '}'");
-
-    //new NamedType(ident.value.idup, new ModuleType())
     auto stmt = new DeclStmt(structDecl);
     this.decls ~= stmt;
     return stmt;
-    //decls ~= structDecl;
   }
 
   ImportStmt parseImport() {

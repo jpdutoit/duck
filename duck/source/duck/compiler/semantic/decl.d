@@ -1,5 +1,6 @@
 module duck.compiler.semantic.decl;
-import duck.compiler.buffer;
+
+import duck.compiler;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
 import duck.compiler.ast;
@@ -29,7 +30,7 @@ struct DeclSemantic {
       accept(decl.returnExpr);
     }
     if (decl.callableBody) {
-      semantic.symbolTable.pushScope(new DeclTable());
+      semantic.symbolTable.pushScope(new BlockScope());
       accept(decl.callableBody);
       semantic.symbolTable.popScope();
     }
@@ -43,7 +44,7 @@ struct DeclSemantic {
       } else {
         expect(!decl.callableBody, decl.returnExpr, "Cannot specify a function body along with an inline return expression");
         decl.isMacro = true;
-        decl.type = FunctionType.create(decl.returnExpr.type, TupleType.create(paramTypes));
+        decl.type = MacroType.create(decl.returnExpr.type, TupleType.create(paramTypes), decl);
       }
     } else {
       decl.type = FunctionType.create(VoidType.create, TupleType.create(paramTypes));
@@ -113,7 +114,7 @@ struct DeclSemantic {
       // Think of a nicer solution than replacing it in decls table,
       // perhaps the decls table should only be constructed after all the fields
       // have been analyzed
-      decl.parentDecl.decls.replace(decl.name, mac);
+      decl.parentDecl.members.replace(decl.name, mac);
       return mac;
     }
 
@@ -129,34 +130,16 @@ struct DeclSemantic {
   Node visit(StructDecl structDecl) {
     debug(Semantic) log("=>", structDecl.name.blue);
 
-    auto typeExpr = new TypeExpr(structDecl.reference());
-    structDecl.context = new ParameterDecl(typeExpr, Slice("this"));
+    structDecl.context = new ParameterDecl(new TypeExpr(structDecl.reference()), Slice("this"));
     accept(structDecl.context);
 
-    DeclTable thisScope = new DeclTable();
-    thisScope.define(structDecl.context);
-    semantic.symbolTable.pushScope(thisScope);
+    semantic.symbolTable.pushScope(new ThisScope(structDecl));
 
-    auto thisRef = structDecl.context.reference();
-    accept(thisRef);
-    semantic.symbolTable.pushScope(structDecl.decls, thisRef);
+    foreach(ref decl; structDecl.fields) accept(decl);
+    foreach(ref decl; structDecl.macros) accept(decl);
+    foreach(ref decl; structDecl.methods) accept(decl);
+    foreach(ref decl; structDecl.constructors) accept(decl);
 
-    ///FIXME
-    foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder) {
-      if (cast(FieldDecl)decl)accept(decl);
-    }
-
-    foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder) {
-      if (cast(CallableDecl)decl && (cast(CallableDecl)decl).isMacro) accept(decl);
-    }
-
-    foreach(name, ref decl; structDecl.decls.symbolsInDefinitionOrder)
-      if (cast(CallableDecl)decl && !(cast(CallableDecl)decl).isMacro) accept(decl);
-
-    foreach(name, ref decl; structDecl.ctors.decls)
-      if (cast(CallableDecl)decl && !(cast(CallableDecl)decl).isMacro) accept(decl);
-
-    semantic.symbolTable.popScope();
     semantic.symbolTable.popScope();
     return structDecl;
   }

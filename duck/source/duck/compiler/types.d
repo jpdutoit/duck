@@ -7,9 +7,9 @@ private import std.typetuple: staticIndexOf;
 private import std.conv;
 
 alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, TupleType, OverloadSetType, StaticArrayType, MetaType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, MacroType, TupleType, OverloadSetType, StaticArrayType, MetaType);
 
-alias Types = AliasSeq!(FloatType, IntegerType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, ArrayType, OverloadSetType, StaticArrayType);
+alias Types = AliasSeq!(FloatType, IntegerType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, MacroType, ArrayType, OverloadSetType, StaticArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -105,6 +105,7 @@ class StructType : Type {
 
   string name;
   StructDecl decl;
+  auto members() { return decl.members; }
 
   override string describe() const {
     return cast(immutable)name;
@@ -257,6 +258,27 @@ class FunctionType : Type {
     return s ~ ") -> "~returnType.describe;
   }
 };
+
+class MacroType: FunctionType {
+  mixin TypeMixin;
+
+  static auto create(Type returnType, TupleType parameters, CallableDecl decl) {
+    auto f = new MacroType();
+    f.returnType = returnType;
+    f.parameters = parameters;
+    f.decl = decl;
+    return f;
+  }
+  CallableDecl decl;
+  override string describe() const {
+    auto s = "macro(";
+    foreach (i, param ; parameters.elementTypes) {
+      if (i != 0) s ~= ", ";
+      s ~= param.describe();
+    }
+    return s ~ ") -> "~returnType.describe;
+  }
+}
 
 string mangled(const Type type) {
   return type ? type.describe() : "?";

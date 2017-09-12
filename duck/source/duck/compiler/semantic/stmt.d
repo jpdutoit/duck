@@ -33,7 +33,7 @@ struct StmtSemantic {
   }
 
   Node visit(ScopeStmt stmt) {
-    symbolTable.pushScope(new DeclTable);
+    symbolTable.pushScope(new BlockScope());
     accept(stmt.stmts);
     symbolTable.popScope();
     return stmt;
@@ -64,7 +64,7 @@ struct StmtSemantic {
         auto name = stmt.decl.name;
         debug(Semantic) log("Add to symbol table:", name, stmt.decl.type.mangled);
 
-        if (this.symbolTable.defines(name)) {
+        if (this.symbolTable.top.defines(name)) {
           error(name, "Cannot redefine " ~ name);
         }
         else {

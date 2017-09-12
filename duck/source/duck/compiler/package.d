@@ -2,10 +2,8 @@ module duck.compiler;
 import std.stdio : writefln, writeln;
 
 import duck.compiler.parser, duck.compiler.ast, duck.compiler.lexer, duck.compiler.visitors, duck.compiler.semantic, duck.compiler.context;
-import duck.compiler.dbg;
 public import duck.compiler.buffer;
-import duck.compiler;
-
+public import duck.compiler.dbg;
 
 struct DCode {
   this(string code) {

@@ -133,10 +133,8 @@ struct JsonOutput {
     if (cast(ModuleDecl)decl !is null)
       field("is_module", true);
     field("context", decl.context);
-    if (decl.ctors.decls.length > 0)
-      field("constructors", decl.ctors.decls);
-    if (decl.decls.symbolsInDefinitionOrder.length > 0)
-      field("members", decl.decls.symbolsInDefinitionOrder);
+    if (decl.all.length > 0)
+      field("members", decl.all);
   }
 
   void visit(Node node) {
@@ -166,8 +164,6 @@ struct JsonOutput {
 
   void visit(CallExpr expr) {
    field("type", "expression.call");
-   if (expr.context)
-    field("context", expr.context);
    field("target", expr.callable);
    field("arguments", expr.arguments.elements);
    field("source", expr.source.toLocationString);
@@ -220,12 +216,12 @@ struct JsonOutput {
    output.dictStart();
 
    bool[string] seen;
-   foreach (v; library.globals.symbolsInDefinitionOrder) {
+   foreach (v; library.globals.table.all) {
      string key = v.name.toString();
      if (key in seen) continue;
      seen[key] = true;
 
-     auto value = library.globals.symbols[key];
+     auto value = library.globals.table.symbols[key];
      auto os = cast(OverloadSet)value;
      if (os && os.decls.length == 1) {
        field(key, os.decls[0]);

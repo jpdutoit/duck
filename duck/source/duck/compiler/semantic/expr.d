@@ -1,5 +1,6 @@
 module duck.compiler.semantic.expr;
 
+import duck.compiler;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
 import duck.compiler.semantic.overloads;
@@ -8,16 +9,21 @@ import duck.compiler.scopes;
 import duck.compiler.lexer;
 import duck.compiler.types;
 import duck.compiler.visitors;
-import duck.compiler.dbg;
 
 struct ExprSemantic {
-  SemanticAnalysis *semantic;
+  SemanticAnalysis *semanticAnalysis;
   int pipeDepth = 0;
 
-  alias semantic this;
+  alias semanticAnalysis this;
 
-  E accept(E)(ref E target) {
-    semantic.accept!E(target);
+  E semantic(E)(E target) {
+    E expr = target;
+    semanticAnalysis.accept(expr);
+    return expr;
+  }
+
+  E semantic(E)(ref E target) {
+    semanticAnalysis.accept(target);
     return target;
   }
 
@@ -28,10 +34,10 @@ struct ExprSemantic {
 
   bool implicitCall(ref Expr expr) {
     if (auto r = expr.as!RefExpr)
-    if (auto os = r.type.as!OverloadSetType) {
-      if (auto callable = resolveCall(os.overloadSet, [])) {
-        expr = callable.reference().withContext(r.context).withSource(r).call();
-        accept(expr);
+    if (r.isCallable) {
+      if (auto callable = resolveCall(r, [])) {
+        expr = callable.withSource(r).call();
+        semantic(expr);
         return true;
       }
     }
@@ -43,7 +49,7 @@ struct ExprSemantic {
       delegate(ConstructExpr cexpr) {
         if (expr.type.as!ModuleType) {
           expr = makeModule(expr.type, expr);
-          accept(expr);
+          semantic(expr);
         }
       },
       (Expr e) { }
@@ -56,7 +62,7 @@ struct ExprSemantic {
           if (metaType.type.as!ModuleType) {
             auto ctor = refExpr.call();
             expr = makeModule(metaType, ctor);
-            accept(expr);
+            semantic(expr);
             return;
           }
         }
@@ -84,7 +90,7 @@ struct ExprSemantic {
     if (sourceType.isSameType(targetType)) return sourceExpr;
 
     // Coerce an overload set by automatically calling it
-    if (sourceType.as!OverloadSetType) {
+    if (sourceType.isCallable) {
       if (implicitCall(sourceExpr))
         return coerce(sourceExpr, targetType);
     }
@@ -98,18 +104,16 @@ struct ExprSemantic {
     }
     // Coerce module by automatically reference field output
     if (auto moduleType = sourceType.as!ModuleType) {
-      auto output = moduleType.decl.decls.lookup("output");
-      if (output) {
-        sourceExpr = sourceExpr.member("output");
-        accept(sourceExpr);
-        return coerce(sourceExpr, targetType);
+      if (auto output = moduleType.members.reference(Slice("output"), sourceExpr)) {
+        semantic(output.withSource(sourceExpr));
+        return coerce(output, targetType);
       }
     }
 
     // Coerce int by automatically converting it to float
     if (sourceExpr.type.as!IntegerType && targetType.as!FloatType) {
       auto castExpr = new CastExpr(sourceExpr, targetType);
-      accept(castExpr);
+      semantic(castExpr);
       return coerce(castExpr, targetType);
     }
 
@@ -128,27 +132,20 @@ struct ExprSemantic {
     }
     if (error) return sourceExpr.taint;
 
-    auto result = new TupleExpr(output);
-    accept(result);
-    return result;
+    return semantic(new TupleExpr(output));
   }
 
-  CallableDecl resolveCall(OverloadSet overloadSet, Expr[] arguments, Expr context = null, CallableDecl[]* viable = null) {
-    TupleExpr args = new TupleExpr(arguments.dup);
-    accept(args);
-    auto best = findBestOverload(overloadSet, context, args, viable);
-    return best;
-  }
-
-  CallableDecl resolveCall(SymbolTable searchScope, string identifier, Expr[] arguments, Expr context = null) {
-    if (auto overloadSet = searchScope.lookup(identifier).decl.as!OverloadSet)
-      return resolveCall(overloadSet, arguments);
-    return null;
-  }
-
-  CallableDecl resolveCall(Scope searchScope, string identifier, Expr[] arguments, Expr context = null) {
-    if (auto overloadSet = searchScope.lookup(identifier).as!OverloadSet)
-      return resolveCall(overloadSet, arguments);
+  RefExpr resolveCall(RefExpr reference, Expr[] arguments, CallableDecl[]* viable = null) {
+    if (reference)
+    if (auto overloadSet = reference.decl.as!OverloadSet) {
+      TupleExpr args = semantic(new TupleExpr(arguments.dup));
+      auto best = findBestOverload(overloadSet, reference.context, args, viable);
+      if (best) {
+        auto expr = best.reference().withSource(reference);
+        expr.context = reference.context;
+        return expr;
+      }
+    }
     return null;
   }
 
@@ -157,20 +154,19 @@ struct ExprSemantic {
   }
 
   Node visit(InlineDeclExpr expr) {
-    accept(expr.declStmt);
+    semantic(expr.declStmt);
 
     splitStatement(expr.declStmt);
     debug(Semantic) log("=> Split", expr.declStmt);
 
-    Expr ident = new IdentifierExpr(expr).withSource(expr);
-    accept(ident);
-    return ident;
+    Expr identExpr = new IdentifierExpr(expr).withSource(expr);
+    return semantic(identExpr);
   }
 
   Node visit(ArrayLiteralExpr expr) {
     Type elementType;
     foreach(ref e; expr.exprs) {
-      accept(e);
+      semantic(e);
       if (!elementType) {
         elementType = e.type;
       } else if (elementType != e.type) {
@@ -183,18 +179,16 @@ struct ExprSemantic {
 
   Node visit(PipeExpr expr) {
     pipeDepth++;
-    accept(expr.left);
-    accept(expr.right);
+    semantic(expr.left);
+    semantic(expr.right);
     pipeDepth--;
     debug(Semantic) log("=>", expr);
 
     implicitConstructCall(expr.right);
 
     // Piping to a function is the same as calling that function
-    if (auto os = expr.right.type.as!OverloadSetType) {
-      Expr call = expr.right.call([expr.left]);
-      accept(call);
-      return call;
+    if (expr.right.isCallable) {
+      return semantic(expr.right.call([expr.left]));
     }
 
     Expr originalRHS = expr.right;
@@ -202,7 +196,7 @@ struct ExprSemantic {
 
     while (expr.right.type.as!ModuleType && expr.right.isLValue) {
       expr.right = expr.right.member("input");
-      accept(expr.right);
+      semantic(expr.right);
       implicitCall(expr.right);
       debug(Semantic) log("=>", expr);
     }
@@ -224,7 +218,7 @@ struct ExprSemantic {
   }
 
   Node visit(CastExpr expr) {
-    accept(expr.expr);
+    semantic(expr.expr);
     if (!expr.targetType) {
       expr.targetType = ErrorType.create;
     }
@@ -243,50 +237,34 @@ struct ExprSemantic {
   }
 
   Node visit(UnaryExpr expr) {
-    accept(expr.operand);
+    if (semantic(expr.operand).hasError)
+      return expr.taint;
 
-    if (expr.operand.hasError) return expr.taint;
-
-    auto callable = resolveCall(symbolTable, expr.operator, expr.arguments);
-    if (callable) {
-      Expr e = callable.call(expr.arguments).withSource(expr);
-      return accept(e);
-    }
+    if (auto callable = resolveCall(symbolTable.reference(expr.operator), expr.arguments))
+      return semantic(callable.call(expr.arguments).withSource(expr));
 
     return expr.operand.error("Operation " ~ expr.operator.value.idup ~ " " ~ mangled(expr.operand.type) ~ " is not defined.");
   }
 
   Node visit(BinaryExpr expr) {
-    accept(expr.left);
-    accept(expr.right);
+    if (semantic(expr.left).hasError | semantic(expr.right).hasError)
+      return expr.taint;
 
-    if (expr.left.hasError || expr.right.hasError) {
-      expr.taint;
-    }
-    else {
-      auto callable = resolveCall(symbolTable, expr.operator, expr.arguments);
-      if (callable) {
-        Expr e = callable.call(expr.arguments).withSource(expr);
-        return accept(e);
-      }
-    }
+    if (auto callable = resolveCall(symbolTable.reference(expr.operator), expr.arguments))
+      return semantic(callable.call(expr.arguments).withSource(expr));
 
-    auto call = new ErrorExpr(expr.operator).taint.call(expr.arguments);
-    if (!expr.hasError)
-      call.error("Operation " ~ mangled(expr.left.type) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.type) ~ " is not defined.");
-
-    return call.taint;
+    error(expr.operator, "Operation " ~ mangled(expr.left.type) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.type) ~ " is not defined.");
+    return expr.taint;
   }
 
   Node visit(TupleExpr expr) {
     bool tupleError = false;
     Type[] elementTypes = [];
-    assumeSafeAppend(elementTypes);
-    foreach (ref Expr e; expr) {
-      accept(e);
-      if (e.hasError)
+    elementTypes.length = expr.length;
+    foreach (i, ref Expr e; expr) {
+      if (semantic(e).hasError)
         tupleError = true;
-      elementTypes ~= e.type;
+      elementTypes[i] = e.type;
     }
     if (tupleError) return expr.taint;
     expr.type = TupleType.create(elementTypes);
@@ -309,21 +287,15 @@ struct ExprSemantic {
     debug(Semantic) log("=> expansion", expansion);
     expansion = expansion.dupWithReplacements(replacements);
     debug(Semantic) log("=> expansion", expansion);
-    accept(expansion);
-
-    return expansion;
+    return semantic(expansion);
   }
 
   Node visit(ConstructExpr expr) {
-    accept(expr.callable);
-    accept(expr.arguments);
-    debug(Semantic) log("=>", expr);
+    if (semantic(expr.callable).hasError | semantic(expr.arguments).hasError)
+      return expr.taint;
 
     TypeDecl decl = expr.callable.getTypeDecl();
-
     debug(Semantic) log("=> decl", decl);
-    if (expr.callable.hasError || expr.arguments.hasError)
-      return expr.taint;
 
     //TODO: Generate default constructor if no constructors are defined.
 
@@ -341,21 +313,13 @@ struct ExprSemantic {
         return decl.visit!(
           (StructDecl structDecl) {
             // TODO: Rewrite as call expression instead
-            OverloadSet os = structDecl.ctors;
-            expr.context = structDecl.reference().withSource(expr);
-            accept(expr.context);
-
-            auto best = resolveCall(os, expr.arguments.elements, expr.context);
-            if (best) {
-              expr.arguments = coerce(expr.arguments, best.type.parameters);
+            auto ctors = structDecl.members.reference(Slice("__ctor"));
+            auto resolved = resolveCall(ctors, expr.arguments);
+            if (resolved) {
+              expr.callable = resolved;
+              semantic(expr.callable);
+              expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameters);
               expr.type = decl.declaredType;
-              // Expand macros immediately
-              if (best.isMacro) {
-                return expandMacro(best, expr.arguments.elements, expr.context);
-              }
-
-              expr.callable = best.reference();
-              accept(expr.callable);
               return expr;
             }
             else {
@@ -377,9 +341,16 @@ struct ExprSemantic {
     );
   }
 
+  CallExpr call(RefExpr callable, Expr[] arguments) {
+    if (auto resolved = resolveCall(callable, arguments)) {
+      return semantic(resolved.call(arguments));
+    }
+    return null;
+  }
+
   Node visit(IndexExpr expr) {
-    accept(expr.expr);
-    accept(expr.arguments);
+    semantic(expr.expr);
+    semantic(expr.arguments);
     debug(Semantic) log("=>", expr);
 
     if (expr.expr.hasError || expr.arguments.hasError)
@@ -391,10 +362,10 @@ struct ExprSemantic {
           expr.taint;
         }
         else {
-          auto callable = resolveCall(t.decl.decls, "[]", expr.arguments.elements);
-          if (callable) {
-            Expr e = callable.reference().withContext(expr.expr).call(expr.arguments).withSource(expr);
-            return accept(e);
+          auto indexFn = t.members.reference(Slice("[]"), expr.expr);
+          if (auto resolved = resolveCall(indexFn, expr.arguments)) {
+            Expr expr = resolved.call(expr.arguments).withSource(expr);
+            return semantic(expr);
           }
         }
         if (!expr.hasError)
@@ -444,52 +415,44 @@ struct ExprSemantic {
           arrayDecl = new ArrayDecl(decl, size);
         }
 
-        auto re = arrayDecl.reference();
+        Expr re = arrayDecl.reference();
         re.type = t;
-        accept(re);
-        return re.as!Expr;
+        return semantic(re);
       }
     );
   }
 
   Node visit(CallExpr expr) {
-    accept(expr.callable);
+    semantic(expr.callable);
     debug(Semantic) log("=>", expr);
     pipeDepth++;
-    accept(expr.arguments);
+    semantic(expr.arguments);
     pipeDepth--;
     debug(Semantic) log("=>", expr);
+
 
     if (expr.callable.hasError || expr.arguments.hasError)
       return expr.taint;
 
-    if (!expr.context) {
-      expr.context = expr.callable.visit!(
-        (RefExpr expr) => expr.context,
-        (Expr expr) => null
-      );
-    }
-
     Node resolve(CallExpr expr) {
       return expr.callable.type.visit!(
-        delegate (FunctionType ft) {
+        (MacroType type) {
+          expr.arguments = coerce(expr.arguments, type.parameters);
+          expr.type = type.returnType;
+          auto callable = expr.callable.enforce!RefExpr;
+          return expandMacro(type.decl, expr.arguments, callable.context);
+        },
+        (FunctionType ft) {
           expr.arguments = coerce(expr.arguments, ft.parameters);
           expr.type = ft.returnType;
-          auto callable = expr.callable.enforce!RefExpr().decl.as!CallableDecl;
-          if (callable.isMacro) {
-            return expandMacro(callable, expr.arguments.elements, expr.context);
-          }
           return expr;
         },
-        delegate (OverloadSetType ot) {
-          debug(Semantic) log("=>", "context", expr.context);
-
+        (OverloadSetType ot) {
           CallableDecl[] viable = [];
-          auto best = resolveCall(ot.overloadSet, expr.arguments.elements, expr.context, &viable);
-          if (best) {
-            auto r = expr.callable.enforce!RefExpr;
-            expr.callable = best.reference().withContext(r.context).withSource(r);
-            accept(expr.callable);
+          auto overloadSet = expr.callable.enforce!RefExpr;
+          auto resolved = resolveCall(overloadSet, expr.arguments, &viable);
+          if (resolved) {
+            expr.callable = semantic(resolved);
             return resolve(expr);
           }
           else {
@@ -511,12 +474,11 @@ struct ExprSemantic {
             return expr.taint;
           }
         },
-        delegate (MetaType tt) {
-          Expr e = new ConstructExpr(expr.callable, expr.arguments, null, expr.source);
-          accept(e);
-          return e;
+        (MetaType tt) {
+          Expr expr = new ConstructExpr(expr.callable, expr.arguments, expr.source);
+          return semantic(expr);
         },
-        delegate (Type tt) {
+        (Type tt) {
           return expr.error("Cannot call something with type " ~ mangled(expr.callable.type));
         }
       );
@@ -526,10 +488,10 @@ struct ExprSemantic {
 
   Node visit(AssignExpr expr) {
     //TODO: Type check
-    accept(expr.left);
+    semantic(expr.left);
     implicitCall(expr.left);
     debug(Semantic) log("=>", expr);
-    accept(expr.right);
+    semantic(expr.right);
     implicitCall(expr.right);
     debug(Semantic) log("=>", expr);
     expr.type = expr.left.type;
@@ -537,21 +499,15 @@ struct ExprSemantic {
   }
 
   Node visit(IdentifierExpr expr) {
-    ContextDecl decl = symbolTable.lookup(expr.identifier);
-
-    if (decl) {
-      auto reference = decl.reference()
-        .withContext(decl.context)
-        .withSource(expr);
-      accept(reference);
-      return reference;
+    if (RefExpr reference = symbolTable.reference(expr.identifier)) {
+      return semantic(reference);
     }
 
     return expr.error("Undefined identifier " ~ expr.identifier.idup);
   }
 
   Node visit(TypeExpr expr) {
-      accept(expr.expr);
+      semantic(expr.expr);
       debug(Semantic) log("=>", expr.expr);
 
       if (auto re = cast(RefExpr)expr.expr) {
@@ -571,7 +527,7 @@ struct ExprSemantic {
 
   Node visit(RefExpr expr) {
     if (expr.context) {
-      accept(expr.context);
+      semantic(expr.context);
       debug(Semantic) log("=>", expr);
       implicitConstructCall(expr.context);
       if (expr.context.hasError) return expr.taint;
@@ -582,7 +538,7 @@ struct ExprSemantic {
   }
 
   Node visit(MemberExpr expr) {
-    accept(expr.context);
+    semantic(expr.context);
     implicitConstructCall(expr.context);
     debug(Semantic) log("=>", expr);
 
@@ -590,13 +546,10 @@ struct ExprSemantic {
 
     return expr.context.type.visit!(
       (StructType type) {
-        auto member = type.decl.decls.lookup(expr.name);
-        if (!member) {
-          return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
+        if (auto reference = type.members.reference(expr.name, expr.context)) {
+          return semantic(reference.withSource(expr));
         }
-
-        auto refExpr = member.reference().withContext(expr.context).withSource(expr);
-        return accept(refExpr);
+        return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
       },
       (Type t) {
         expr.context.error("Cannot access members of " ~ expr.context.type.mangled());

@@ -59,7 +59,7 @@ Cost coercionCost(Type type, Type target) {
   }
   // Coerce module by automatically reference field output
   if (auto moduleType = cast(ModuleType)type) {
-    auto output = moduleType.decl.decls.lookup("output");
+    auto output = moduleType.members.lookup("output");
     if (output) {
       return Cost.implicitOutput + coercionCost(output.getResultType, target);
     }

@@ -4,45 +4,175 @@ import duck.compiler.ast;
 import duck.compiler;
 import duck.compiler.dbg;
 import duck.compiler.util;
-
+import duck.compiler.visitors.dup;
 import duck.compiler.lexer;
+import duck.util.stack;
+import std.algorithm.iteration;
 
 interface Scope {
+  RefExpr reference(Slice identifier);
+
   Decl lookup(string identifier);
-  bool defines(string identifier);
-
-  final LookupScope readonly() {
-    return new LookupScope(this);
-  }
-}
-
-interface DefinitionScope : Scope {
-  void define(Decl decl);
   void define(string identifier, Decl decl);
-  bool defines(string identifier);
-}
 
-class LookupScope : Scope {
-  Scope target;
-
-  this(Scope target) {
-    this.target = target;
+  final bool defines(string identifier) {
+    return lookup(identifier) !is null;
   }
 
-  Decl lookup(string identifier) {
-    return target.lookup(identifier);
-  }
+  final ReadOnlyScope readonly() {
+    return new ReadOnlyScope(this);
 
-  bool defines(string identifier) {
-    return target.defines(identifier);
   }
 }
 
-class DeclTable : DefinitionScope {
+class ReadOnlyScope : Scope {
+  Scope parent;
+
+  this(Scope parent) {
+    this.parent = parent;
+  }
+
+  final RefExpr reference(Slice identifier) {
+    return parent.reference(identifier);
+  }
+  final Decl lookup(string identifier) {
+    return parent.lookup(identifier);
+  }
+
+  final void define(string identifier, Decl decl) {
+    ASSERT(false, "Cannot define in read only scope.");
+  }
+}
+
+class ParameterList : Scope {
+  ParameterDecl[string] symbols;
+  ParameterDecl[] elements;
+
+  void add(ParameterDecl decl) {
+    elements ~= decl;
+    symbols[decl.name] = decl;
+  }
+
+  final RefExpr reference(Slice identifier) {
+    if (auto decl = lookup(identifier)) {
+      return new RefExpr(decl).withSource(identifier);
+    }
+    return null;
+  }
+
+  final ParameterDecl lookup(string identifier) {
+    if (ParameterDecl *decl = identifier in symbols) {
+      return *decl;
+    }
+    return null;
+  }
+
+  final void define(string identifier, Decl decl) {
+    auto param = cast(ParameterDecl)decl;
+    elements ~= param;
+    symbols[identifier] = param;
+  }
+
+  mixin ArrayWrapper!(ParameterDecl, elements);
+}
+
+class ImportScope: BlockScope {
+  this() {
+    super(new DeclTable);
+  }
+}
+
+class FileScope: BlockScope {
+  this() {
+    super(new DeclTable);
+  }
+}
+
+class BlockScope : Scope {
+  DeclTable table;
+
+  this(DeclTable table) {
+    this.table = table;
+  }
+
+  this() {
+    this.table = new DeclTable();
+  }
+
+  final void define(string identifier, Decl decl) {
+    table.define(identifier, decl);
+  }
+
+  final Decl lookup(string identifier) {
+    return table.lookup(identifier);
+  }
+
+  final RefExpr reference(Slice identifier) {
+    return table.reference(identifier);
+  }
+}
+
+class ThisScope : Scope {
+  Decl thisDecl;
+  DeclTable table;
+
+  this(StructDecl structDecl) {
+    this.thisDecl = structDecl.context;
+    this.table = structDecl.members;
+  }
+
+  this(Decl thisDecl, DeclTable table) {
+    this.thisDecl = thisDecl;
+    this.table = table;
+  }
+
+  final void define(string identifier, Decl decl) {
+    table.define(identifier, decl);
+  }
+
+  final Decl lookup(string identifier) {
+    if ("this" == identifier) {
+      return thisDecl;
+    }
+    return table.lookup(identifier);
+  }
+
+  final RefExpr reference(Slice identifier) {
+    if ("this" == identifier) {
+      return thisDecl.reference().withSource(identifier);
+    }
+    return table.reference(identifier, thisDecl);
+  }
+}
+
+class WithScope : Scope {
+  Expr context;
+  DeclTable table;
+
+  this(Expr context, DeclTable table) {
+    this.context = context;
+    this.table = table;
+  }
+
+  final void define(string identifier, Decl decl) {
+    table.define(identifier, decl);
+  }
+
+  final Decl lookup(string identifier) {
+    return table.lookup(identifier);
+  }
+
+  final RefExpr reference(Slice identifier) {
+    return table.reference(identifier, context.dup());
+  }
+}
+
+
+class DeclTable {
   Decl[string] symbols;
-  Decl[] symbolsInDefinitionOrder;
+  Decl[] all;
 
-  void replace(string identifier, Decl decl) {
+  final void replace(string identifier, Decl decl) {
     Decl* existing = identifier in symbols;
     if (existing) {
       if (auto cd = cast(CallableDecl)decl) {
@@ -56,26 +186,25 @@ class DeclTable : DefinitionScope {
     }
   }
 
-  void define(Decl decl) {
+  final void define(Decl decl) {
     define(decl.name, decl);
   }
 
-  void define(string identifier, Decl decl) {
+  final void define(string identifier, Decl decl) {
     Decl* existing = identifier in symbols;
 
     if (existing) {
       if (auto cd = cast(CallableDecl)decl) {
         if (auto os = cast(OverloadSet)(*existing)) {
           os.add(cd);
-          symbolsInDefinitionOrder ~= decl;
+          all ~= decl;
           return;
         }
       }
-      else
-        ASSERT(false, "Cannot redefine " ~ identifier.idup);
+      ASSERT(false, "Cannot redefine " ~ identifier.idup);
     }
 
-    symbolsInDefinitionOrder ~= decl;
+    all ~= decl;
     if (auto cd = cast(CallableDecl)decl) {
       OverloadSet os = new OverloadSet(decl.name);
       os.add(cd);
@@ -84,116 +213,64 @@ class DeclTable : DefinitionScope {
     symbols[identifier] = decl;
   }
 
-  bool defines(string identifier) {
-    return (identifier in symbols) != null;
+  final Decl lookup(string identifier) {
+    if (Decl *decl = identifier in symbols)
+      return *decl;
+    return null;
   }
 
-  Decl lookup(string identifier) {
-    if (Decl *decl = identifier in symbols) {
-      return *decl;
+  final RefExpr reference(Slice identifier, lazy Expr context = null) {
+    if (auto decl = lookup(identifier))
+      return new RefExpr(decl, context).withSource(identifier);
+    return null;
+  }
+
+  final RefExpr reference(Slice identifier, Decl context) {
+    if (auto decl = lookup(identifier))
+      return new RefExpr(decl, new RefExpr(context, null)).withSource(identifier);
+    return null;
+  }
+
+  // Helper accesssors
+  @property auto filtered(D: Decl)() {
+    return all.filter!((d) => cast(D)d !is null);
+  }
+
+  @property auto fields() { return filtered!FieldDecl; }
+  @property auto callables() { return filtered!CallableDecl; }
+  @property auto macros() { return callables.filter!(d => d.as!CallableDecl.isMacro); }
+  @property auto methods() { return callables.filter!(d => d.as!CallableDecl.isMethod); }
+  @property auto constructors() { return callables.filter!(d => d.as!CallableDecl.isConstructor); }
+}
+
+class SymbolTable: Scope {
+  Stack!Scope scopes;
+
+  void pushScope(Scope s) { scopes.push(s); }
+  void popScope() { scopes.pop(); }
+  auto top() { return scopes.top; }
+
+  final RefExpr reference(Slice identifier) {
+    for (int i = cast(int)scopes.length - 1; i >= 0; --i) {
+      if (auto refExpr = scopes[i].reference(identifier)) {
+        return refExpr.withSource(identifier);
+      }
     }
     return null;
   }
 
-  @property
-  auto filtered(D: Decl)() {
-    import std.algorithm.iteration;
-    return symbolsInDefinitionOrder.map!(d => cast(D)d).filter!(d => d !is null);
-  }
-
-  @property
-  auto fields() {
-    return filtered!FieldDecl;
-  }
-}
-
-class ParameterList : Scope {
-  ParameterDecl[string] symbols;
-  ParameterDecl[] elements;
-
-  bool defines(string identifier) {
-    return (identifier in symbols) != null;
-  }
-
-  void add(ParameterDecl decl) {
-    elements ~= decl;
-    symbols[decl.name] = decl;
-  }
-
-  ParameterDecl lookup(string identifier) {
-    if (ParameterDecl *decl = identifier in symbols) {
-      return *decl;
+  final Decl lookup(string identifier) {
+    debug(Scope) log("Looking for identifier '" ~ identifier ~ "'");
+    for (int i = cast(int)scopes.length - 1; i >= 0; --i) {
+      debug(Scope) log("  in", scopes[i]);
+      if (auto decl = scopes[i].lookup(identifier)) {
+        return decl;
+      }
     }
     return null;
   }
 
-  mixin ArrayWrapper!(ParameterDecl, elements);
-}
-
-struct ActiveScope {
-    Scope theScope;
-    Expr context;
-
-    this(Scope theScope, Expr context) {
-      this.theScope = theScope;
-      this.context = context;
-    }
-    alias theScope this;
-}
-
-
-struct ContextDecl {
-    Expr context;
-    Decl decl;
-    alias decl this;
-    this(Expr context, Decl decl) {
-      this.context = context;
-      this.decl = decl;
-    }
-
-    bool opCast(T : bool)() const {
-      return decl !is null;
-    }
-}
-
-class SymbolTable {
-    ActiveScope[] scopes;
-
-    this() {
-      assumeSafeAppend(scopes);
-    }
-
-    Scope top() {
-        return scopes[$-1];
-    }
-
-    bool define(string identifier, Decl decl) {
-      auto dscope = cast(DefinitionScope)top;
-      if (dscope) {
-        dscope.define(identifier, decl);
-        return true;
-      }
-      return false;
-    }
-
-    bool defines(string identifier) {
-      return scopes[$-1].defines(identifier);
-    }
-
-    ContextDecl lookup(string identifier) {
-      for (int i = cast(int)scopes.length - 1; i >= 0; --i) {
-        if (Decl decl = scopes[i].lookup(identifier)) {
-          return ContextDecl(scopes[i].context, decl);
-        }
-      }
-      return ContextDecl(null, null);
-    }
-
-    void pushScope(Scope s, Expr context = null) {
-      scopes ~= ActiveScope(s, context);
-    }
-
-    void popScope() {
-      scopes.length--;
-    }
+  final void define(string identifier, Decl decl) {
+    scopes.top.define(identifier, decl);
+  }
 }

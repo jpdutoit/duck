@@ -36,7 +36,7 @@ struct TreeShaker {
       (ParameterDecl decl) { },
       (StructDecl decl) { },
       (ModuleDecl decl) {
-        if (auto os = cast(OverloadSet)(decl.decls.lookup("tick"))) {
+        if (auto os = cast(OverloadSet)(decl.members.lookup("tick"))) {
           this.addRoot(os.decls[0]);
         }
         // We don't care about the other fields or functions,

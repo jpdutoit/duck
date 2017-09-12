@@ -17,7 +17,7 @@ class Optimizer {
   }
 
   CallableDecl hasTick(ModuleDecl mod) {
-    if (auto os = mod.decls.lookup("tick").as!OverloadSet) {
+    if (auto os = mod.members.lookup("tick").as!OverloadSet) {
       return os.decls[0];
     }
     return null;
@@ -31,7 +31,7 @@ class Optimizer {
 
   bool hasDynamicFields(ModuleDecl mod) {
     if (hasTick(mod)) return true;
-    foreach(field; mod.decls.fields) {
+    foreach(field; mod.fields.as!FieldDecl) {
       if (isDynamicField(field))
         return true;
     }
