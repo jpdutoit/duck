@@ -63,7 +63,7 @@ struct DeclSemantic {
     debug(Semantic) log("=>", decl.name, decl.typeExpr);
 
     if (!decl.typeExpr && !decl.valueExpr) {
-      ASSERT(decl.valueExpr, "Internal compiler error: Expected at least one of typeExpr or valueExpr");
+      ASSERT(false, "Expected at least one of typeExpr or valueExpr");
     }
 
     if (!decl.typeExpr) {

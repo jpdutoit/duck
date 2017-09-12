@@ -1,30 +1,37 @@
 module duck.compiler.dbg;
 
+import core.exception;
+
 public import duck.compiler.dbg.colors;
 public import duck.compiler.dbg.conv;
 
 import duck.compiler.ast, duck.compiler.types;
+import duck.compiler.context;
 
 O enforce(O : Object)(Object o, string file = __FILE__, int line = __LINE__) {
   ASSERT(o, "Expected object to be of type " ~ O.stringof ~ " not null", line, file);
   auto c = cast(O)o;
-  ASSERT(c !is null, "Expected object to be of type " ~ O.stringof ~ " not be " ~ o.classinfo.name, line, file);
+  if (c is null) {
+    import std.format: format;
+    if (o !is null) {
+      throw __ICE(format("Found %s when expecting %s", prettyName(o), O.stringof), line, file);
+    } else {
+      throw __ICE(format("Found null when expecting %s", O.stringof), line, file);
+    }
+  }
   return c;
 }
 
-O enforce(O : Object)(O o, string file = __FILE__, int line = __LINE__) {
-   ASSERT(o !is null, "Expected object to not be null", line, file);
-   return o;
-}
-
 auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
-  import core.exception;
-  import std.conv;
-  import std.stdio;
-  auto msg = "Internal compiler error: " ~ message ~ " at " ~ file ~ "(" ~ line.to!string ~ ") ";
-  stderr.writeln(msg);
-  //asm {hlt;}
-  return new AssertError(msg);
+  import std.stdio, core.stdc.stdlib;
+  stderr.write(file);
+  stderr.write("(");
+  stderr.write(line);
+  stderr.write("): ");
+  stderr.write("Internal compiler error: ");
+  stderr.writeln(message);
+  exit(1);
+  return new AssertError(message);
 }
 
 void ASSERT(T)(T value, lazy string message, int line = __LINE__, string file = __FILE__) {

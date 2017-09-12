@@ -6,7 +6,7 @@ import duck.compiler.backend.d.optimizer;
 
 import duck.compiler.ast;
 import duck.compiler.context: Context, ContextType;
-import duck.compiler: DCode;
+import duck.compiler;
 import duck.compiler.backend.d.dmd: DFile, DCompilerOptions;
 
 import std.stdio;
@@ -34,7 +34,7 @@ class DBackend : Backend, SourceToBinaryCompiler {
     if (context.hasErrors) return Executable("");
 
     auto exe = dfile.compile();
-    if (!exe) context.error("Internal compiler error.");
+    if (!exe) __ICE("Binary compilation failed");
     return exe;
   }
 
