@@ -122,7 +122,7 @@ struct StmtSemantic {
           semantic.library.imports.define(decl.name, decl);
         }
       }
-      semantic.context.errors ~= context.errors;
+      semantic.context.errors ~= stmt.targetContext.errors;
       return stmt;
     }
 
