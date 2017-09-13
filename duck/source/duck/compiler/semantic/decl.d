@@ -54,8 +54,9 @@ struct DeclSemantic {
 
   Node visit(ParameterDecl decl) {
     accept(decl.typeExpr);
+    if (decl.typeExpr.hasError) { return decl.taint(); }
     decl.type = decl.typeExpr.decl.declaredType;
-    if (decl.typeExpr.hasError) decl.taint();
+
     return decl;
   }
 
