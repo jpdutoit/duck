@@ -72,32 +72,17 @@ Cost coercionCost(Type type, Type target) {
   return Cost.infinity;
 }
 
-Cost coercionCost(Type[] args, Type contextType, CallableDecl F) {
-  if (F.contextType !is null) {
-    if (contextType is null) {
-      return Cost.infinity;
-    }
-    Type targetContextType = F.contextType.getTypeDecl.declaredType;
-    if (contextType != targetContextType) {
-      return Cost.infinity;
-    }
-  }
+Cost coercionCost(Type[] args, Type[] targetTypes) {
+  if (args.length != targetTypes.length) return Cost.infinity;
 
   Cost cost;
-  if (args.length != F.parameterTypes.length) return Cost.infinity;
-
-  int score = 0;
   size_t len = args.length;
   for (int i = 0; i < len; ++i) {
     if (!cost) return cost;
-
-    Type paramType = F.parameterTypes[i].getTypeDecl.declaredType;
-    Type argType  = args[i];
-    cost = cost + coercionCost(argType, paramType);
+    cost = cost + coercionCost(args[i], targetTypes[i]);
   }
   return cost;
 }
-
 
 /*
 F1 is determined to be a better function than F2 if implicit conversions for
@@ -120,7 +105,7 @@ CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, 
   CallableDecl[32] overloads;
   foreach(callable; os.decls) {
 
-    Cost cost = elementTypes.coercionCost(contextType, callable);
+    Cost cost = elementTypes.coercionCost(callable.type.parameters);
     debug(Semantic) log("=> Cost:", cost, "for", args.type.describe(), "to", callable.type.parameters.describe);
     if (cost <= lowestCost) {
       if (cost != lowestCost) {

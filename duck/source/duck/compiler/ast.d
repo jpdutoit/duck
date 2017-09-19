@@ -183,7 +183,6 @@ class CallableDecl : ValueDecl {
 
 
   Stmt callableBody;
-  TypeExpr contextType;
   TypeExpr[] parameterTypes;
 
   ParameterList  parameters;
@@ -211,7 +210,6 @@ class CallableDecl : ValueDecl {
 
   this(Slice identifier, TypeExpr contextType, TypeExpr[] argTypes, Expr expansion, StructDecl parentDecl) {
     super(null, identifier);
-    //this.contextType = contextType;
     this.parameters = new ParameterList();
     this.parameterTypes = argTypes;
     this.returnExpr = expansion;

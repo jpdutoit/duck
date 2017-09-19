@@ -96,8 +96,7 @@ final class TupleType : Type {
     return this;
   }
 
-  size_t length() { return elementTypes.length; }
-  ref Type opIndex(size_t index) { return elementTypes[index]; }
+  alias elementTypes this;
 }
 
 class StructType : Type {
