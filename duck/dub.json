@@ -38,6 +38,7 @@
     "source/duck/compiler/visitors/dup.d",
     "source/duck/compiler/transforms.d",
     "source/duck/compiler/ast.d",
+    "source/duck/compiler/attr.d",
     "source/duck/compiler/lexer/package.d",
     "source/duck/compiler/lexer/token.d",
     "source/duck/compiler/lexer/tokens.d",

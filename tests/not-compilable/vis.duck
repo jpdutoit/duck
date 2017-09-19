@@ -1,0 +1,46 @@
+struct B {
+  b1: float;
+  function b4() { }
+  @private @private:
+  @private b3: float;
+  function b4() { }
+}
+
+struct A {
+  @private {
+    a2: B;
+  }
+  a1: B;
+}
+
+b: B;
+
+b.b1;
+//b.b2;
+b.b3;
+b.b4;
+
+a: A;
+
+a.a1.b1;
+a.a1.b3;
+a.a1.b4;
+
+a.a2.b1;
+//a.a2.b2;
+a.a2.b3;
+a.a2.b4;
+
+/*
+OUTPUT:
+---
+tests/not-compilable/vis.duck(4:12-19): Error: Duplicate visibility attribute
+tests/not-compilable/vis.duck(20:1-4): Error: Cannot access private member `b3'
+tests/not-compilable/vis.duck(26:1-7): Error: Cannot access private member `b3'
+tests/not-compilable/vis.duck(29:1-4): Error: Cannot access private member `a2'
+tests/not-compilable/vis.duck(31:1-4): Error: Cannot access private member `a2'
+tests/not-compilable/vis.duck(32:1-4): Error: Cannot access private member `a2'
+---
+*/
+
+//TODO: Support private functions, and overloaded funtions where some are private and others are not

@@ -81,6 +81,11 @@ struct Parser {
     return token;
   }
 
+  void expect(bool test, Slice slice, string message) {
+    if (!test)
+      context.error(slice, message);
+  }
+
   Expr expect(Expr expr, string message) {
       if (!expr) {
         context.error(lexer.front, message);
@@ -290,15 +295,14 @@ struct Parser {
   Stmt parseBlock() {
     if (lexer.front.type == Tok!"{") {
       lexer.consume();
-      Stmt statements = parseStatements();
+      Stmt statements = parseStatements(CreateScope.yes);
       lexer.expect(Tok!"}", "Expected '}'");
       return statements;
     }
     return null;
   }
 
-  Decl parseField(StructDecl structDecl)
-  {
+  Decl parseField(StructDecl structDecl) {
     if (lexer.front.type == Identifier && lexer.peek(1).type == Tok!":") {
       auto identifier = lexer.consume;
       lexer.expect(Tok!":", "Expected ':'");
@@ -427,22 +431,60 @@ struct Parser {
     return stmt;
   }
 
-  void parseStructMembers(StructDecl structDecl) {
-    if (lexer.consume(Tok!"{")) {
-      while (lexer.front.type != Tok!"}") {
-        if (lexer.front.type == Tok!"constructor" || lexer.front.type == Tok!"function") {
-          structDecl.members.define(parseMethod(structDecl));
-        } else {
-          Decl field = parseField(structDecl);
-          if (!field) break;
-          structDecl.members.define(field);
-          lexer.expect(Tok!";", "Expected ';'");
+  DeclAttr parseAttributes(DeclAttr base) {
+    if (lexer.front.isAttribute) {
+      bool foundVisibilityAttr, foundStorageAttr;
+      do {
+        if (lexer.front.isVisibilityAttribute) {
+          expect(!foundVisibilityAttr, lexer.front, "Duplicate visibility attribute");
+          foundVisibilityAttr = true;
+          base.visibility = lexer.consume().visibility;
         }
-      }
-      expect(Tok!"}", "Expected '}'");
-    } else {
-      lexer.expect(Tok!";", "Expected ';'");
+        else if (lexer.front.isStorageClassAttribute) {
+          expect(!foundStorageAttr, lexer.front, "Duplicate storage class attribute");
+          foundStorageAttr = true;
+          base.storage = lexer.consume().storageClass;
+        }
+        else context.error(lexer.consume(), "Unrecognized attribute");
+      } while (lexer.front.isAttribute);
     }
+    return base;
+  }
+
+  void parseStructMembers(StructDecl structDecl, DeclAttr blockAttr = DeclAttr.init) {
+    if (!lexer.consume(Tok!"{")) {
+      lexer.expect(Tok!";", "Expected ';'");
+      return;
+    }
+
+    while (lexer.front.type != Tok!"}") {
+      bool hasAttribute = lexer.front.isAttribute;
+      DeclAttr nextAttr = parseAttributes(blockAttr);
+
+      if (lexer.consume(Tok!":")) {
+        expect(hasAttribute, lexer.last, "Expected attribute before ':'");
+        blockAttr = nextAttr;
+        continue;
+      }
+      if (lexer.front.type == Tok!"{") {
+        expect(hasAttribute, lexer.front, "Expected attribute before '{'");
+        parseStructMembers(structDecl, nextAttr);
+        continue;
+      }
+
+      Decl member;
+      if (lexer.front.type == Tok!"constructor" || lexer.front.type == Tok!"function") {
+        member = parseMethod(structDecl);
+      } else {
+        member = parseField(structDecl);
+        if (!member) break;
+        lexer.expect(Tok!";", "Expected ';'");
+      }
+      member.attributes = nextAttr;
+      structDecl.members.define(member);
+    }
+
+    expect(Tok!"}", "Expected '}'");
   }
 
   Stmt parseStruct(bool isExtern = false) {
@@ -551,12 +593,37 @@ struct Parser {
     }
   }
 
-  Stmt parseStatements(bool createScope = true) {
+  static enum CreateScope { no, yes }
+  Stmt parseStatements(CreateScope createScope, DeclAttr blockAttr = DeclAttr.init) {
     Stmt[] statements;
     while (true) {
+      bool hasAttribute = lexer.front.isAttribute;
+      Token firstAttributeToken = lexer.front;
+      DeclAttr nextAttr = parseAttributes(blockAttr);
+      Slice attributeSlice = lexer.sliceFrom(firstAttributeToken);
+
+      if (lexer.consume(Tok!":")) {
+        expect(hasAttribute, lexer.last, "Expected attribute before ':'");
+        blockAttr = nextAttr;
+        continue;
+      }
+      if (lexer.consume(Tok!"{")) {
+        expect(hasAttribute, lexer.front, "Expected attribute before '{'");
+        statements ~= parseStatements(CreateScope.no, nextAttr);
+        lexer.expect(Tok!"}", "Expected '}'");
+        continue;
+      }
+
       Stmt stmt = parseStatement();
-      if (!stmt)
+      if (stmt) {
+        if (auto declStmt = stmt.as!DeclStmt) {
+          declStmt.decl.attributes = nextAttr;
+        } else {
+          expect(!hasAttribute, attributeSlice, "Only declarations may have attributes");
+        }
+      } else {
         break;
+      }
       statements ~= stmt;
     }
     Stmts stmts = new Stmts(statements);
@@ -569,7 +636,7 @@ struct Parser {
       prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""), context.createStdlibContext());
       decls ~= prelude;
     }
-    Stmts stmts = cast(Stmts)parseStatements(false);
+    Stmts stmts = cast(Stmts)parseStatements(CreateScope.no);
     auto prog = new Library(prelude ? new Stmts(prelude ~ stmts.stmts) : stmts, decls);
     //auto prog = new Library([prelude, parseStatements()]);
     lexer.expect(EOF, "Expected end of file");

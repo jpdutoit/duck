@@ -1,13 +1,14 @@
 module duck.compiler.lexer.tokens;
 
 public import duck.compiler.lexer.token;
+import duck.compiler.dbg;
 import std.meta: staticIndexOf, AliasSeq;
 
 enum TokenSpecial  = AliasSeq!(
   "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown"
 );
 enum TokenReservedWords = AliasSeq!(
-  "function", "module", "extern", "import", "struct", "return", "constructor", "if", "else"
+  "function", "module", "extern", "import", "struct", "return", "constructor", "if", "else", "@private", "@public", "@const"
 );
 enum TokenSymbols = AliasSeq!(
   " ", "\n",
@@ -58,11 +59,28 @@ shared static this()
     "return": Tok!"return",
     "constructor": Tok!"constructor",
     "if": Tok!"if",
-    "else": Tok!"else"
+    "else": Tok!"else",
+    "@private": Tok!"@private",
+    "@public": Tok!"@public",
+    "@const": Tok!"@const",
   ];
 }
 
 @property
-bool isWhitespace(Token token)  {
+bool isWhitespace(Token token) {
   return token.type == Tok!" " || token.type == EOL || token.type == Comment || token.type == Unknown;
+}
+
+@property
+bool isVisibilityAttribute(Token token)  {
+  return (token.type == Tok!"@private") || (token.type == Tok!"@public");
+}
+@property
+bool isStorageClassAttribute(Token token) {
+  return (token.type == Tok!"@const");
+}
+
+@property
+bool isAttribute(Token token) {
+  return token.isVisibilityAttribute || token.isStorageClassAttribute;
 }

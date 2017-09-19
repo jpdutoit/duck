@@ -59,38 +59,20 @@ struct StmtSemantic {
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 
-    stmt.decl.visit!(
-      delegate(VarDecl decl) {
-        auto name = stmt.decl.name;
-        debug(Semantic) log("Add to symbol table:", name, stmt.decl.type.mangled);
+    debug(Semantic) log("Add to symbol table:", decl.name, decl.type.mangled);
 
-        if (this.symbolTable.top.defines(name)) {
-          error(name, "Cannot redefine " ~ name);
-        }
-        else {
-          this.symbolTable.define(name, stmt.decl);
-          if (this.symbolTable.top is this.library.globals) {
-            this.library.exports ~= stmt.decl;
-          }
-        }
-      },
-      delegate(CallableDecl decl) {
-        this.library.globals.define(stmt.decl.name, stmt.decl);
-        if (!stmt.decl.hasError) {
-          this.library.exports ~= stmt.decl;
-        }
-      },
-      delegate(TypeDecl decl) {
-        if (this.library.globals.defines(stmt.decl.name)) {
-          error(decl.name, "Cannot redefine " ~ stmt.decl.name);
-        } else {
-          this.library.globals.define(stmt.decl.name, stmt.decl);
-        }
-        if (!stmt.decl.hasError) {
-          this.library.exports ~= stmt.decl;
-        }
-      }
-    );
+    if (!stmt.decl.as!CallableDecl && this.symbolTable.top.defines(stmt.decl.name)) {
+      error(stmt.decl.name, "Cannot redefine " ~ stmt.decl.name);
+      return stmt;
+    }
+
+    this.symbolTable.define(stmt.decl.name, stmt.decl);
+
+    if (this.symbolTable.top is this.library.globals
+      && stmt.decl.visibility == Visibility.public_
+      && !stmt.decl.hasError) {
+      this.library.exports ~= stmt.decl;
+    }
 
     return stmt;
   }

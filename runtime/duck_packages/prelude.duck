@@ -141,7 +141,8 @@ module LowPass {
 }*/
 
 module SinOsc {
-  phasor: Phasor;
+  @private phasor: Phasor;
+
   freq: this.phasor.freq;
   input: this.phasor.freq;
   output: mono;
@@ -156,7 +157,7 @@ module SinOsc {
 
 
 module Triangle {
-  phasor: Phasor;
+  @private phasor: Phasor;
   freq: this.phasor.freq;
   input: this.phasor.freq;
   output: mono;
@@ -167,7 +168,7 @@ module Triangle {
 }
 
 module SawOsc {
-  phasor: Phasor;
+  @private phasor: Phasor;
   freq: this.phasor.freq;
   input: this.phasor.freq;
   output: mono;
@@ -181,11 +182,14 @@ extern module ADC {
   output: mono;
 }
 
+//extern function registerEndpoint(DAC);
+
 extern module DAC {
   input: mono;
   left: mono;
   right: mono;
 }
+
 
 module Mono {
   input: mono;
@@ -267,7 +271,7 @@ module Echo {
   	this.length = length;
   }
 
-  delay: Delay;
+  @private delay: Delay;
   length: delay.length;
   input: mono = 0;
   gain: mono = 0.5;
@@ -294,7 +298,7 @@ module PairwiseAvg {
   input: mono = 0;
   output: mono = 0;
 
-  inputHistory: mono = 0;
+  @private inputHistory: mono = 0;
 
   function tick() {
     output = (inputHistory + input) * 0.5;
@@ -366,7 +370,7 @@ module RisingEdge {
     last = input;
   }
 
-  last: mono = 0;
+  @private last: mono = 0;
 }
 
 
@@ -380,7 +384,7 @@ module FallingEdge {
     last = input;
   }
 
-  last: mono = 0;
+  @private last: mono = 0;
 }
 
 module Edge {
@@ -392,5 +396,5 @@ module Edge {
     last = input;
   }
 
-  last: mono = 0;
+  @private last: mono = 0;
 }

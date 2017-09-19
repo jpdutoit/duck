@@ -201,6 +201,7 @@ struct Lexer {
           tokenType = Tok!"=";
         }
         break;
+      case '@':
       case 'a':
       ..
       case 'z':
@@ -249,9 +250,12 @@ struct Lexer {
     Token token = input.tokenSince(tokenType, saved);
 
     if (tokenType == Identifier) {
-      auto type = token.value in reservedWords;
-      if (type != null)
+      if (auto type = token.value in reservedWords) {
         token.type = *type;
+      } else if (token.value[0] == '@') {
+        context.error(token, "Invalid attribute");
+        token.type = Unknown;
+      }
     }
 
     return token;

@@ -546,7 +546,12 @@ struct ExprSemantic {
 
     return expr.context.type.visit!(
       (StructType type) {
+        auto contextRef = expr.context.as!RefExpr;
         if (auto reference = type.members.reference(expr.name, expr.context)) {
+          // Only allow private members to be accessed through the context reference
+          if (reference.decl.visibility == Visibility.private_
+          && (!contextRef || contextRef.decl != type.decl.context))
+            return expr.error("Cannot access private member `" ~ expr.name ~ "'");
           return semantic(reference.withSource(expr));
         }
         return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);

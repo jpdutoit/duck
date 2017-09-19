@@ -7,6 +7,7 @@ import duck.compiler.dbg;
 import duck.compiler.context;
 import duck.compiler.visitors.source;
 import duck.compiler.util;
+public import duck.compiler.attr;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
@@ -75,7 +76,7 @@ abstract class Node {
 abstract class Stmt : Node {
 };
 
-class Library : Node {
+class Library : Decl {
   mixin NodeMixin;
 
   Stmts stmts;
@@ -86,6 +87,7 @@ class Library : Node {
   Node[] declarations;
 
   this(Stmts stmts, Node[] decls) {
+    super(Slice(""), null);
     this.declarations = decls;
     this.imports = new ImportScope();
     this.stmts = stmts;
@@ -96,6 +98,10 @@ class Library : Node {
 abstract class Decl : Node {
   Slice name;
   Type type;
+  DeclAttr attributes;
+
+  auto ref storage() { return attributes.storage; }
+  auto ref visibility() { return attributes.visibility; }
 
   RefExpr reference() {
       return new RefExpr(this);
