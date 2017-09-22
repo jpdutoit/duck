@@ -27,6 +27,7 @@
     "source/duck/compiler/semantic/expr.d",
     "source/duck/compiler/semantic/decl.d",
     "source/duck/compiler/semantic/stmt.d",
+    "source/duck/compiler/semantic/errors.d",
     "source/duck/compiler/types.d",
     "source/duck/compiler/context.d",
     "source/duck/compiler/scopes.d",

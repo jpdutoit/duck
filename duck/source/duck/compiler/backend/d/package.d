@@ -34,7 +34,7 @@ class DBackend : Backend, SourceToBinaryCompiler {
     if (context.hasErrors) return Executable("");
 
     auto exe = dfile.compile();
-    if (!exe) __ICE("Binary compilation failed");
+    if (!exe) throw __ICE("Binary compilation failed");
     return exe;
   }
 

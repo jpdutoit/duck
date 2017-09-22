@@ -11,6 +11,7 @@ import duck;
 import duck.compiler.semantic.decl;
 import duck.compiler.semantic.expr;
 import duck.compiler.semantic.stmt;
+import duck.compiler.semantic.errors;
 public import duck.compiler.context: context;
 
 import std.stdio;
@@ -20,20 +21,6 @@ debug = Trace;
 protected:
 
 public:
-
-Expr error(Expr expr, lazy string message) {
-  if (expr.hasError) return expr;
-  context.error(expr.source, message);
-  return expr.taint;
-}
-
-void error(Slice token, string message) {
-  context.error(token, message);
-}
-
-void info(Slice slice, lazy string message) {
-  context.info(slice, message);
-}
 
 bool expect(T)(T expectation, Expr expr, lazy string message) {
   if (!expectation) {

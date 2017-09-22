@@ -3,6 +3,7 @@ module duck.compiler.semantic.decl;
 import duck.compiler;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
+import duck.compiler.semantic.errors;
 import duck.compiler.ast;
 import duck.compiler.scopes;
 import duck.compiler.lexer;
@@ -64,7 +65,7 @@ struct DeclSemantic {
     debug(Semantic) log("=>", decl.name, decl.typeExpr);
 
     if (!decl.typeExpr && !decl.valueExpr) {
-      ASSERT(false, "Expected at least one of typeExpr or valueExpr");
+      throw __ICE("Expected at least one of typeExpr or valueExpr");
     }
 
     if (!decl.typeExpr) {

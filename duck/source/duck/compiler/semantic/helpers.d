@@ -11,16 +11,6 @@ import duck.compiler.dbg;
 
 import std.stdio;
 
-T taint(T: Expr)(T expr) {
-  expr.type = ErrorType.create;
-  return expr;
-}
-
-D taint(D: ValueDecl)(D decl) {
-  decl.type = ErrorType.create;
-  return decl;
-}
-
 bool isCallable(Type type) {
   return type.visit!(
     (OverloadSetType o) => true,
