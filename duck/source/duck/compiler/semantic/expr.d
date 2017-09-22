@@ -160,8 +160,9 @@ struct ExprSemantic {
     splitStatement(expr.declStmt);
     debug(Semantic) log("=> Split", expr.declStmt);
 
-    Expr identExpr = new IdentifierExpr(expr).withSource(expr);
-    return semantic(identExpr);
+    return semantic(expr.declStmt.decl.reference());
+    //Expr identExpr = new IdentifierExpr(expr).withSource(expr);
+    //return semantic(identExpr);
   }
 
   Node visit(ArrayLiteralExpr expr) {

@@ -497,11 +497,11 @@ class TypeExpr : Expr {
 class LiteralExpr : Expr {
   mixin NodeMixin;
 
-  alias value = source;
+  Slice value;
 
   this(Token token) {
-    super();
     this.source = token;
+    this.value = token;
     if (token.type == Number) {
       import std.string: indexOf;
       if (token.slice.indexOf(".") >= 0)
@@ -539,18 +539,21 @@ class TupleExpr : Expr {
 class IdentifierExpr : Expr {
   mixin NodeMixin;
 
-  alias identifier = source;
+  Slice identifier;
 
   this(string identifier) {
     this.identifier = Slice(identifier);
+    this.source = this.identifier;
   }
 
   this(Slice slice) {
     this.identifier = slice;
+    this.source = this.identifier;
   }
 
   this(IdentifierExpr expr) {
     this.identifier = expr.identifier;
+    this.source = this.identifier;
   }
 }
 
