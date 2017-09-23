@@ -14,6 +14,20 @@ public import core.stdc.math: ceilf, floorf, roundf, powf, fabs, log2f;
 alias abs = fabs;
 alias log2 = log2f;
 
+int modulus(int i, int M) {
+  return ((i % M) + M) % M;
+}
+float modulus(float i, float M) {
+  return ((i % M) + M) % M;
+}
+int remainder(int i, int M) {
+  return i % M;
+}
+float remainder(float i, float M) {
+  return i % M;
+}
+
+
 private struct FixedSizeBufferFreeList(int size, int ChunkSize = 64, int Capacity = 1024) {
   static void*[Capacity] available = void;
   static size_t length = 0;
@@ -69,7 +83,8 @@ private struct RawBuffer(int ChunkSize) {
 
 struct TypedBuffer(T) {
   RawBuffer!65536 _buffer;
-  auto ref opIndex(size_t index) {
+  auto ref opIndex(int index) {
+    index = modulus(index, this.length);
     return *(cast(T*)_buffer[index * T.sizeof]);
   }
 
