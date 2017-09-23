@@ -154,11 +154,13 @@ struct DAppender(Generator) {
 
   void putLineInfo() {
     if (currentLineNumber == 0) return;
-    put("#line ");
+    debug(CodeGen) { put("/*"); } else { put ("#"); }
+    put("line ");
     put(currentLineNumber);
     put(" \"");
     put(currentLineBuffer);
     put("\" \n");
+    debug(CodeGen) { put("*/"); }
   }
 
   string currentLineBuffer;
