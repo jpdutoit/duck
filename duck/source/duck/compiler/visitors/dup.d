@@ -17,9 +17,9 @@ Expr dupWithReplacements()(Expr expr, Expr[Decl] replacements) {
 
 private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
   import std.array, std.algorithm.iteration;
-  Expr cloneImpl(Expr expr) {
+  scope Expr cloneImpl(Expr expr) {
     if (!expr) return null;
-    return expr.visit!(
+    auto copy = expr.visit!(
       (MemberExpr expr) => new MemberExpr(cloneImpl(expr.context), expr.name, expr.source),
       (IdentifierExpr expr) => expr,
       (RefExpr expr) {
@@ -35,9 +35,9 @@ private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
       (BinaryExpr expr) => new BinaryExpr(expr.operator, cloneImpl(expr.left), cloneImpl(expr.right), expr.source),
       (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array)
     );
+    copy.type = expr._type;
+    return copy;
   }
 
-  auto copy = cloneImpl(expr);
-  copy.type = expr._type;
-  return copy;
+  return cloneImpl(expr);
 }
