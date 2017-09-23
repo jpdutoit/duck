@@ -61,7 +61,7 @@ struct ExprSemantic {
         // to:      ModuleType tmpVar = Module();
         if (auto refExpr = cast(RefExpr)expr) {
           if (metaType.type.as!ModuleType) {
-            auto ctor = refExpr.call();
+            auto ctor = refExpr.call().withSource(expr);
             expr = makeModule(metaType, ctor);
             semantic(expr);
             return;
@@ -132,15 +132,19 @@ struct ExprSemantic {
       error |= output[i].hasError;
     }
     if (error) return sourceExpr.taint;
-
-    return semantic(new TupleExpr(output));
+    return new TupleExpr(output, parameterTypes);
   }
 
   RefExpr resolveCall(RefExpr reference, Expr[] arguments, CallableDecl[]* viable = null) {
+    auto args = new TupleExpr(arguments);
+    semantic(args);
+    return resolveCall(reference, args, viable);
+  }
+
+  RefExpr resolveCall(RefExpr reference, TupleExpr arguments, CallableDecl[]* viable = null) {
     if (reference)
     if (auto overloadSet = reference.decl.as!OverloadSet) {
-      TupleExpr args = semantic(new TupleExpr(arguments.dup));
-      auto best = findBestOverload(overloadSet, reference.context, args, viable);
+      auto best = findBestOverload(overloadSet, arguments, viable);
       if (best) {
         auto expr = best.reference().withSource(reference);
         expr.context = reference.context;
@@ -289,7 +293,7 @@ struct ExprSemantic {
     debug(Semantic) log("=> expansion", expansion);
     expansion = expansion.dupWithReplacements(replacements);
     debug(Semantic) log("=> expansion", expansion);
-    return semantic(expansion);
+    return expansion;
   }
 
   Node visit(ConstructExpr expr) {
@@ -341,13 +345,6 @@ struct ExprSemantic {
         );
       }
     );
-  }
-
-  CallExpr call(RefExpr callable, Expr[] arguments) {
-    if (auto resolved = resolveCall(callable, arguments)) {
-      return semantic(resolved.call(arguments));
-    }
-    return null;
   }
 
   Node visit(IndexExpr expr) {
@@ -442,7 +439,7 @@ struct ExprSemantic {
           expr.arguments = coerce(expr.arguments, type.parameters);
           expr.type = type.returnType;
           auto callable = expr.callable.enforce!RefExpr;
-          return expandMacro(type.decl, expr.arguments, callable.context);
+          return expandMacro(type.decl, expr.arguments, callable.context).withSource(expr);
         },
         (FunctionType ft) {
           expr.arguments = coerce(expr.arguments, ft.parameters);

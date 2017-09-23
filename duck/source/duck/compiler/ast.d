@@ -529,7 +529,8 @@ class TupleExpr : Expr {
 
   Expr[] elements;
 
-  this(Expr[] elements) {
+  this(Expr[] elements, Type elementTypes = null) {
+    this.type = elementTypes;
     this.elements = elements;
   }
 

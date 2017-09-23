@@ -72,14 +72,14 @@ Cost coercionCost(Type type, Type target) {
   return Cost.infinity;
 }
 
-Cost coercionCost(Type[] args, Type[] targetTypes) {
+Cost coercionCost(TupleExpr args, Type[] targetTypes) {
   if (args.length != targetTypes.length) return Cost.infinity;
 
   Cost cost;
   size_t len = args.length;
   for (int i = 0; i < len; ++i) {
     if (!cost) return cost;
-    cost = cost + coercionCost(args[i], targetTypes[i]);
+    cost = cost + coercionCost(args[i].type, targetTypes[i]);
   }
   return cost;
 }
@@ -95,17 +95,13 @@ all arguments of F1 are not worse than the implicit conversions for all argument
 
 
 
-CallableDecl findBestOverload(OverloadSet os, Expr contextExpr, TupleExpr args, CallableDecl[]* viable) {
-  assert(args.type.as!TupleType, "Internal error: Expected args to have tuple type");
-  auto elementTypes = args.type.as!TupleType().elementTypes;
-  auto contextType = contextExpr ? contextExpr.type : null;
-
+CallableDecl findBestOverload(OverloadSet os, TupleExpr args, CallableDecl[]* viable) {
   Cost lowestCost = Cost.max;
   int matches = 0;
   CallableDecl[32] overloads;
   foreach(callable; os.decls) {
 
-    Cost cost = elementTypes.coercionCost(callable.type.parameters);
+    Cost cost = coercionCost(args, callable.type.parameters);
     debug(Semantic) log("=> Cost:", cost, "for", args.type.describe(), "to", callable.type.parameters.describe);
     if (cost <= lowestCost) {
       if (cost != lowestCost) {

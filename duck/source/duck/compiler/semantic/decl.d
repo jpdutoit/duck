@@ -69,7 +69,8 @@ struct DeclSemantic {
     }
 
     if (!decl.typeExpr) {
-      accept(decl.valueExpr);
+      if (!decl.valueExpr.hasType)
+        accept(decl.valueExpr);
       decl.type = decl.valueExpr.type;
       return decl;
     }
@@ -96,7 +97,7 @@ struct DeclSemantic {
       if (auto typeDecl = decl.typeExpr.getTypeDecl()) {
         decl.type = typeDecl.declaredType;
         if (!decl.valueExpr) {
-          decl.valueExpr = typeDecl.reference().call();
+          decl.valueExpr = typeDecl.reference().withSource(decl.typeExpr.source).call();
         }
         accept(decl.valueExpr);
         decl.valueExpr = exprSemantic.coerce(decl.valueExpr, decl.type);
