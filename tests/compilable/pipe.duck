@@ -3,6 +3,7 @@ extern function operator+(float, float) -> float;
 extern module A {
   input: float;
   output: float;
+  constructor();
 }
 
 

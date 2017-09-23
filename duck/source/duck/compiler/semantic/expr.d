@@ -37,7 +37,7 @@ struct ExprSemantic {
     if (auto r = expr.as!RefExpr)
     if (r.isCallable) {
       if (auto callable = resolveCall(r, [])) {
-        expr = callable.withSource(r).call();
+        expr = callable.call().withSource(r);
         semantic(expr);
         return true;
       }
@@ -303,46 +303,41 @@ struct ExprSemantic {
     TypeDecl decl = expr.callable.getTypeDecl();
     debug(Semantic) log("=> decl", decl);
 
-    //TODO: Generate default constructor if no constructors are defined.
-
     return expr.callable.type.visit!(
+      // This part is only needed because sometimes semantic runs more than once on some nodes
+      // TODO: Removed when this is fixed
       delegate(FunctionType ft) {
         expr.arguments = coerce(expr.arguments, ft.parameters);
         return expr;
       },
 
-      delegate(MetaType metaType) {
-        if (expr.arguments.length == 1 && expr.arguments[0].type == metaType.type) {
-          return expr.arguments[0];
+      delegate Expr(MetaType metaType) {
+        auto members = decl.visit!(
+          (StructDecl structDecl) => structDecl.members,
+          (TypeDecl decl) => null
+        );
+
+        CallableDecl[] viable = [];
+        auto ctors = members ? members.reference(Slice("__ctor")) : null;
+        if (ctors) semantic(ctors);
+        if (auto resolved = resolveCall(ctors, expr.arguments, &viable)) {
+          expr.callable = resolved;
+          semantic(expr.callable);
+          expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameters);
+          expr.type = decl.declaredType;
+          return expr;
+        } else if (expr.arguments.length == 0 && !decl.as!ModuleDecl) {
+          // TODO: Implement typedefs, then this no longer needs to allow structs
+          // Default constructors for basic types
+          expr.type = expr.callable.getTypeDecl().declaredType;
+          expr.callable = null;
+          return expr;
+        } else if (expr.arguments.length == 1 && !decl.as!StructDecl) {
+          auto castExpr = new CastExpr(expr.arguments[0], metaType.type);
+          return semantic(castExpr);
         }
 
-        return decl.visit!(
-          (StructDecl structDecl) {
-            // TODO: Rewrite as call expression instead
-            auto ctors = structDecl.members.reference(Slice("__ctor"));
-            auto resolved = resolveCall(ctors, expr.arguments);
-            if (resolved) {
-              expr.callable = resolved;
-              semantic(expr.callable);
-              expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameters);
-              expr.type = decl.declaredType;
-              return expr;
-            }
-            else {
-              if (expr.arguments.length == 0) {
-                expr.type = expr.callable.getTypeDecl().declaredType;
-                expr.callable = null;
-                return expr;
-              }
-              return expr.error("No constructor matches argument types " ~ expr.arguments.type.describe());
-            }
-          },
-          (TypeDecl typeDecl) {
-            expr.type = expr.callable.getTypeDecl().declaredType;
-            expr.callable = null;
-            return expr;
-          }
-        );
+        return expr.errorResolvingConstructorCall(ctors, viable);
       }
     );
   }

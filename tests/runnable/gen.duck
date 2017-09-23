@@ -51,7 +51,9 @@ now += 5 samples;
 
 extern module DAC {
   input: mono;
+  constructor();
 }
+
 module D {
   input: mono;
   dac: DAC;

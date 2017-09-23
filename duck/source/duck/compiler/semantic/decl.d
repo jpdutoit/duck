@@ -130,6 +130,18 @@ struct DeclSemantic {
     return decl;
   }
 
+  CallableDecl generateDefaultConstructor(StructDecl structDecl) {
+      auto callable = new CallableDecl();
+      callable.name = Slice("__ctor");
+      callable.parentDecl = structDecl;
+      callable.isExternal = false;
+      callable.isConstructor = true;
+      callable.isMethod = false;
+      callable.parameterTypes = [];
+      callable.callableBody = new ScopeStmt(new Stmts());
+      return callable;
+  }
+
   Node visit(StructDecl structDecl) {
     debug(Semantic) log("=>", structDecl.name.blue);
 
@@ -137,6 +149,12 @@ struct DeclSemantic {
     accept(structDecl.context);
 
     semantic.symbolTable.pushScope(new ThisScope(structDecl));
+
+    import std.algorithm.iteration: filter;
+    auto defaultCtors = structDecl.constructors.as!CallableDecl.filter!(c => c.parameterTypes.length == 0);
+    if (!structDecl.external && defaultCtors.empty) {
+      structDecl.members.define(generateDefaultConstructor(structDecl));
+    }
 
     foreach(ref decl; structDecl.fields) accept(decl);
     foreach(ref decl; structDecl.macros) accept(decl);

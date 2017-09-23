@@ -27,3 +27,24 @@ Expr error(Expr expr, lazy string message) {
 void error(Slice token, string message) {
   context.error(token, message);
 }
+
+Expr errorResolvingConstructorCall(ConstructExpr expr, RefExpr ctors, CallableDecl[] viable) {
+  if (!ctors) {
+   return expr.error("No constructors found for type");
+ }
+ CallableDecl[] candidates;
+ auto ot = ctors.type.enforce!OverloadSetType;
+ if (viable.length == 0) {
+   expr.error("None of these constructors matches arguments:");
+   candidates = ot.overloadSet.decls;
+ }
+ else {
+   error(expr, "Found multiple constructors matchin arguments:");
+   candidates = viable;
+ }
+ foreach(CallableDecl callable; candidates) {
+   if (callable.headerSource)
+    info(callable.headerSource, "  " ~ callable.headerSource);
+ }
+ return expr.taint;
+}

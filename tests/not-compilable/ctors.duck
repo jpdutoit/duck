@@ -11,12 +11,26 @@ a: A;
 A(a);
 A([1, 2, 3]);
 
+ba: float(1);
+
 
 /*
 OUTPUT:
 ---
-tests/not-compilable/ctors.duck(8:1-13): Error: No constructor matches argument types (int, string)
-tests/not-compilable/ctors.duck(9:1-4): Error: No constructor matches argument types (int)
-tests/not-compilable/ctors.duck(12:1-12): Error: No constructor matches argument types (int[])
+tests/not-compilable/ctors.duck(8:1-13): Error: None of these constructors matches arguments:
+tests/not-compilable/ctors.duck(2:3-27):   constructor(float, float)
+tests/not-compilable/ctors.duck(3:3-28):   constructor(string, float)
+tests/not-compilable/ctors.duck(9:1-4): Error: None of these constructors matches arguments:
+tests/not-compilable/ctors.duck(2:3-27):   constructor(float, float)
+tests/not-compilable/ctors.duck(3:3-28):   constructor(string, float)
+tests/not-compilable/ctors.duck(10:4): Error: None of these constructors matches arguments:
+tests/not-compilable/ctors.duck(2:3-27):   constructor(float, float)
+tests/not-compilable/ctors.duck(3:3-28):   constructor(string, float)
+tests/not-compilable/ctors.duck(11:1-4): Error: None of these constructors matches arguments:
+tests/not-compilable/ctors.duck(2:3-27):   constructor(float, float)
+tests/not-compilable/ctors.duck(3:3-28):   constructor(string, float)
+tests/not-compilable/ctors.duck(12:1-12): Error: None of these constructors matches arguments:
+tests/not-compilable/ctors.duck(2:3-27):   constructor(float, float)
+tests/not-compilable/ctors.duck(3:3-28):   constructor(string, float)
 ---
 */

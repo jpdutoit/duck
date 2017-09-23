@@ -90,6 +90,9 @@ struct Log {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Pan {
+
+  auto initialize() { return &this; }
+
   mono input = 0;
   stereo output;
   float pan = 0;
@@ -105,6 +108,9 @@ struct Pan {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct ScaleQuant {
+
+  auto initialize() { return &this; }
+
   short[] scale = [0, 2, 4, 5, 7, 9, 11];
   float key = 49;
   mono output = 0;
@@ -140,6 +146,8 @@ struct ScaleQuant {
 
 struct ADSR {
   mixin UGEN!ADSR;
+
+  auto initialize() { return &this; }
 
   mono attack = 1000;
   mono decay = 1000;
@@ -202,6 +210,8 @@ struct ADSR {
 struct AR {
   mixin UGEN!AR;
 
+  auto initialize() { return &this; }
+
   duration attack = 1000;
   duration release = 1000;
 
@@ -257,6 +267,8 @@ struct AR {
 struct ADC {
   mono output;
 
+  auto initialize() { return &this; }
+
   void tick() {
     if (++index == 64) {
       version(USE_PORT_AUDIO)
@@ -276,6 +288,8 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Assert {
+  auto initialize() { return &this; }
+
   auto initialize(float[] expected, string file = __FILE__, int line = __LINE__) {
     this.expected = expected;
     this.received.length = expected.length;
@@ -329,6 +343,8 @@ private:
 
 struct DAC {
   @disable this(this);
+
+  auto initialize() { return &this; }
 
   union {
     struct {
