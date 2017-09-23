@@ -30,5 +30,5 @@ private alias V = Visitor!(
     );
   },
   (IfStmt s) => s.condition.findSource(),
-  (ImportStmt s) => s.identifier.slice
+  (ImportStmt s) => s.identifier
 );

@@ -29,7 +29,7 @@ struct ExprSemantic {
   }
 
   Expr makeModule(Type type, Expr ctor) {
-    auto decl = new VarDecl(type, context.temporary(), ctor);
+    auto decl = new VarDecl(type, Slice(), ctor);
     return new InlineDeclExpr(new DeclStmt(decl));
   }
 

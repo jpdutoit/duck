@@ -138,9 +138,7 @@ class Context {
     return Context.cache[buffer] = context;
   }
 
-  this () {
-    temp = new TempBuffer("");
-  }
+  this () { }
 
   this(Buffer buffer) {
     this();
@@ -149,15 +147,6 @@ class Context {
 
   @property
   bool isMain() { return this.type == ContextType.main; }
-
-  Token token(Token.Type tokenType, string name) {
-    return temp.token(tokenType, name);
-  }
-
-  Token temporary() {
-    return token(Identifier, "__tmp" ~ (++temporaries).to!string);
-  }
-
 
   @property
   Library library() {
@@ -246,7 +235,4 @@ class Context {
   Buffer buffer;
 
   string[] packageRoots;
-
-  TempBuffer temp;
-  int temporaries;
 };

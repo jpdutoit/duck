@@ -60,12 +60,15 @@ struct StmtSemantic {
     accept(stmt.decl);
     debug(Semantic) log("=>", stmt.decl);
 
-    debug(Semantic) log("Add to symbol table:", decl.name, decl.type.mangled);
+    debug(Semantic) log("Add to symbol table:", stmt.decl.name, stmt.decl.type.mangled);
 
     if (!stmt.decl.as!CallableDecl && this.symbolTable.top.defines(stmt.decl.name)) {
       error(stmt.decl.name, "Cannot redefine " ~ stmt.decl.name);
       return stmt;
     }
+
+    // Don't add unnamed variables to symboltable
+    if (!stmt.decl.name) return stmt;
 
     this.symbolTable.define(stmt.decl.name, stmt.decl);
 

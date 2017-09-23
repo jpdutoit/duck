@@ -40,9 +40,9 @@ abstract class Buffer {
   size_t _hash;
 }
 
-class FileBuffer : Buffer 
+class FileBuffer : Buffer
 {
-  
+
   this(string path, bool loadIt = true) {
     super(path, path);
     if (loadIt)
@@ -63,19 +63,5 @@ class FileBuffer : Buffer
     src.close();
 
     contents = (buf ~ "\0").idup;
-  }
-};
-
-class TempBuffer : Buffer {
-  this(string name) {
-    super(name, name);
-    contents = "".idup;
-    assumeSafeAppend(cast(char[])this.contents);
-  }
-
-  Token token(Token.Type type, string name) {
-    auto start = cast(int)contents.length;
-    contents ~= name;
-    return Token(type, this[start .. start + cast(int)name.length]);
   }
 };

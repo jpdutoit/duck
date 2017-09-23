@@ -44,7 +44,7 @@ class CodeGenContext {
       declCount++;
       string s = "__symbol_" ~ declCount.to!string();
       uniqueNames[decl] = s;
-      debug(CodeGen) log("symbolName", s, decl.name.toString());
+      debug(CodeGen) log("symbolName", s, decl, decl.name.toString());
       return s;
     }
     debug(CodeGen) log("symbolName", *name,decl.name.toString());
@@ -101,14 +101,17 @@ struct CodeGen {
 
   string name(Decl decl) {
     return decl.visit!(
-      (Decl d) => d.name,
+      (ParameterDecl d) => d.name,
+      (VarDecl d) => d.external ? d.name : context.uniqueName(d),
+      (FieldDecl d) => d.name, //d.parentDecl.external ? d.name : context.uniqueName(d),
       (CallableDecl d) {
         if (d.isExternal) {
           return d.isConstructor ? "initialize" : d.name;
         }
         return context.uniqueName(d);
       },
-      (TypeDecl d) => name(d.declaredType)
+      (TypeDecl d) => name(d.declaredType),
+      (Decl d) => context.uniqueName(d)
     );
   }
 
@@ -156,7 +159,7 @@ struct CodeGen {
 
     if (modules.length == 0) {
       debug(CodeGen) log("=> Rewrite as:");
-      accept(new AssignExpr(context.token(Tok!"=", "="), expr.right, expr.left));
+      accept(new AssignExpr(Slice("="), expr.right, expr.left));
       return;
     }
 
@@ -286,7 +289,7 @@ struct CodeGen {
   void visit(VarDecl decl) {
     if (decl.external) return;
 
-    output.statement(name(decl.type), decl.type.isModule ? "* " : " ", decl.name, " = ");
+    output.statement(name(decl.type), decl.type.isModule ? "* " : " ", name(decl), " = ");
     if (decl.valueExpr)
       output.put(decl.valueExpr, ";");
     else
@@ -357,9 +360,9 @@ struct CodeGen {
   void visit(FieldDecl field) {
     if (!metrics.isReferenced(field)) return;
     if (metrics.isDynamicField(field))
-      output.statement("__ConnDg ", field.name, "__dg = void; ");
+      output.statement("__ConnDg ", name(field), "__dg = void; ");
 
-    output.statement(name(field.type), field.type.isModule ? "* " : " ", field.name, " = void;");
+    output.statement(name(field.type), field.type.isModule ? "* " : " ", name(field), " = void;");
   }
 
   void visit(ReturnStmt returnStmt) {
@@ -388,7 +391,7 @@ struct CodeGen {
         output.functionDecl("void", callableName);
 
       foreach (i, parameter; funcDecl.parameters)
-        output.functionArgument(parameter.as!ParameterDecl().typeExpr, parameter.name);
+        output.functionArgument(parameter.as!ParameterDecl().typeExpr, name(parameter));
 
       output.functionBody(() {
         accept(funcDecl.callableBody);
@@ -413,7 +416,7 @@ struct CodeGen {
     if (!moduleDecl.external) {
 
         output.statement("static");
-        output.structDecl(moduleDecl.name, () {
+        output.structDecl(name(moduleDecl), () {
           if (metrics.hasDynamicFields(moduleDecl))
             output.statement("ulong __sampleIndex = void;");
 
@@ -433,7 +436,7 @@ struct CodeGen {
             foreach(field; moduleDecl.members.fields.as!FieldDecl) {
               if (!metrics.isReferenced(field)) continue;
               if (metrics.isDynamicField(field))
-                output.statement("instance.", field.name, "__dg = null;");
+                output.statement("instance.", name(field), "__dg = null;");
               if (auto value = field.valueExpr)
                 output.statement("instance.", name(field), " = ", value, ";");
             }
@@ -449,7 +452,7 @@ struct CodeGen {
               foreach(field; moduleDecl.members.fields.as!FieldDecl) {
                 if (!metrics.isReferenced(field)) continue;
                 if (metrics.isDynamicField(field)) {
-                  output.statement("if (", field.name, "__dg) ", field.name, "__dg();");
+                  output.statement("if (", name(field), "__dg) ", name(field), "__dg();");
                 }
               }
               if (auto os = moduleDecl.members.lookup("tick").as!OverloadSet) {

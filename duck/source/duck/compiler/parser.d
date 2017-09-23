@@ -633,7 +633,7 @@ struct Parser {
   Library parseLibrary() {
     ImportStmt prelude;
     if (context.options.includePrelude) {
-      prelude = new ImportStmt(context.token(StringLiteral, "\"prelude\""), context.createStdlibContext());
+      prelude = new ImportStmt(Slice("\"prelude\""), context.createStdlibContext());
       decls ~= prelude;
     }
     Stmts stmts = cast(Stmts)parseStatements(CreateScope.no);

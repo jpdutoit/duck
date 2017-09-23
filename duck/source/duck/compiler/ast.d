@@ -334,10 +334,10 @@ class Stmts : Stmt {
 class ImportStmt : Stmt {
   mixin NodeMixin;
 
-  Token identifier;
+  Slice identifier;
   Context targetContext;
 
-  this(Token identifier, Context context = null) {
+  this(Slice identifier, Context context = null) {
     this.identifier = identifier;
     this.targetContext = context;
   }
