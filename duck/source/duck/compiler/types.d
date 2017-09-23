@@ -180,7 +180,7 @@ final class ModuleType : StructType {
   void decl(ModuleDecl decl) { super.decl = decl; }
 
   override string describe() const {
-    return "module." ~ name;
+    return "Module_" ~ name;
   }
 
   static ModuleType create(string name) {

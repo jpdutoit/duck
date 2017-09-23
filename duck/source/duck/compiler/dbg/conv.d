@@ -6,16 +6,22 @@ import duck.compiler.types;
 import duck.compiler.visitors;
 
 string toString(Expr expr) {
-  return expr.accept(ExprToString());
+  return expr.accept(ExprToString(true));
 }
 
 private:
 
-string annot(string whatever, Type type) {
-  if (!type) return whatever;
-  return whatever ~ ":" ~ type.describe().green;
-}
 struct ExprToString {
+  bool showTypes;
+  this(bool showTypes) {
+    this.showTypes = showTypes;
+  }
+
+  string annotate(string whatever, Type type) {
+    if (!showTypes) return whatever;
+    if (!type) return "?".green();
+    return "(" ~ whatever ~ ":" ~ type.describe.green() ~ ")";
+  }
 
   string visit(ArrayLiteralExpr expr) {
     string s = "[";
@@ -32,32 +38,35 @@ struct ExprToString {
     return expr.expr.accept(this);
   }
   string visit(RefExpr expr) {
-    auto source = expr.source.value;
-    return "Ref".blue ~ "(" ~ (expr.context ? expr.context.toString() ~ "." : "") ~ expr.source.annot(expr._type) ~ ")";
+    auto name = expr.decl.name.value;
+    if (!name) name = "_";
+    return annotate((expr.context ? expr.context.toString() ~ "." : "") ~ name.blue, expr._type);
   }
   string visit(MemberExpr expr) {
-    return "(" ~ expr.context.accept(this) ~ "." ~ expr.name ~ ")".annot(expr._type);
+    return annotate("(" ~ expr.context.accept(this) ~ "." ~ expr.name ~ ")", expr._type);
   }
   string visit(IdentifierExpr expr) {
-    return ""  ~ expr.identifier.blue ~ "".annot(expr._type) ~ "";
+    auto name = expr.identifier.value;
+    if (!name) name = "_";
+    return annotate(name.blue, expr._type);
   }
   string visit(LiteralExpr expr) {
-    return ""  ~ expr.value.blue ~ "".annot(expr._type) ~ "";
+    return annotate(expr.value.blue, expr._type);
   }
   string visit(CastExpr expr) {
-    return ("(cast " ~ expr.expr.accept(this) ~ ")").annot(expr.targetType);
+    return annotate("(cast " ~ expr.expr.accept(this) ~ ")", expr.targetType);
   }
   string visit(BinaryExpr expr) {
-    return ("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")").annot(expr._type);
+    return annotate("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")", expr._type);
   }
   string visit(PipeExpr expr) {
-    return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._type);
+    return annotate("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")", expr._type);
   }
   string visit(AssignExpr expr) {
-    return "(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")".annot(expr._type);
+    return annotate("(" ~ expr.left.accept(this) ~ " " ~ expr.operator.value ~ " " ~ expr.right.accept(this) ~ ")", expr._type);
   }
   string visit(UnaryExpr expr) {
-    return "(" ~ expr.operator.value ~ expr.operand.accept(this) ~ ")".annot(expr._type);
+    return annotate("(" ~ expr.operator.value ~ expr.operand.accept(this) ~ ")", expr._type);
   }
   string visit(TupleExpr expr) {
     string s = "(";
@@ -65,28 +74,28 @@ struct ExprToString {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);
     }
-    return s ~ ")".annot(expr._type);
+    return annotate(s ~ ")", expr._type);
   }
   string visit(ConstructExpr expr) {
     if (expr.callable) {
-      return "construct:" ~ visit(cast(CallExpr)expr);
+      return visit(cast(CallExpr)expr);
     }
-    return "construct:(defaultCtor)";
+    return annotate("alloc()", expr._type);
   }
   string visit(CallExpr expr) {
-    string s = "(" ~ expr.callable.accept(this) ~ "(";
+    string s = expr.callable.accept(ExprToString(false)) ~ "(";
     foreach (i, arg ; expr.arguments.elements) {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);
     }
-    return s ~ "))".annot(expr._type);
+    return annotate(s ~ ")", expr._type);
   }
   string visit(IndexExpr expr) {
-    string s = "(" ~ expr.expr.accept(this) ~ "[";
+    string s = expr.expr.accept(this) ~ "[";
     foreach (i, arg ; expr.arguments.elements) {
       if (i != 0) s ~= ", ";
       s ~= arg.accept(this);
     }
-    return s ~ "])".annot(expr._type);
+    return annotate(s ~ "]", expr._type);
   }
 }
