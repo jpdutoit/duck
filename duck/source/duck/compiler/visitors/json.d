@@ -41,6 +41,10 @@ struct JsonOutput {
     output.dictStart();
     backReferences[node.address] = output.pointer;
     node.accept(this);
+    if (auto expr = cast(Expr)node) {
+      if (expr.source)
+       field("source", expr.source.toLocationString);
+     }
     output.dictEnd();
   }
 
@@ -145,12 +149,10 @@ struct JsonOutput {
 
   void visit(ErrorExpr expr) {
     field("type", "expression.error");
-    field("source", expr.source.toLocationString);
   }
   void visit(LiteralExpr expr) {
     field("type", "expression.literal");
     field("value", expr.value.toString());
-    field("source", expr.source.toLocationString);
   }
 
   void visit(RefExpr expr) {
@@ -158,29 +160,29 @@ struct JsonOutput {
    if (expr.context)
      field("context", expr.context);
    field("declaration", expr.decl);
-   if (expr.source)
-    field("source", expr.source.toLocationString);
   }
 
   void visit(CallExpr expr) {
    field("type", "expression.call");
    field("target", expr.callable);
    field("arguments", expr.arguments.elements);
-   field("source", expr.source.toLocationString);
   }
 
   void visit(AssignExpr expr) {
    field("type", "expression.assign");
    field("operator", expr.operator.toString());
    field("arguments", expr.arguments);
-   field("source", expr.source.toLocationString);
   }
 
   void visit(BinaryExpr expr) {
    field("type", "expression.binary");
    field("operator", expr.operator.toString());
    field("arguments", expr.arguments);
-   field("source", expr.source.toLocationString);
+  }
+
+  void visit(CastExpr expr) {
+    field("type", "expression.cast");
+    field("argument", expr.expr);
   }
 
   void visit(ExprStmt stmt) {
