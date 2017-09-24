@@ -9,6 +9,7 @@ import duck.compiler.visitors.source;
 import duck.compiler.util;
 public import duck.compiler.attr;
 
+import duck.util.list;
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.typecons: Rebindable;
@@ -31,13 +32,13 @@ alias NodeTypes = AliasSeq!(
   IndexExpr,
   CastExpr,
 
+  BlockStmt,
   ExprStmt,
   DeclStmt,
   ScopeStmt,
   ImportStmt,
   ReturnStmt,
   IfStmt,
-  Stmts,
 
   OverloadSet,
   ParameterDecl,
@@ -74,19 +75,38 @@ abstract class Node {
 };
 
 abstract class Stmt : Node {
+  BlockStmt parent;
+  Stmt prev;
+  Stmt next;
+
+  final void insertBefore(Stmt stmt) {
+    stmt.parent.insertBefore(this, stmt);
+  }
+
+  final void insertAfter(Stmt stmt) {
+    stmt.parent.insertAfter(stmt, this);
+  }
 };
+
+class BlockStmt : Stmt {
+  mixin NodeMixin;
+  this() {
+  }
+
+  mixin List!Stmt;
+}
 
 class Library : Decl {
   mixin NodeMixin;
 
-  Stmts stmts;
+  BlockStmt stmts;
   ImportScope imports;
   FileScope globals;
 
   Decl[] exports;
   Node[] declarations;
 
-  this(Stmts stmts, Node[] decls) {
+  this(BlockStmt stmts, Node[] decls) {
     super(Slice(""), null);
     this.declarations = decls;
     this.imports = new ImportScope();
@@ -322,15 +342,6 @@ class TypeDecl : Decl {
   }
 }
 
-class Stmts : Stmt {
-  mixin NodeMixin;
-  Stmt[] stmts;
-
-  this (Stmt[] stmts = []) {
-    this.stmts = stmts;
-  }
-};
-
 class ImportStmt : Stmt {
   mixin NodeMixin;
 
@@ -352,13 +363,8 @@ class DeclStmt: Stmt {
   }
 }
 
-class ScopeStmt : Stmt {
+class ScopeStmt : BlockStmt {
   mixin NodeMixin;
-
-  Stmts stmts;
-  this(Stmts stmts) {
-    this.stmts = stmts;
-  }
 }
 
 abstract class Expr : Node {

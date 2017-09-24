@@ -194,14 +194,10 @@ struct JsonOutput {
    field("declaration", stmt.decl);
   }
 
-  void visit(Stmts stmts) {
-   field("type", "statement.statements");
-   field("statements", stmts.stmts);
-  }
-
-  void visit(ScopeStmt stmts) {
-   field("type", "statement.scope");
-   field("statements", stmts.stmts.stmts);
+  void visit(BlockStmt block) {
+   field("type", "statement.block");
+   field("is_scope", block.as!ScopeStmt !is null);
+   field("statements", block.array);
   }
 
   void visit(ImportStmt stmt) {
@@ -230,7 +226,7 @@ struct JsonOutput {
     }
    }
    output.dictEnd();
-   field("statements", library.stmts.stmts);
+   field("statements", library.stmts.array);
   }
 
   void put(Context context) {

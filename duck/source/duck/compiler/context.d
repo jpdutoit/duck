@@ -153,16 +153,12 @@ class Context {
     if (_library) {
       return _library;
     }
-    _library = new Library(new Stmts(), []);
-
-    auto phaseFlatten = Flatten();
     auto phaseSemantic = SemanticAnalysis(this, this.path);
 
     Context.push(this);
 
     _library = cast(Library)(Parser(this, buffer)
       .parseLibrary()
-      .flatten()
       .accept(phaseSemantic));
 
     Context.pop();

@@ -5,7 +5,6 @@ module duck.compiler.backend.d.codegen;
 import duck.compiler.ast;
 import duck.compiler.lexer.tokens;
 import duck.compiler.types;
-import duck.compiler.transforms;
 import duck.compiler;
 import duck.compiler.context;
 import duck.compiler.visitors;
@@ -327,13 +326,6 @@ struct CodeGen {
     }
   }
 
-  void visit(Stmts expr) {
-    foreach (i, Stmt stmt; expr.stmts) {
-      if (!cast(Stmts)stmt) line(stmt);
-      accept(stmt);
-    }
-  }
-
   void visit(TypeExpr expr) {
     output.put(expr.expr);
   }
@@ -347,9 +339,16 @@ struct CodeGen {
       output.put(name);
   }
 
-  void visit(ScopeStmt expr) {
+  void visit(BlockStmt stmt) {
+    foreach(s; stmt) {
+      line(s);
+      accept(s);
+    }
+  }
+
+  void visit(ScopeStmt stmt) {
     output.block(() {
-      accept(expr.stmts);
+      visit(stmt.enforce!BlockStmt);
     });
   }
 

@@ -9,6 +9,7 @@
   "sourceFiles": [
     "source/duck/package.d",
     "source/duck/util/stack.d",
+    "source/duck/util/list.d",
     "source/duck/util/json.d",
     "source/duck/util/package.d",
     "source/duck/compiler/package.d",
@@ -37,7 +38,6 @@
     "source/duck/compiler/visitors/visit.d",
     "source/duck/compiler/visitors/json.d",
     "source/duck/compiler/visitors/dup.d",
-    "source/duck/compiler/transforms.d",
     "source/duck/compiler/ast.d",
     "source/duck/compiler/attr.d",
     "source/duck/compiler/lexer/package.d",

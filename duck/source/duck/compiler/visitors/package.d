@@ -1,7 +1,6 @@
 module duck.compiler.visitors;
 
 import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
-public import duck.compiler.transforms;
 public import duck.compiler.visitors.visit;
 public import duck.compiler.visitors.dup;
 
@@ -144,14 +143,9 @@ mixin template RecursiveAccept() {
       accept(stmt.falseBody);
   }
 
-  void recurse(ScopeStmt stmt) {
-    accept(stmt.stmts);
-  }
-
-  void recurse(Stmts stmt) {
-    foreach(ref s; stmt.stmts) {
-      accept(s);
-    }
+  void recurse(BlockStmt block) {
+    foreach(stmt; block)
+      accept(stmt);
   }
 
   void recurse(ReturnStmt stmt) {

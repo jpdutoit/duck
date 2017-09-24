@@ -138,7 +138,7 @@ struct DeclSemantic {
       callable.isConstructor = true;
       callable.isMethod = false;
       callable.parameterTypes = [];
-      callable.callableBody = new ScopeStmt(new Stmts());
+      callable.callableBody = new ScopeStmt();
       return callable;
   }
 

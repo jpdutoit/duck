@@ -9,11 +9,10 @@ private alias V = Visitor!(
   (Expr expr) => expr.source,
   (ReturnStmt stmt) => stmt.expr.findSource(),
   (ExprStmt stmt) => stmt.expr.findSource(),
-  (Stmts stmt) {
+  (BlockStmt block) {
     Slice s;
-    foreach (i, sm; stmt.stmts) {
-      s = s + sm.findSource();
-    }
+    foreach(stmt; block)
+      s = s + stmt.findSource();
     return s;
   },
   (DeclStmt stmt) {

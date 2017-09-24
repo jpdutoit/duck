@@ -1,6 +1,6 @@
 module duck.compiler.semantic;
 
-import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;//, duck.compiler.transforms;
+import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
 import duck.compiler.visitors, duck.compiler.context;
 import duck.compiler.scopes;
 import duck.compiler;
@@ -35,15 +35,19 @@ struct SemanticAnalysis {
   StmtSemantic stmtSemantic;
   DeclSemantic declSemantic;
 
+  Stack!Node stack;
+
   void accept(E : Stmt)(ref E target) {
     debug(Semantic) {
       logIndent();
       log(target.prettyName.red, target);
     }
+    stack.push(target);
     auto obj = target.accept(stmtSemantic);
+    stack.pop();
     debug(Semantic) logOutdent();
 
-    ASSERT(cast(E)obj, "expected StmtSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ E.stringof ~ " and not a " ~ obj.prettyName);
+    ASSERT(!obj || cast(E)obj, "expected StmtSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ E.stringof ~ " and not a " ~ obj.prettyName);
     target = cast(E)obj;
   }
 
@@ -52,7 +56,9 @@ struct SemanticAnalysis {
       logIndent();
       log(target.prettyName.red, target);
     }
+    stack.push(target);
     auto obj = target.accept(exprSemantic);
+    stack.pop();
     debug(Semantic) {
       log("=>", obj);
       logOutdent();
@@ -66,7 +72,9 @@ struct SemanticAnalysis {
       logIndent();
       log(target.prettyName.red, target, "'" ~ target.name ~ "'");
     }
+    stack.push(target);
     auto obj = target.accept(declSemantic);
+    stack.pop();
     debug(Semantic)  logOutdent();
 
     ASSERT(cast(E)obj, "expected DeclSemantic.visit(" ~ target.prettyName ~ ") to return a " ~ E.stringof ~ " and not a " ~ obj.prettyName);
@@ -96,12 +104,6 @@ struct SemanticAnalysis {
     exprSemantic = ExprSemantic(&this);
     stmtSemantic = StmtSemantic(&this);
     declSemantic = DeclSemantic(&this);
-  }
-
-  Stmt[] splitStatements;
-
-  void splitStatement(Stmt stmt) {
-    splitStatements ~= stmt;
   }
 
   Library library;

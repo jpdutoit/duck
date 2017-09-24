@@ -292,12 +292,12 @@ struct Parser {
     return left;
   }
 
-  Stmt parseBlock() {
+  BlockStmt parseBlock() {
     if (lexer.front.type == Tok!"{") {
       lexer.consume();
-      Stmt statements = parseStatements(CreateScope.yes);
+      BlockStmt block = parseStatements(new ScopeStmt());
       lexer.expect(Tok!"}", "Expected '}'");
-      return statements;
+      return block;
     }
     return null;
   }
@@ -593,9 +593,7 @@ struct Parser {
     }
   }
 
-  static enum CreateScope { no, yes }
-  Stmt parseStatements(CreateScope createScope, DeclAttr blockAttr = DeclAttr.init) {
-    Stmt[] statements;
+  BlockStmt parseStatements(BlockStmt block, DeclAttr blockAttr = DeclAttr.init) {
     while (true) {
       bool hasAttribute = lexer.front.isAttribute;
       Token firstAttributeToken = lexer.front;
@@ -609,36 +607,31 @@ struct Parser {
       }
       if (lexer.consume(Tok!"{")) {
         expect(hasAttribute, lexer.front, "Expected attribute before '{'");
-        statements ~= parseStatements(CreateScope.no, nextAttr);
+        parseStatements(block, nextAttr);
         lexer.expect(Tok!"}", "Expected '}'");
         continue;
       }
 
       Stmt stmt = parseStatement();
-      if (stmt) {
-        if (auto declStmt = stmt.as!DeclStmt) {
-          declStmt.decl.attributes = nextAttr;
-        } else {
-          expect(!hasAttribute, attributeSlice, "Only declarations may have attributes");
-        }
+      if (!stmt) { break; }
+
+      if (auto declStmt = stmt.as!DeclStmt) {
+        declStmt.decl.attributes = nextAttr;
       } else {
-        break;
+        expect(!hasAttribute, attributeSlice, "Only declarations may have attributes");
       }
-      statements ~= stmt;
+      block.append(stmt);
     }
-    Stmts stmts = new Stmts(statements);
-    return createScope ? new ScopeStmt(stmts) : stmts;
+    return block;
   }
 
   Library parseLibrary() {
-    ImportStmt prelude;
+    auto prog = new Library(parseStatements(new BlockStmt()), decls);
     if (context.options.includePrelude) {
-      prelude = new ImportStmt(Slice("\"prelude\""), context.createStdlibContext());
+      ImportStmt prelude = new ImportStmt(Slice("\"prelude\""), context.createStdlibContext());
       decls ~= prelude;
+      prog.stmts.prepend(prelude);
     }
-    Stmts stmts = cast(Stmts)parseStatements(CreateScope.no);
-    auto prog = new Library(prelude ? new Stmts(prelude ~ stmts.stmts) : stmts, decls);
-    //auto prog = new Library([prelude, parseStatements()]);
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }

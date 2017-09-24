@@ -161,7 +161,7 @@ struct ExprSemantic {
   Node visit(InlineDeclExpr expr) {
     semantic(expr.declStmt);
 
-    splitStatement(expr.declStmt);
+    expr.declStmt.insertBefore(this.stack.find!Stmt);
     debug(Semantic) log("=> Split", expr.declStmt);
 
     return semantic(expr.declStmt.decl.reference());
@@ -216,7 +216,7 @@ struct ExprSemantic {
     if (pipeDepth > 0) {
       Stmt stmt = new ExprStmt(expr);
       debug(Semantic) log("=> Split", expr);
-      splitStatement(stmt);
+      stmt.insertBefore(this.stack.find!Stmt);
       return originalRHS;
     }
 

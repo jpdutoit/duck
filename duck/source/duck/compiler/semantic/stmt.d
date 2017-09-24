@@ -7,6 +7,7 @@ import duck.compiler.scopes;
 import duck.compiler.lexer;
 import duck.compiler.types;
 import duck.compiler.visitors;
+import duck.compiler.visitors.source;
 import duck.compiler.dbg;
 import duck.compiler.context;
 import duck;
@@ -33,27 +34,20 @@ struct StmtSemantic {
     return stmt;
   }
 
-  Node visit(ScopeStmt stmt) {
-    symbolTable.pushScope(new BlockScope());
-    accept(stmt.stmts);
-    symbolTable.popScope();
-    return stmt;
-  }
-
-  Node visit(Stmts stmts) {
-    import duck.compiler.visitors.source;
-
-    foreach(ref stmt ; stmts.stmts) {
-      splitStatements = [];
-      debug(Semantic) log("'", stmt.findSource().toString().yellow, "'");
+  Node visit(BlockStmt block) {
+    foreach(ref stmt; block) {
+      debug(Semantic) log("'", findSource(stmt).toString().yellow, "'");
       accept(stmt);
       debug(Semantic) log("");
-      if (splitStatements.length > 0) {
-        stmt = new Stmts(splitStatements ~ stmt);
-      }
-      splitStatements = null;
     }
-    return stmts;
+    return block;
+  }
+
+  Node visit(ScopeStmt stmt) {
+    symbolTable.pushScope(new BlockScope());
+    visit(stmt.enforce!BlockStmt);
+    symbolTable.popScope();
+    return stmt;
   }
 
   Node visit(DeclStmt stmt) {
@@ -96,7 +90,7 @@ struct StmtSemantic {
 
     if (stmt.identifier.length <= 2) {
       context.error(stmt.identifier, "Expected path to package to not be empty.");
-      return new Stmts([]);
+      return null;
     }
 
     if (!stmt.targetContext)
@@ -111,7 +105,6 @@ struct StmtSemantic {
       semantic.context.errors ~= stmt.targetContext.errors;
       return stmt;
     }
-
-    return new Stmts([]);
+    return null;
   }
 }
