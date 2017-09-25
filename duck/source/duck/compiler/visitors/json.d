@@ -3,6 +3,7 @@ module duck.compiler.visitors.json;
 import duck.compiler.visitors.visit;
 import duck.compiler.buffer, duck.compiler.ast, duck.compiler.lexer;
 import duck.compiler.context;
+import duck.compiler.types;
 import duck.util;
 
 import std.traits: isBasicType;
@@ -41,10 +42,8 @@ struct JsonOutput {
     output.dictStart();
     backReferences[node.address] = output.pointer;
     node.accept(this);
-    if (auto expr = cast(Expr)node) {
-      if (expr.source)
-       field("source", expr.source.toLocationString);
-     }
+    if (node.source)
+      field("source", node.source.toLocationString);
     output.dictEnd();
   }
 
@@ -150,9 +149,21 @@ struct JsonOutput {
   void visit(ErrorExpr expr) {
     field("type", "expression.error");
   }
+
   void visit(LiteralExpr expr) {
-    field("type", "expression.literal");
-    field("value", expr.value.toString());
+    if (expr.type.as!FloatType) {
+        field("type", "expression.literal.float");
+        field("value", expr.value.toString());
+    } else if (expr.type.as!IntegerType) {
+        field("type", "expression.literal.int");
+        field("value", expr.value.toString());
+    } else if (expr.type.as!StringType) {
+        field("type", "expression.literal.string");
+        field("value", expr.value.toString()[1..$-1]);
+    } else {
+      field("type", "expression.literal.error");
+      field("value", expr.value.toString());
+    }
   }
 
   void visit(RefExpr expr) {
