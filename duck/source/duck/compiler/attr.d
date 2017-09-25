@@ -40,9 +40,10 @@ struct DeclAttr {
     struct {
       import std.bitmanip;
       mixin(bitfields!(
-        int,  "_filler", 4,
+        int,  "_filler", 3,
         StorageClass, "storage", 2,
-        Visibility, "visibility", 2));
+        Visibility, "visibility", 2,
+        bool, "external", 1));
     }
   }
 }

@@ -119,8 +119,8 @@ struct JsonOutput {
       field("type-expression", decl.typeExpr);
     if (decl.valueExpr)
       field("value-expression", decl.valueExpr);
-    if (decl.external)
-      field("is_external", decl.external);
+    if (decl.isExternal)
+      field("is_external", decl.isExternal);
   }
 
   void visit(FieldDecl decl) {
@@ -132,8 +132,8 @@ struct JsonOutput {
 
   void visit(StructDecl decl) {
     field("type", "declaration.module");
-    if (decl.external)
-      field("is_external", decl.external);
+    if (decl.isExternal)
+      field("is_external", decl.isExternal);
     if (cast(ModuleDecl)decl !is null)
       field("is_module", true);
     field("context", decl.context);

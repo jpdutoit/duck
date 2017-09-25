@@ -7,7 +7,6 @@ import duck.compiler.scopes;
 import duck.compiler.lexer;
 import duck.compiler.types;
 import duck.compiler.visitors;
-import duck.compiler.visitors.source;
 import duck.compiler.dbg;
 import duck.compiler.context;
 import duck;
@@ -36,7 +35,7 @@ struct StmtSemantic {
 
   Node visit(BlockStmt block) {
     foreach(ref stmt; block) {
-      debug(Semantic) log("'", findSource(stmt).toString().yellow, "'");
+      debug(Semantic) log("'", stmt.source.toString().yellow, "'");
       accept(stmt);
       debug(Semantic) log("");
     }

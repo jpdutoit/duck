@@ -30,7 +30,7 @@ struct ExprSemantic {
 
   Expr makeModule(Type type, Expr ctor) {
     auto decl = new VarDecl(type, Slice(), ctor);
-    return new InlineDeclExpr(new DeclStmt(decl));
+    return new InlineDeclExpr(new DeclStmt(decl)).withSource(ctor);
   }
 
   bool implicitCall(ref Expr expr) {
@@ -161,10 +161,10 @@ struct ExprSemantic {
   Node visit(InlineDeclExpr expr) {
     semantic(expr.declStmt);
 
-    expr.declStmt.insertBefore(this.stack.find!Stmt);
+    expr.declStmt.withSource(expr.source).insertBefore(this.stack.find!Stmt);
     debug(Semantic) log("=> Split", expr.declStmt);
 
-    return semantic(expr.declStmt.decl.reference());
+    return semantic(expr.declStmt.decl.reference().withSource(expr.source));
     //Expr identExpr = new IdentifierExpr(expr).withSource(expr);
     //return semantic(identExpr);
   }
@@ -216,7 +216,7 @@ struct ExprSemantic {
     if (pipeDepth > 0) {
       Stmt stmt = new ExprStmt(expr);
       debug(Semantic) log("=> Split", expr);
-      stmt.insertBefore(this.stack.find!Stmt);
+      stmt.withSource(expr).insertBefore(this.stack.find!Stmt);
       return originalRHS;
     }
 

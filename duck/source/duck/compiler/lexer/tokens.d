@@ -82,5 +82,5 @@ bool isStorageClassAttribute(Token token) {
 
 @property
 bool isAttribute(Token token) {
-  return token.isVisibilityAttribute || token.isStorageClassAttribute;
+  return token.isVisibilityAttribute || token.isStorageClassAttribute || token.type == Tok!"extern";
 }

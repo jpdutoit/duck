@@ -146,7 +146,7 @@ mixin template RecursiveAccept() {
   void recurse(BlockStmt block) {
     foreach(stmt; block)
       accept(stmt);
-  }
+}
 
   void recurse(ReturnStmt stmt) {
     accept(stmt.expr);

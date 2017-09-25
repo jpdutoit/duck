@@ -5,7 +5,6 @@ import duck.compiler.scopes;
 import duck.compiler;
 import duck.compiler.dbg;
 import duck.compiler.context;
-import duck.compiler.visitors.source;
 import duck.compiler.util;
 public import duck.compiler.attr;
 
@@ -66,12 +65,13 @@ abstract class Node {
   this() {}
 
   NodeType nodeType();
-  Slice source() { return this.findSource(); }
 
   override size_t toHash() @trusted { return cast(size_t)cast(void*)this; }
   override bool opEquals(Object other) {
       return this is other;
   }
+
+  Slice source;
 };
 
 abstract class Stmt : Node {
@@ -104,11 +104,9 @@ class Library : Decl {
   FileScope globals;
 
   Decl[] exports;
-  Node[] declarations;
 
-  this(BlockStmt stmts, Node[] decls) {
+  this(BlockStmt stmts) {
     super(Slice(""), null);
-    this.declarations = decls;
     this.imports = new ImportScope();
     this.stmts = stmts;
     this.globals = new FileScope();
@@ -122,6 +120,7 @@ abstract class Decl : Node {
 
   auto ref storage() { return attributes.storage; }
   auto ref visibility() { return attributes.visibility; }
+  auto ref isExternal() { return attributes.external; }
 
   RefExpr reference() {
       return new RefExpr(this);
@@ -188,10 +187,9 @@ class CallableDecl : ValueDecl {
     struct {
       import std.bitmanip;
       mixin(bitfields!(
-          int,  "filler", 3,
+          int,  "filler", 4,
           bool, "isConstructor", 1,
           bool, "isOperator", 1,
-          bool, "isExternal", 1,
           bool, "isMethod", 1,
           bool, "isMacro", 1));
     }
@@ -260,34 +258,31 @@ class StructDecl : TypeDecl {
   DeclTable members;
   Decl context;
 
-  bool external;
-
   auto fields() { return members.fields; }
   auto constructors() { return members.constructors; }
   auto methods() { return members.methods; }
   auto macros() { return members.macros; }
   auto all() { return members.all; }
 
-  this(Type type, Slice name, bool external) {
+  this(Type type, Slice name) {
     super(type, name);
     this.members = new DeclTable();
-    this.external = external;
   }
 
-  this(Slice name, bool external) {
+  this(Slice name) {
     auto type = StructType.create(name);
     type.decl = this;
-    this(type, name, external);
+    this(type, name);
   }
 }
 
 class ModuleDecl : StructDecl {
   mixin NodeMixin;
 
-  this(Token name, bool external) {
+  this(Slice name) {
     auto type = ModuleType.create(name);
     type.decl = this;
-    super(type, name, external);
+    super(type, name);
   }
 }
 
@@ -305,7 +300,6 @@ abstract class ValueDecl : Decl {
 class VarDecl : ValueDecl {
   mixin NodeMixin;
 
-  bool external;
   Expr typeExpr;
   Expr valueExpr;
   StructDecl parentDecl;
@@ -360,6 +354,7 @@ class DeclStmt: Stmt {
 
   this(Decl decl) {
     this.decl = decl;
+    this.source = decl.source;
   }
 }
 
@@ -411,18 +406,16 @@ abstract class Expr : Node {
   final bool hasType() {
     return this._type !is null;
   }
-
-  Slice source;
 }
 
-E withSource(E: Expr)(E expr, Expr source) {
-  expr.source = source.source;
-  return expr;
+N withSource(N: Node)(N node, Node source) {
+  node.source = source.source;
+  return node;
 }
 
-E withSource(E: Expr)(E expr, Slice source) {
-  expr.source = source;
-  return expr;
+N withSource(N: Node)(N node, Slice source) {
+  node.source = source;
+  return node;
 }
 
 class ErrorExpr : Expr {

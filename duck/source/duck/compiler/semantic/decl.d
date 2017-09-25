@@ -30,12 +30,6 @@ struct DeclSemantic {
     if (decl.returnExpr) {
       accept(decl.returnExpr);
     }
-    if (decl.callableBody) {
-      semantic.symbolTable.pushScope(new BlockScope());
-      accept(decl.callableBody);
-      semantic.symbolTable.popScope();
-    }
-    semantic.symbolTable.popScope();
 
     debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnExpr);
 
@@ -50,6 +44,13 @@ struct DeclSemantic {
     } else {
       decl.type = FunctionType.create(VoidType.create, TupleType.create(paramTypes));
     }
+
+    if (decl.callableBody) {
+      semantic.symbolTable.pushScope(new BlockScope());
+      accept(decl.callableBody);
+      semantic.symbolTable.popScope();
+    }
+    semantic.symbolTable.popScope();
     return decl;
   }
 
@@ -134,7 +135,6 @@ struct DeclSemantic {
       auto callable = new CallableDecl();
       callable.name = Slice("__ctor");
       callable.parentDecl = structDecl;
-      callable.isExternal = false;
       callable.isConstructor = true;
       callable.isMethod = false;
       callable.parameterTypes = [];
@@ -152,7 +152,7 @@ struct DeclSemantic {
 
     import std.algorithm.iteration: filter;
     auto defaultCtors = structDecl.constructors.as!CallableDecl.filter!(c => c.parameterTypes.length == 0);
-    if (!structDecl.external && defaultCtors.empty) {
+    if (!structDecl.isExternal && defaultCtors.empty) {
       structDecl.members.define(generateDefaultConstructor(structDecl));
     }
 

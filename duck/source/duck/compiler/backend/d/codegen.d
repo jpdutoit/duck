@@ -101,7 +101,7 @@ struct CodeGen {
   string name(Decl decl) {
     return decl.visit!(
       (ParameterDecl d) => d.name,
-      (VarDecl d) => d.external ? d.name : context.uniqueName(d),
+      (VarDecl d) => d.isExternal ? d.name : context.uniqueName(d),
       (FieldDecl d) => d.name, //d.parentDecl.external ? d.name : context.uniqueName(d),
       (CallableDecl d) {
         if (d.isExternal) {
@@ -170,7 +170,7 @@ struct CodeGen {
       return;
     }
 
-    if (typeDecl.external)
+    if (typeDecl.isExternal)
       output.statement(targetModule, ".__add( () ");
     else
       output.statement(expr.right, "__dg = ()");
@@ -185,7 +185,7 @@ struct CodeGen {
       if (context.options.instrument) instrument(expr.left, expr.right);
     });
 
-    if (typeDecl.external)
+    if (typeDecl.isExternal)
       output.put(")");
   }
 
@@ -198,7 +198,7 @@ struct CodeGen {
     debug(CodeGen) if (ownerDecl) log("=> Property Owner:", ownerDecl.name);
 
     if (metrics.isDynamicField(expr.left.findField())) {
-      if (!ownerDecl.external && expr.left.as!RefExpr) {
+      if (!ownerDecl.isExternal && expr.left.as!RefExpr) {
         output.statement(expr.left, "__dg = null;");
       }
     }
@@ -286,7 +286,7 @@ struct CodeGen {
   }
 
   void visit(VarDecl decl) {
-    if (decl.external) return;
+    if (decl.isExternal) return;
 
     output.statement(name(decl.type), decl.type.isModule ? "* " : " ", name(decl), " = ");
     if (decl.valueExpr)
@@ -365,7 +365,7 @@ struct CodeGen {
   }
 
   void visit(ReturnStmt returnStmt) {
-    output.statement("return ", returnStmt.expr, ";");
+    output.statement("return ", returnStmt.value, ";");
   }
 
   void visit(CallableDecl funcDecl) {
@@ -405,15 +405,14 @@ struct CodeGen {
   }
 
   void visit(StructDecl structDecl) {
-    if (!structDecl.external) {
+    if (!structDecl.isExternal) {
       assert(false, "Structs not yet supported");
     }
   }
 
   void visit(ModuleDecl moduleDecl) {
     if (!metrics.isReferenced(moduleDecl)) return;
-    if (!moduleDecl.external) {
-
+    if (!moduleDecl.isExternal) {
         output.statement("static");
         output.structDecl(name(moduleDecl), () {
           if (metrics.hasDynamicFields(moduleDecl))
@@ -464,7 +463,6 @@ struct CodeGen {
   }
 
   void visit(ImportStmt importStatement) {
-    line(importStatement);
     output.statement("import ", importStatement.targetContext.moduleName, ";");
   }
 
@@ -476,8 +474,9 @@ struct CodeGen {
       output.put(POSTAMBLE_MAIN);
     } else {
       output.put(PREAMBLE);
-      foreach (i, node; library.declarations)
-        accept(node);
+      foreach (stmt; library.stmts)
+        if (stmt.as!DeclStmt)
+          accept(stmt);
     }
   }
 };

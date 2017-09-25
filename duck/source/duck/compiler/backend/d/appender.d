@@ -149,7 +149,7 @@ struct DAppender(Generator) {
   void line(int number, string buffer) {
     currentLineNumber = number;
     currentLineBuffer = buffer;
-    putLineInfo();
+    //putLineInfo();
   }
 
   void putLineInfo() {

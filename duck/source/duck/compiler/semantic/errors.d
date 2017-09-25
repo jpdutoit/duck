@@ -24,6 +24,11 @@ Expr error(Expr expr, lazy string message) {
   return expr.taint;
 }
 
+Stmt error(Stmt stmt, lazy string message) {
+  context.error(stmt.source, message);
+  return stmt;
+}
+
 void error(Slice token, string message) {
   context.error(token, message);
 }
