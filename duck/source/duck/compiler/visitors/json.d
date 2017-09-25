@@ -202,6 +202,11 @@ struct JsonOutput {
    field("statements", block.array);
   }
 
+  void visit(ReturnStmt stmt) {
+    field("type", "statement.return");
+    field("argument", stmt.value);
+  }
+
   void visit(ImportStmt stmt) {
     field("type", "statement.import");
     field("name", stmt.identifier);

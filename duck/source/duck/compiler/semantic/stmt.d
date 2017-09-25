@@ -29,7 +29,29 @@ struct StmtSemantic {
   }
 
   Node visit(ReturnStmt stmt) {
-    accept(stmt.expr);
+    if (stmt.value)
+      accept(stmt.value);
+
+    if (auto callable = this.stack.find!CallableDecl) {
+      auto returnType = callable.type.as!FunctionType.returnType;
+      if (returnType.as!VoidType) {
+        if (stmt.value)
+          error(stmt, "Cannot return a value from this function");
+      }
+      else  {
+        if (stmt.value)
+          stmt.value = coerce(stmt.value, returnType);
+        else
+          error(stmt, "Function must return a value");
+      }
+
+      if (stmt.next) {
+        error(stmt.next, "Statement is not reachable");
+      }
+    } else {
+      error(stmt, "Can only return from a function");
+    }
+
     return stmt;
   }
 

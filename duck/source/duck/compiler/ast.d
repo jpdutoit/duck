@@ -438,9 +438,9 @@ class ExprStmt : Stmt {
 class ReturnStmt : Stmt {
   mixin NodeMixin;
 
-  Expr expr;
-  this(Expr expr) {
-    this.expr = expr;
+  Expr value;
+  this(Expr value) {
+    this.value = value;
   }
 }
 

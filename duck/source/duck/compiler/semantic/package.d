@@ -108,6 +108,11 @@ struct SemanticAnalysis {
 
   Library library;
 
+
+  Expr coerce(Expr sourceExpr, Type targetType) {
+    return exprSemantic.coerce(sourceExpr, targetType);
+  }
+
   Node visit(Library library) {
     this.library = library;
 
