@@ -1,4 +1,4 @@
-module duck.compiler.attr;
+module duck.compiler.ast.attr;
 
 import duck.compiler;
 import duck.compiler.lexer;

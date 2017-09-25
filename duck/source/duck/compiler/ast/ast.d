@@ -1,4 +1,4 @@
-module duck.compiler.ast;
+module duck.compiler.ast.ast;
 
 import duck.compiler.lexer, duck.compiler.types, duck.compiler.semantic;
 import duck.compiler.scopes;
@@ -6,7 +6,7 @@ import duck.compiler;
 import duck.compiler.dbg;
 import duck.compiler.context;
 import duck.compiler.util;
-public import duck.compiler.attr;
+import duck.compiler.ast.attr;
 
 import duck.util.list;
 private import std.meta : AliasSeq;
