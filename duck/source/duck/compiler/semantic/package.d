@@ -1,22 +1,16 @@
 module duck.compiler.semantic;
 
-import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
-import duck.compiler.visitors, duck.compiler.context;
-import duck.compiler.scopes;
 import duck.compiler;
-import duck.compiler.dbg;
+import duck.compiler.visitors;
 import duck.compiler.semantic.helpers;
-import duck;
 
 import duck.compiler.semantic.decl;
 import duck.compiler.semantic.expr;
 import duck.compiler.semantic.stmt;
 import duck.compiler.semantic.errors;
-public import duck.compiler.context: context;
 
 import std.stdio;
 //debug = Semantic;
-debug = Trace;
 
 protected:
 

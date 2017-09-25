@@ -1,13 +1,7 @@
 module duck.compiler.semantic.helpers;
 
+import duck.compiler;
 import duck.compiler.visitors;
-import duck.compiler.context;
-
-import duck.compiler.ast;
-import duck.compiler.types;
-import duck.compiler.lexer.tokens;
-
-import duck.compiler.dbg;
 
 import std.stdio;
 

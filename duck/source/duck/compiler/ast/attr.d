@@ -1,7 +1,6 @@
 module duck.compiler.ast.attr;
 
 import duck.compiler;
-import duck.compiler.lexer;
 
 enum Visibility {
   public_ = 0,

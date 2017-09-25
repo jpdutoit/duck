@@ -1,15 +1,9 @@
 module duck.compiler.semantic.stmt;
+
+import duck.compiler;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
 import duck.compiler.semantic.errors;
-import duck.compiler.ast;
-import duck.compiler.scopes;
-import duck.compiler.lexer;
-import duck.compiler.types;
-import duck.compiler.visitors;
-import duck.compiler.dbg;
-import duck.compiler.context;
-import duck;
 
 struct StmtSemantic {
   SemanticAnalysis *semantic;

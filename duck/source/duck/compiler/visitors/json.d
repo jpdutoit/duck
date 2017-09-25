@@ -1,9 +1,7 @@
 module duck.compiler.visitors.json;
 
 import duck.compiler.visitors.visit;
-import duck.compiler.buffer, duck.compiler.ast, duck.compiler.lexer;
-import duck.compiler.context;
-import duck.compiler.types;
+import duck.compiler;
 import duck.util;
 
 import std.traits: isBasicType;

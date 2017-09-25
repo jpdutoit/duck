@@ -1,8 +1,6 @@
 module duck.compiler.semantic.errors;
 
 import duck.compiler;
-import duck.compiler.ast;
-import duck.compiler.types;
 
 T taint(T: Expr)(T expr) {
   expr.type = ErrorType.create;

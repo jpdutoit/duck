@@ -1,10 +1,7 @@
 module duck.compiler.semantic.overloads;
 
+import duck.compiler;
 import duck.compiler.semantic.helpers;
-import duck.compiler.ast;
-import duck.compiler.scopes;
-import duck.compiler.types;
-import duck.compiler.dbg;
 
 // Type coercion cost
 struct Cost {
