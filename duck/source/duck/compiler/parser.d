@@ -607,9 +607,9 @@ struct Parser {
   Library parseLibrary() {
     auto prog = new Library(parseStatements(new BlockStmt()));
     if (context.options.includePrelude) {
-      ImportStmt prelude = new ImportStmt(Slice("\"prelude\""), context.createStdlibContext());
-      prog.stmts.prepend(prelude);
+      prog.stmts.prepend(new ImportStmt(Slice("\"prelude\""), context.createStdlibContext()));
     }
+    prog.stmts.prepend(new ImportStmt(Slice("\"__builtin\""), context.createBuiltinContext()));
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }

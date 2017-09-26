@@ -12,6 +12,18 @@ abstract class Buffer {
     this.path = path;
   }
 
+  string dirname() {
+    import std.path: dirName;
+    return this.path.dirName;
+  }
+
+  string hashString() {
+    import std.digest.digest : toHexString;
+    size_t hash = this.hashOf;
+    ubyte[8] result = (cast(ubyte*) &hash)[0..8];
+    return toHexString(result[0..8]).dup;
+  }
+
   size_t hashOf() {
     if (_hash) return _hash;
 
@@ -42,16 +54,14 @@ abstract class Buffer {
 
 class FileBuffer : Buffer
 {
-
-  this(string path, bool loadIt = true) {
+  this(string path) {
     super(path, path);
-    if (loadIt)
-      this.load();
+    this.load();
   }
-  this(string name, string path, bool loadIt = true) {
+
+  this(string path, string contents) {
     super(name, path);
-    if (loadIt)
-      this.load();
+    this.contents = contents;
   }
 
   void load() {

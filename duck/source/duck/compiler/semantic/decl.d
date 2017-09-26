@@ -127,6 +127,10 @@ struct DeclSemantic {
     return decl;
   }
 
+  Node visit(BasicTypeDecl decl) {
+    return decl;
+  }
+
   CallableDecl generateDefaultConstructor(StructDecl structDecl) {
       auto callable = new CallableDecl();
       callable.name = Slice("__ctor");

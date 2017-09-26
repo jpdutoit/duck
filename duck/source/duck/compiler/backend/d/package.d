@@ -59,8 +59,10 @@ private DFile genFile(Context library, CodeGenContext context) {
     stderr.writeln("Compiled: ", context.buffer.path, " to ", dfile.filename);
 
   for (int i = 0; i < context.dependencies.length; ++i) {
-    auto dep = genFile(context.dependencies[i], context);
-    dfile.options.merge(dep.options);
+    if (context.dependencies[i].type != ContextType.builtin) {
+      auto dep = genFile(context.dependencies[i], context);
+      dfile.options.merge(dep.options);
+    }
   }
   return dfile;
 }

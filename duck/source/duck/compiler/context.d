@@ -1,20 +1,13 @@
 module duck.compiler.context;
 
-import std.exception : assumeUnique;
-import std.stdio, std.conv;
-import std.file : getcwd, isFile, exists;
+import duck.compiler;
+import duck.compiler.semantic;
 
 import duck.util.stack: Stack;
 
-import duck.compiler.lexer;
-import duck.compiler.buffer;
-import duck.compiler;
-
-import std.path : dirName, baseName, buildNormalizedPath;
-import duck.compiler.ast;
-
-import duck.compiler.parser, duck.compiler.ast, duck.compiler.visitors, duck.compiler.semantic, duck.compiler.context;
-import duck.compiler.dbg;
+import std.stdio;
+import std.file : getcwd, isFile, exists;
+import std.path : dirName, buildNormalizedPath;
 
 @property
 Context context() {
@@ -28,6 +21,7 @@ struct CompileError {
 
 enum ContextType {
   root,
+  builtin,
   main,
   library,
   stdlib
@@ -39,38 +33,51 @@ struct ContextOptions {
   bool verbose = false;
 }
 
+private string _stdlibPath;
+string stdlibPath() {
+  if (_stdlibPath) return _stdlibPath;
+  import core.runtime: Runtime;
+  _stdlibPath = buildNormalizedPath(Runtime.args[0].dirName(), "../runtime/duck_packages");
+  return _stdlibPath;
+}
+
 class Context {
   static Context[Buffer] cache;
   static Stack!Context stack = [];
   static void push(Context context) { stack.push(context); }
   static void pop() { stack.pop(); }
 
-  ContextType type;
+  immutable ContextType type;
+  immutable string moduleName;
   string path;
 
   ContextOptions options;
 
   static Context createRootContext() {
-    auto context = new Context();
-    context.type = ContextType.root;
-    context.path = getcwd();
+    return new Context(ContextType.root, "__root", getcwd());
+  }
+
+  Context createBuiltinContext() {
+    auto context = new Context(ContextType.builtin, "__builtin", getcwd());
+    Context.push(context);
+    auto phaseSemantic = SemanticAnalysis(context);
+    context._library = Library.builtins;
+    phaseSemantic.semantic(context._library);
+    Context.pop();
+    if (this.type != ContextType.root) {
+      this.dependencies ~= context;
+    }
     return context;
   }
 
   Context createStringContext(string code, ContextType type = ContextType.main) {
-    auto buffer = new FileBuffer("", "-", false);
-    buffer.contents = code ~ "\0";
-    if (buffer in cache) return cache[buffer];
-
-    Context context = createBufferContext(buffer, type);
-    context.path = getcwd();
-    context.packageRoots ~= getcwd();
-    return context;
+    auto filename = buildNormalizedPath(getcwd(), "-");
+    auto buffer = new FileBuffer(filename, code ~ "\0");
+    return createBufferContext(type, buffer);
   }
 
   Context createStdlibContext(string relativeName = "prelude.duck", bool suppressErrors = false) {
-    import core.runtime: Runtime;
-    string filename = buildNormalizedPath(Runtime.args[0].dirName(), "../lib/duck_packages", relativeName);
+    string filename = buildNormalizedPath(stdlibPath, relativeName);
     return createFileContext(filename, ContextType.stdlib, suppressErrors);
   }
 
@@ -80,15 +87,12 @@ class Context {
       else if (this.verbose) stderr.writeln("Failed to load file: ", filename);
       return null;
     }
+
+    auto buffer = new FileBuffer(filename);
     if (this.verbose) stderr.writeln("Loaded file: ", filename);
 
-    auto buffer = new FileBuffer(filename, true);
     if (buffer in cache) return cache[buffer];
-
-    auto context = createBufferContext(buffer, type);
-    context.path = buffer.path;
-    context.packageRoots ~= filename.dirName;
-    return context;
+    return createBufferContext(type, buffer);
   }
 
   Context createImportContext(Slice target) {
@@ -100,7 +104,7 @@ class Context {
 
     // Handle local includes
     if (filename[0] == '.' || filename[0] == '/') {
-      path = buildNormalizedPath(sourcePath, "..", filename);
+      path = buildNormalizedPath(sourcePath, filename);
       if (auto context = createFileContext(path, ContextType.library, true))
         return context;
     }
@@ -124,10 +128,9 @@ class Context {
     return null;
   }
 
-  private Context createBufferContext(FileBuffer buffer, ContextType type) {
-    auto context = new Context(buffer);
+  private Context createBufferContext(ContextType type, FileBuffer buffer) {
+    auto context = new Context(type, buffer);
 
-    context.type = type;
     context.options = this.options;
     context.options.includePrelude &= type != ContextType.stdlib;
 
@@ -138,10 +141,15 @@ class Context {
     return Context.cache[buffer] = context;
   }
 
-  this () { }
+  protected this(ContextType type, string moduleName, string path) {
+    this.type = type;
+    this.moduleName = moduleName;
+    this.path = path;
+    this.packageRoots ~= path;
+  }
 
-  this(Buffer buffer) {
-    this();
+  protected this(ContextType type, Buffer buffer) {
+    this(type, "_duck_" ~ buffer.hashString, buffer.dirname);
     this.buffer = buffer;
   }
 
@@ -153,13 +161,12 @@ class Context {
     if (_library) {
       return _library;
     }
-    auto phaseSemantic = SemanticAnalysis(this, this.path);
 
     Context.push(this);
+    auto phaseSemantic = SemanticAnalysis(this);
 
-    _library = cast(Library)(Parser(this, buffer)
-      .parseLibrary()
-      .accept(phaseSemantic));
+    _library = Parser(this, buffer).parseLibrary();
+    phaseSemantic.semantic(_library);
 
     Context.pop();
 
@@ -168,19 +175,6 @@ class Context {
     }
 
     return _library;
-  }
-
-  string moduleName() {
-    if (_moduleName) {
-      return _moduleName;
-    }
-
-    import std.digest.digest : toHexString;
-    size_t hash = buffer.hashOf;
-    ubyte[8] result = (cast(ubyte*) &hash)[0..8];
-    _moduleName = ("_duck_" ~ toHexString(result[0..8])).assumeUnique;
-
-    return _moduleName;
   }
 
   void error(Args...)(Slice slice, string formatString, Args args) {
@@ -224,7 +218,6 @@ class Context {
   CompileError[] errors = [];
 
   protected Library _library;
-  protected string _moduleName;
 
   bool verbose() { return options.verbose; }
   Context[] dependencies;

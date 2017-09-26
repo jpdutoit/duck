@@ -41,8 +41,16 @@ class Library : Decl {
     this.stmts = stmts;
     this.globals = new FileScope();
   }
-}
 
+  static Library builtins() {
+    BlockStmt stmts = new BlockStmt();
+    stmts.append(new DeclStmt(new BasicTypeDecl(IntegerType.create, "int")));
+    stmts.append(new DeclStmt(new BasicTypeDecl(FloatType.create, "float")));
+    stmts.append(new DeclStmt(new BasicTypeDecl(FloatType.create, "mono")));
+    stmts.append(new DeclStmt(new BasicTypeDecl(StringType.create, "string")));
+    return new Library(stmts);
+  }
+}
 abstract class ValueDecl : Decl {
   this(Type type, Slice name) {
     super(name, type);
@@ -190,6 +198,14 @@ class TypeDecl : Decl {
   this(Type type, string name) {
     super(Slice(name), MetaType.create(type));
     this.declaredType = type;
+  }
+}
+
+class BasicTypeDecl : TypeDecl {
+  mixin NodeMixin;
+
+  this(Type type, string name) {
+    super(type, name);
   }
 }
 

@@ -75,55 +75,29 @@ struct SemanticAnalysis {
     target = cast(E)obj;
   }
 
-  void accept(N)(ref N node) {
-    //if (cast(Expr)node) accept!Expr(node);
-    //else if (cast(Stmt)node) accept!Stmt(node);
-    //else if (cast(Decl)node) accept!Decl(node);
-
-    auto obj = node.accept(this);
-  }
-
   alias accept2 = accept;
 
   SymbolTable symbolTable;
-  string sourcePath;
 
-  Context context;
-
-
-  this(Context context, string sourcePath) {
+  this(Context context) {
     this.symbolTable = new SymbolTable();
-    this.context = context;
-    this.sourcePath = sourcePath;
     exprSemantic = ExprSemantic(&this);
     stmtSemantic = StmtSemantic(&this);
     declSemantic = DeclSemantic(&this);
   }
-
-  Library library;
 
 
   Expr coerce(Expr sourceExpr, Type targetType) {
     return exprSemantic.coerce(sourceExpr, targetType);
   }
 
-  Node visit(Library library) {
-    this.library = library;
-
+  void semantic(Library library) {
+    stack.push(library);
     symbolTable.pushScope(library.imports);
-
-    library.globals.define("int", new TypeDecl(IntegerType.create, "int"));
-    library.globals.define("mono", new TypeDecl(FloatType.create, "mono"));
-    library.globals.define("float", new TypeDecl(FloatType.create, "float"));
-    library.globals.define("string", new TypeDecl(StringType.create, "string"));
-
     symbolTable.pushScope(library.globals);
-
     accept(library.stmts);
-
     symbolTable.popScope();
     symbolTable.popScope();
-    debug(Semantic) log("Done");
-    return library;
+    stack.pop();
   }
 }

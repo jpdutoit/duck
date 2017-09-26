@@ -77,14 +77,15 @@ struct StmtSemantic {
     }
 
     // Don't add unnamed variables to symboltable
-    if (!stmt.decl.name) return stmt;
+    if (stmt.decl.name.length == 0) return stmt;
 
     this.symbolTable.define(stmt.decl.name, stmt.decl);
 
-    if (this.symbolTable.top is this.library.globals
+    auto library = stack.find!Library;
+    if (this.symbolTable.top is library.globals
       && stmt.decl.visibility == Visibility.public_
       && !stmt.decl.hasError) {
-      this.library.exports ~= stmt.decl;
+      library.exports ~= stmt.decl;
     }
 
     return stmt;
@@ -109,15 +110,16 @@ struct StmtSemantic {
     }
 
     if (!stmt.targetContext)
-      stmt.targetContext = this.context.createImportContext(stmt.identifier[1..$-1]);
+      stmt.targetContext = context.createImportContext(stmt.identifier[1..$-1]);
 
     if (stmt.targetContext) {
+      auto importee = stack.find!Library;
       if (auto library = stmt.targetContext.library) {
         foreach(decl; library.exports) {
-          semantic.library.imports.define(decl.name, decl);
+          importee.imports.define(decl.name, decl);
         }
       }
-      semantic.context.errors ~= stmt.targetContext.errors;
+      context.errors ~= stmt.targetContext.errors;
       return stmt;
     }
     return null;

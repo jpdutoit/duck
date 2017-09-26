@@ -67,6 +67,7 @@ alias NodeTypes = AliasSeq!(
   IfStmt,
 
   OverloadSet,
+  BasicTypeDecl,
   ParameterDecl,
   CallableDecl,
   VarDecl,

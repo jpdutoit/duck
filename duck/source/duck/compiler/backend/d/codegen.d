@@ -463,7 +463,8 @@ struct CodeGen {
   }
 
   void visit(ImportStmt importStatement) {
-    output.statement("import ", importStatement.targetContext.moduleName, ";");
+    if (importStatement.targetContext.type != ContextType.builtin)
+      output.statement("import ", importStatement.targetContext.moduleName, ";");
   }
 
   void visit(Library library) {
