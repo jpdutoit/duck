@@ -63,6 +63,7 @@ struct JsonOutput {
   void field(string name, string value) { output.dictField(name, value); }
   void field(string name, bool value)   { output.dictField(name, value); }
   void field(string name, Slice value)  { output.dictField(name, value.toString()); }
+  void field(string name, int value)    { output.dictField(name, value.to!string()); }
 
   void visit(TypeDecl decl) {
     field("type", "declaration.builtin_type");
@@ -72,7 +73,9 @@ struct JsonOutput {
   void visit(ArrayDecl decl) {
     field("type", "declaration.array");
     field("element_declaration", decl.elementDecl);
-    //TODO: Add static array size
+    if (auto type = decl.declaredType.as!StaticArrayType) {
+      field("length", type.size);
+    }
   }
 
   void visit(OverloadSet decl) {
