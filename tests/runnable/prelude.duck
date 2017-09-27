@@ -3,4 +3,4 @@ import "prelude";
 
 a: float = sin(2);
 
-now += 1 samples;
+wait(1 samples);

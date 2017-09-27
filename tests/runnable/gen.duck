@@ -4,8 +4,8 @@ extern struct duration {
   constructor(float);
 }
 function samples(amount: float) -> duration(amount);
-extern struct Now;
-extern now: Now;
+extern function wait(duration);
+
 
 extern function operator+(float, float) -> float;
 extern function operator*(float, float) -> float;
@@ -46,7 +46,7 @@ A >> c1: C >> Assert([1.0, 1, 1, 1, 1]).input;
 A >> c2: C >> Assert([1.0, 1, 1, 1, 1]).input;
 c2.input = 0;
 
-now += 5 samples;
+wait(5 samples);
 
 
 extern module DAC {

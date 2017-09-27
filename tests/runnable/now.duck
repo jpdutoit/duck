@@ -2,8 +2,8 @@ extern struct duration {
   constructor(float);
 }
 extern struct Now;
-extern now: Now;
+extern function wait(duration);
 
 function samples(amount: float) -> duration(amount);
 
-now += 1 samples;
+wait(1 samples);

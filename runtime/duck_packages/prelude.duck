@@ -73,6 +73,7 @@ extern function cos(float) -> float;
 extern function abs(float) -> float;
 
 extern function raw(f: frequency) -> float;
+extern function raw(f: duration) -> float;
 
 function hz(amount: float) -> frequency(amount);
 function samples(amount: float) -> duration(amount);
@@ -272,7 +273,7 @@ module Delay {
   length: duration;
 
   function tick() {
-    buffer.length = length;
+    buffer.length = int(raw(length));
     output = buffer[index];
     buffer[index] = input;
     index = (index + 1) % buffer.length;

@@ -484,13 +484,17 @@ struct ExprSemantic {
   }
 
   Node visit(AssignExpr expr) {
-    //TODO: Type check
     semantic(expr.left);
     implicitCall(expr.left);
-    debug(Semantic) log("=>", expr);
     semantic(expr.right);
     implicitCall(expr.right);
-    debug(Semantic) log("=>", expr);
+
+    if (!expr.left.hasError && !expr.right.hasError)
+      expr.right = coerce(expr.right, expr.left.type);
+
+    if (expr.left.hasError || expr.right.hasError)
+      return expr.taint;
+
     expr.type = expr.left.type;
     return expr;
   }

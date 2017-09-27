@@ -10,4 +10,3 @@ a + b;
 
 extern struct Now;
 extern now: Now;
-now += 1;

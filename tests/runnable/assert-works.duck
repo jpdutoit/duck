@@ -8,6 +8,7 @@ extern struct Now;
 extern now: Now;
 extern function operator+(float, float) -> float;
 function samples(amount: float) -> duration(amount);
+extern function wait(duration);
 
 module A {
   output: mono = 10;
@@ -27,14 +28,14 @@ module B {
 B >> Assert([1.0,2,3,4,5]);
 B >> Assert([1.0,2,3,4,0]);
 
-now += 10 samples;
+wait(10 samples);
 
 /*
 OPTIONS: --engine=null
 OUTPUT:
 ---
-tests/runnable/assert-works.duck(17): Expected [20.000000], got [10.000000] at index 0
-tests/runnable/assert-works.duck(28): Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
-tests/runnable/assert-works.duck(27): Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
+tests/runnable/assert-works.duck(18): Expected [20.000000], got [10.000000] at index 0
+tests/runnable/assert-works.duck(29): Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
+tests/runnable/assert-works.duck(28): Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
 ---
 */
