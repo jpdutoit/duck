@@ -100,15 +100,23 @@ class LiteralExpr : Expr {
   this(Token token) {
     this.source = token;
     this.value = token;
-    if (token.type == Number) {
-      import std.string: indexOf;
-      if (token.slice.indexOf(".") >= 0)
-        this.type = FloatType.create;
-      else
-        this.type = IntegerType.create;
-    }
-    else if (token.type == StringLiteral)
-      this.type = StringType.create;
+    switch (token.type) {
+      case BoolLiteral:
+        this.type = BoolType.create;
+        break;
+      case Number:
+        import std.string: indexOf;
+        if (token.slice.indexOf(".") >= 0)
+          this.type = FloatType.create;
+        else
+          this.type = IntegerType.create;
+        break;
+      case StringLiteral:
+        this.type = StringType.create;
+        break;
+      default:
+        throw __ICE("Token is not a literal");
+      }
   }
 }
 

@@ -5,10 +5,10 @@ import duck.compiler.dbg;
 import std.meta: staticIndexOf, AliasSeq;
 
 enum TokenSpecial  = AliasSeq!(
-  "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown"
+  "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown", "__Bool"
 );
 enum TokenReservedWords = AliasSeq!(
-  "function", "module", "extern", "import", "struct", "return", "constructor", "if", "else", "@private", "@public", "@const"
+  "function", "module", "extern", "import", "struct", "return", "constructor", "if", "else", "@private", "@public", "@const", "true", "false"
 );
 enum TokenSymbols = AliasSeq!(
   " ", "\n",
@@ -39,6 +39,7 @@ template Tok(string S) {
 alias Number = Tok!"__Number";
 alias StringLiteral = Tok!"__String";
 alias Identifier = Tok!"__Identifier";
+alias BoolLiteral = Tok!"__Bool";
 alias EOF = Tok!"__EOF";
 alias EOL = Tok!"\n";
 alias Comment = Tok!"__Comment";
@@ -63,6 +64,8 @@ shared static this()
     "@private": Tok!"@private",
     "@public": Tok!"@public",
     "@const": Tok!"@const",
+    "true": BoolLiteral,
+    "false": BoolLiteral
   ];
 }
 

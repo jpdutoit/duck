@@ -9,7 +9,7 @@ public import duck.stdlib.ugens;
 public import duck.stdlib.units;
 public import duck.stdlib.random;
 
-void assertEquals(float a, float b, string file = __FILE__, int line = __LINE__) {
+void assertEquals(T)(T a, T b, string file = __FILE__, int line = __LINE__) {
   if (a != b) {
     print(file);
     print("(");

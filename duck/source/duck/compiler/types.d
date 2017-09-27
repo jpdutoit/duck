@@ -6,10 +6,10 @@ private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.conv;
 
-alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int");
+alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int", "bool");
 alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, MacroType, TupleType, OverloadSetType, StaticArrayType, MetaType);
 
-alias Types = AliasSeq!(FloatType, IntegerType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, MacroType, ArrayType, OverloadSetType, StaticArrayType);
+alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, MacroType, ArrayType, OverloadSetType, StaticArrayType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -42,6 +42,7 @@ template BasicType(string desc) {
 
 alias FloatType = BasicType!("float");
 alias IntegerType = BasicType!("int");
+alias BoolType = BasicType!("bool");
 alias StringType = BasicType!("string");
 alias VoidType = BasicType!("nothing");
 alias ErrorType = BasicType!("error");

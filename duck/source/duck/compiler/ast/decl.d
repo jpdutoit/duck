@@ -46,6 +46,7 @@ class Library : Decl {
     BlockStmt stmts = new BlockStmt();
     stmts.append(new DeclStmt(new BasicTypeDecl(IntegerType.create, "int")));
     stmts.append(new DeclStmt(new BasicTypeDecl(FloatType.create, "float")));
+    stmts.append(new DeclStmt(new BasicTypeDecl(BoolType.create, "bool")));
     stmts.append(new DeclStmt(new BasicTypeDecl(FloatType.create, "mono")));
     stmts.append(new DeclStmt(new BasicTypeDecl(StringType.create, "string")));
     return new Library(stmts);

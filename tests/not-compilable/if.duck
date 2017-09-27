@@ -1,0 +1,16 @@
+
+a: float;
+b: int;
+c: bool;
+
+if a { }
+if b { }
+if c { }
+
+/*
+OUTPUT:
+---
+tests/not-compilable/if.duck(6:4): Error: Cannot coerce a value of type float to a value of type bool
+tests/not-compilable/if.duck(7:4): Error: Cannot coerce a value of type int to a value of type bool
+---
+*/

@@ -30,16 +30,24 @@ extern function operator/(float, float) -> float;
 extern function operator%(float, float) -> float;
 extern function operator%(duration, duration) -> duration;
 
-//TODO: Introduce bool type
-extern function operator!=(float, float) -> float;
-extern function operator==(float, float) -> float;
-extern function operator>(duration, duration) -> float;
-extern function operator>(float, float) -> float;
-extern function operator>=(float, float) -> float;
-extern function operator<(float, float) -> float;
+extern function operator!=(bool, bool) -> bool;
+extern function operator==(bool, bool) -> bool;
+
+extern function operator!=(int, int) -> bool;
+extern function operator==(int, int) -> bool;
+extern function operator>(int, int) -> bool;
+extern function operator>=(int, int) -> bool;
+extern function operator<(int, int) -> bool;
+
+extern function operator!=(float, float) -> bool;
+extern function operator==(float, float) -> bool;
+extern function operator>(float, float) -> bool;
+extern function operator>=(float, float) -> bool;
+extern function operator<(float, float) -> bool;
+
+extern function operator>(duration, duration) -> bool;
 
 extern function operator*(duration, float) -> duration;
-
 extern function operator*(frequency, float) -> frequency;
 extern function operator*(float, frequency) -> frequency;
 

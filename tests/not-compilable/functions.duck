@@ -44,7 +44,7 @@ function testfn2() -> float {
   return;
 }
 
-extern function operator>(float, float) -> float;
+extern function operator>(float, float) -> bool;
 function testControlFlow(a: float) -> float {
   if a > 2 {
     return 1;

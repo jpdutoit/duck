@@ -1,5 +1,5 @@
-extern function operator>(float, float) -> float;
-extern function operator+(float, float) -> float;
+extern function operator>(float, float) -> bool;
+extern function operator+(float, float) -> bool;
 extern function assertEquals(float, float);
 
 a: float = 2;

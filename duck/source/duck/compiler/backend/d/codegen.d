@@ -93,6 +93,7 @@ struct CodeGen {
       (StringType t) => "string",
       (FloatType t) => "float",
       (IntegerType t) => "int",
+      (BoolType t) => "bool",
       (ArrayType t) => name(t.elementType) ~ "[]",
       (StaticArrayType t) => name(t.elementType) ~ "[" ~ t.size.to!string ~ "]"
     );
@@ -212,7 +213,8 @@ struct CodeGen {
   }
 
   void visit(CastExpr expr) {
-    if (expr.sourceType.as!IntegerType && expr.targetType.as!FloatType)
+    if ((expr.sourceType.as!IntegerType && expr.targetType.as!FloatType) ||
+        (expr.sourceType.as!BoolType && (expr.targetType.as!IntegerType || expr.targetType.as!FloatType)))
       output.expression(expr.expr);
     else
       output.expression("cast(", name(expr.targetType), ")", expr.expr);
@@ -237,6 +239,7 @@ struct CodeGen {
       (StringType t) => output.put("\"\""),
       (FloatType t) => output.put("0"),
       (IntegerType t) => output.put("0"),
+      (BoolType t) => output.put("false"),
       (ArrayType t) => output.put("[]"),
       (StaticArrayType t) {
         output.put("[");

@@ -138,6 +138,7 @@ struct Parser {
         }
         return literal;
       }
+      case BoolLiteral:
       case StringLiteral:
         lexer.consume;
         return new LiteralExpr(token);

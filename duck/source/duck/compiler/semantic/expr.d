@@ -107,6 +107,13 @@ struct ExprSemantic {
       }
     }
 
+    // Coerce bool by automatically converting it to int/float
+    if (sourceExpr.type.as!BoolType && (targetType.as!IntegerType ||targetType.as!FloatType)) {
+      auto castExpr = new CastExpr(sourceExpr, targetType);
+      semantic(castExpr);
+      return coerce(castExpr, targetType);
+    }
+
     // Coerce int by automatically converting it to float
     if (sourceExpr.type.as!IntegerType && targetType.as!FloatType) {
       auto castExpr = new CastExpr(sourceExpr, targetType);
@@ -226,8 +233,8 @@ struct ExprSemantic {
     }
     expr.type = expr.targetType;
 
-    if (expr.sourceType.as!IntegerType || expr.sourceType.as!FloatType) {
-      if (expr.targetType.as!IntegerType || expr.targetType.as!FloatType) {
+    if (expr.sourceType.as!IntegerType || expr.sourceType.as!FloatType || expr.sourceType.as!BoolType) {
+      if (expr.targetType.as!IntegerType || expr.targetType.as!FloatType || expr.targetType.as!BoolType) {
         return expr;
       }
     }

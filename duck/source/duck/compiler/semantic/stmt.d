@@ -92,8 +92,8 @@ struct StmtSemantic {
   }
 
   Node visit(IfStmt stmt) {
-    //TODO: Ensure that condition converts to boolean
     accept(stmt.condition);
+    stmt.condition = coerce(stmt.condition, BoolType.create);
     accept(stmt.trueBody);
     if (stmt.falseBody)
       accept(stmt.falseBody);
