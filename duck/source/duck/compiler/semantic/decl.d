@@ -73,43 +73,28 @@ struct DeclSemantic {
     }
 
     accept(decl.typeExpr);
-
-    if (auto ce = decl.typeExpr.as!ConstructExpr) {
-      if (!ce.callable) {
-        decl.type = ce.type;
-        return decl;
-      }
-
-      decl.valueExpr = decl.typeExpr;
-      auto callable = ce.callable.enforce!RefExpr().decl.as!CallableDecl;
-      decl.typeExpr = callable.parentDecl.reference();
-      decl.type = callable.parentDecl.declaredType;
-      accept(decl.typeExpr);
-      return decl;
-    }
     if (decl.typeExpr.hasError)
       return decl.taint();
 
-    if (decl.typeExpr.type.kind == MetaType.Kind) {
-      if (auto typeDecl = decl.typeExpr.getTypeDecl()) {
-        decl.type = typeDecl.declaredType;
-        if (!decl.valueExpr) {
-          decl.valueExpr = typeDecl.reference().withSource(decl.typeExpr.source).call();
-        }
-        accept(decl.valueExpr);
-        decl.valueExpr = exprSemantic.coerce(decl.valueExpr, decl.type);
-        if (decl.valueExpr && decl.type != decl.valueExpr.type && !decl.valueExpr.hasError) {
-          error(decl.valueExpr, "Expected default value to be of type " ~ mangled(decl.type) ~ " not of type " ~ mangled(decl.valueExpr.type) ~ ".");
-          decl.valueExpr.taint();
-        }
-
-        return decl;
-      }
-    } else {
-      //FIXME: Check that valueExpr is null
+    if (decl.typeExpr.as!ConstructExpr) {
+      decl.type = decl.typeExpr.type;
+      decl.valueExpr = decl.typeExpr;
+      decl.typeExpr = null;
+      return decl;
+    }
+    else if (auto metaType = decl.typeExpr.type.as!MetaType) {
+      decl.type = metaType.type;
+      if (!decl.valueExpr)
+        decl.valueExpr = new ConstructExpr(decl.typeExpr, [], decl.typeExpr.source);
+      accept(decl.valueExpr);
+      decl.valueExpr = exprSemantic.coerce(decl.valueExpr, metaType.type);
+      decl.typeExpr = null;
+      return decl;
+    }
+    else {
+      expect(!decl.valueExpr, decl.valueExpr, "Unexpected value in alias declaration");
       Expr target = decl.typeExpr;
-      TypeExpr contextType = new TypeExpr(decl.parentDecl.reference());
-      auto mac = new CallableDecl(decl.name, contextType, [], target, decl.parentDecl);
+      auto mac = new CallableDecl(decl.name, [], target, decl.parentDecl);
       mac.isMacro = true;
       // Think of a nicer solution than replacing it in decls table,
       // perhaps the decls table should only be constructed after all the fields
@@ -117,14 +102,6 @@ struct DeclSemantic {
       decl.parentDecl.members.replace(decl.name, mac);
       return mac;
     }
-
-    if (!decl.type) {
-      decl.taint();
-      if (!decl.typeExpr.hasError)
-        error(decl.typeExpr, "Expected type");
-    }
-
-    return decl;
   }
 
   Node visit(BasicTypeDecl decl) {

@@ -84,7 +84,7 @@ struct ExprSemantic {
     debug(Semantic) log("=> coerce", sourceExpr.type.describe.green, "to", targetType.describe.green);
     auto sourceType = sourceExpr.type;
 
-    if (sourceType.isSameType(targetType)) return sourceExpr;
+    if (sourceExpr.hasError || sourceType.isSameType(targetType)) return sourceExpr;
 
     // Coerce an overload set by automatically calling it
     if (sourceType.isCallable) {

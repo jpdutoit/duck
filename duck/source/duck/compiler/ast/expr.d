@@ -86,8 +86,9 @@ class TypeExpr : Expr {
   Expr expr;
   TypeDecl decl;
 
-  this(Expr expr) {
+  this(Expr expr, TypeDecl decl = null) {
     this.expr = expr;
+    this.decl = decl;
     this.source = expr.source;
   }
 }

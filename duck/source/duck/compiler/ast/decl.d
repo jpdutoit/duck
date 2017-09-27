@@ -170,7 +170,7 @@ class CallableDecl : ValueDecl {
     this.parameters = new ParameterList();
   }
 
-  this(Slice identifier, TypeExpr contextType, TypeExpr[] argTypes, Expr expansion, StructDecl parentDecl) {
+  this(Slice identifier, TypeExpr[] argTypes, Expr expansion, StructDecl parentDecl) {
     super(null, identifier);
     this.parameters = new ParameterList();
     this.parameterTypes = argTypes;
