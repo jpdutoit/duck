@@ -49,14 +49,6 @@ bool isPipeTarget(Expr expr) {
   );
 }
 
-TypeDecl getTypeDecl(Expr expr) {
-  return expr.visit!(
-    (TypeExpr te) => te.decl,
-    (RefExpr re) => cast(TypeDecl)re.decl,
-    (Expr e) => null
-  );
-}
-
 Type getResultType(Decl decl, int line = __LINE__, string file = __FILE__) {
   return decl.visit!(
     (OverloadSet os) {

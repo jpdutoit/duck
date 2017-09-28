@@ -300,49 +300,39 @@ struct ExprSemantic {
   }
 
   Node visit(ConstructExpr expr) {
+    if (expr.hasType) return expr;
     if (semantic(expr.callable).hasError | semantic(expr.arguments).hasError)
       return expr.taint;
 
-    TypeDecl decl = expr.callable.getTypeDecl();
-    debug(Semantic) log("=> decl", decl);
+    auto type = expr.callable.type.enforce!MetaType.type;
 
-    return expr.callable.type.visit!(
-      // This part is only needed because sometimes semantic runs more than once on some nodes
-      // TODO: Removed when this is fixed
-      delegate(FunctionType ft) {
-        expr.arguments = coerce(expr.arguments, ft.parameters);
+    RefExpr ctors;
+    CallableDecl[] viable;
+    if (auto structType = type.as!StructType) {
+      ctors = structType.decl.members.reference(Slice("__ctor"));
+      if (ctors) semantic(ctors);
+
+      if (auto resolved = resolveCall(ctors, expr.arguments, &viable)) {
+        expr.callable = resolved;
+        semantic(expr.callable);
+        expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameters);
+        expr.type = type;
         return expr;
-      },
-
-      delegate Expr(MetaType metaType) {
-        auto members = decl.visit!(
-          (StructDecl structDecl) => structDecl.members,
-          (TypeDecl decl) => null
-        );
-
-        CallableDecl[] viable = [];
-        auto ctors = members ? members.reference(Slice("__ctor")) : null;
-        if (ctors) semantic(ctors);
-        if (auto resolved = resolveCall(ctors, expr.arguments, &viable)) {
-          expr.callable = resolved;
-          semantic(expr.callable);
-          expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameters);
-          expr.type = decl.declaredType;
-          return expr;
-        } else if (expr.arguments.length == 0 && !decl.as!ModuleDecl) {
-          // TODO: Implement typedefs, then this no longer needs to allow structs
-          // Default constructors for basic types
-          expr.type = expr.callable.getTypeDecl().declaredType;
-          expr.callable = null;
-          return expr;
-        } else if (expr.arguments.length == 1 && !decl.as!StructDecl) {
-          auto castExpr = new CastExpr(expr.arguments[0], metaType.type);
-          return semantic(castExpr);
-        }
-
-        return expr.errorResolvingConstructorCall(ctors, viable);
       }
-    );
+    }
+
+    if (expr.arguments.length == 0 && !type.as!ModuleType) {
+      // TODO: Implement typedefs, then this no longer needs to allow structs
+      // Default constructors for basic types
+      expr.type = type;
+      expr.callable = null;
+      return expr;
+    } else if (expr.arguments.length == 1 && !type.as!StructType) {
+      auto castExpr = new CastExpr(expr.arguments[0], type);
+      return semantic(castExpr);
+    }
+
+    return expr.errorResolvingConstructorCall(ctors, viable);
   }
 
   Node visit(IndexExpr expr) {
@@ -386,12 +376,10 @@ struct ExprSemantic {
         return expr;
       },
       (MetaType t) {
-        TypeDecl decl = expr.expr.getTypeDecl;
-        debug(Semantic) log ("=>", decl);
         ArrayDecl arrayDecl;
 
         if (expr.arguments.length == 0)
-          arrayDecl = new ArrayDecl(decl);
+          arrayDecl = new ArrayDecl(t.type);
         else {
           if (expr.arguments.length != 1) {
             expr.arguments.error("Only one length accepted.");
@@ -409,7 +397,7 @@ struct ExprSemantic {
           )();
           if (expr.hasError) return expr;
 
-          arrayDecl = new ArrayDecl(decl, size);
+          arrayDecl = new ArrayDecl(t.type, size);
         }
 
         Expr re = arrayDecl.reference();

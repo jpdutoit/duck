@@ -72,7 +72,7 @@ struct JsonOutput {
 
   void visit(ArrayDecl decl) {
     field("type", "declaration.array");
-    field("element_declaration", decl.elementDecl);
+    //field("element_type", decl.elementType);
     if (auto type = decl.declaredType.as!StaticArrayType) {
       field("length", type.size);
     }

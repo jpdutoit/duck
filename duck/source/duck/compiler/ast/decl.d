@@ -213,16 +213,15 @@ class BasicTypeDecl : TypeDecl {
 class ArrayDecl : TypeDecl {
   mixin NodeMixin;
 
-  TypeDecl elementDecl;
-  Type elementType() { return elementDecl.declaredType; }
+  Type elementType;
 
-  this(TypeDecl elementDecl) {
-    this.elementDecl = elementDecl;
+  this(Type elementType) {
+    this.elementType = elementType;
     super(ArrayType.create(elementType), Token());
   }
 
-  this(TypeDecl elementDecl, uint size) {
-    this.elementDecl = elementDecl;
+  this(Type elementType, uint size) {
+    this.elementType = elementType;
     super(StaticArrayType.create(elementType, size), Token());
   }
 }
