@@ -4,8 +4,6 @@ import std.stdio;
 
 import duck;
 import duck.compiler;
-import duck.host;
-import duck.compiler.context;
 import duck.compiler.backend.d;
 
 Process[] procList;
@@ -49,6 +47,7 @@ void describe(ref Process[] list) {
 }
 
 void interactiveMode() {
+    auto root = Context.createRootContext();
     while(true) {
         write(">");
         stdout.flush();
@@ -65,7 +64,7 @@ void interactiveMode() {
             }
             else if (cmd.name == "start") {
                 foreach (filename; cmd.args) {
-                    Context context = Duck.contextForFile(filename);
+                    Context context = root.createFileContext(filename);
 
                     context.library;
                     if (context.hasErrors) continue;
