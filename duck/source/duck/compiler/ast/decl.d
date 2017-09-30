@@ -6,13 +6,14 @@ abstract class Decl : Node {
   Slice name;
   Type type;
   DeclAttr attributes;
+  TypeDecl parent;
 
   auto ref storage() { return attributes.storage; }
   auto ref visibility() { return attributes.visibility; }
   auto ref isExternal() { return attributes.external; }
 
-  RefExpr reference() {
-      return new RefExpr(this);
+  RefExpr reference(Expr context = null) {
+      return new RefExpr(this, context);
   }
 
   this(Slice name, Type type) {
@@ -44,11 +45,11 @@ class Library : Decl {
 
   static Library builtins() {
     BlockStmt stmts = new BlockStmt();
-    stmts.append(new DeclStmt(new BasicTypeDecl(IntegerType.create, "int")));
-    stmts.append(new DeclStmt(new BasicTypeDecl(FloatType.create, "float")));
-    stmts.append(new DeclStmt(new BasicTypeDecl(BoolType.create, "bool")));
-    stmts.append(new DeclStmt(new BasicTypeDecl(FloatType.create, "mono")));
-    stmts.append(new DeclStmt(new BasicTypeDecl(StringType.create, "string")));
+    stmts.append(new BasicTypeDecl(IntegerType.create, "int"));
+    stmts.append(new BasicTypeDecl(FloatType.create, "float"));
+    stmts.append(new BasicTypeDecl(BoolType.create, "bool"));
+    stmts.append(new BasicTypeDecl(FloatType.create, "mono"));
+    stmts.append(new BasicTypeDecl(StringType.create, "string"));
     return new Library(stmts);
   }
 }
@@ -68,13 +69,12 @@ class VarDecl : ValueDecl {
 
   Expr typeExpr;
   Expr valueExpr;
-  StructDecl parentDecl;
 
   this(Type type, Slice name, Expr value = null) {
     super(type, name);
     this.valueExpr = value;
   }
-  this(TypeExpr typeExpr, Slice identifier, Expr value = null) {
+  this(Expr typeExpr, Slice identifier, Expr value = null) {
     super(null, identifier);
     this.typeExpr = typeExpr;
     this.valueExpr = value;
@@ -84,25 +84,27 @@ class VarDecl : ValueDecl {
 class FieldDecl : VarDecl {
   mixin NodeMixin;
 
+  final StructDecl parent() { return super.parent.enforce!StructDecl; }
+  final void parent(StructDecl parent) { super.parent = parent; }
+
   this(Expr typeExpr, Token identifier, Expr valueExpr, StructDecl parent) {
     super(cast(Type)null, identifier);
     this.typeExpr = typeExpr;
     this.valueExpr = valueExpr;
-    this.parentDecl = parent;
+    this.parent = parent;
   }
 }
 
 class ParameterDecl : ValueDecl {
   mixin NodeMixin;
 
-  TypeExpr typeExpr;
+  Expr typeExpr;
 
-  this(TypeExpr type, Slice name) {
+  this(Expr type, Slice name) {
     super(null, name);
     this.typeExpr = type;
   }
 }
-
 
 class OverloadSet : ValueDecl {
   mixin NodeMixin;
@@ -145,10 +147,8 @@ class CallableDecl : ValueDecl {
   @property bool isFunction() { return !isMethod; }
 
   Stmt callableBody;
-  TypeExpr[] parameterTypes;
 
   ParameterList  parameters;
-  StructDecl parentDecl;
 
   Expr returnExpr;
 
@@ -170,12 +170,11 @@ class CallableDecl : ValueDecl {
     this.parameters = new ParameterList();
   }
 
-  this(Slice identifier, TypeExpr[] argTypes, Expr expansion, StructDecl parentDecl) {
+  this(Slice identifier, Expr expansion, StructDecl parentDecl) {
     super(null, identifier);
     this.parameters = new ParameterList();
-    this.parameterTypes = argTypes;
     this.returnExpr = expansion;
-    this.parentDecl = parentDecl;
+    this.parent = parentDecl;
   }
 }
 
@@ -184,7 +183,7 @@ class CallableDecl : ValueDecl {
 class TypeDecl : Decl {
   mixin NodeMixin;
 
-  Type declaredType;
+  Type declaredType() { return this.type.as!MetaType.type; }
 
   @property
   override bool hasError() {
@@ -193,12 +192,10 @@ class TypeDecl : Decl {
 
   this(Type type, Slice name = Slice()) {
     super(name, MetaType.create(type));
-    this.declaredType = type;
   }
 
   this(Type type, string name) {
     super(Slice(name), MetaType.create(type));
-    this.declaredType = type;
   }
 }
 
@@ -230,7 +227,8 @@ class StructDecl : TypeDecl {
   mixin NodeMixin;
 
   DeclTable members;
-  Decl context;
+  DeclTable publicMembers;
+  ValueDecl context;
 
   auto fields() { return members.fields; }
   auto constructors() { return members.constructors; }
@@ -241,6 +239,7 @@ class StructDecl : TypeDecl {
   this(Type type, Slice name) {
     super(type, name);
     this.members = new DeclTable();
+    this.publicMembers = new DeclTable();
   }
 
   this(Slice name) {

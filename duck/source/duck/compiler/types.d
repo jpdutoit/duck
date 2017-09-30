@@ -1,6 +1,6 @@
 module duck.compiler.types;
 
-import duck.compiler.ast, duck.compiler.lexer, duck.compiler.types;
+import duck.compiler;
 
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
@@ -107,6 +107,15 @@ class StructType : Type {
   StructDecl decl;
   auto members() { return decl.members; }
 
+  RefExpr reference(Slice identifier, lazy Expr context = null, Visibility access = Visibility.public_) {
+    final switch (access) {
+      case Visibility.public_:
+        return decl.publicMembers.reference(identifier, context);
+      case Visibility.private_:
+        return decl.members.reference(identifier, context);
+    }
+  }
+
   override string describe() const {
     return cast(immutable)name;
   }
@@ -201,7 +210,7 @@ class MetaType : Type {
   Type type;
 
   override string describe() const {
-    return "Type";
+    return "Type(" ~ type.describe() ~ ")";
   }
 
   static auto create(Type type) {

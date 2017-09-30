@@ -56,6 +56,8 @@ function testControlFlow(a: float) -> float {
 
 return;
 
+function testfn5(a: 1, b: testfn2) {}
+
 /**
 OUTPUT:
 ---
@@ -79,5 +81,7 @@ tests/not-compilable/functions.duck(35:8-43):   function d(mono, mono, mono) -> 
 tests/not-compilable/functions.duck(44:3-9): Error: Function must return a value
 tests/not-compilable/functions.duck(51:5-11): Error: Statement is not reachable
 tests/not-compilable/functions.duck(57:1-7): Error: Can only return from a function
+tests/not-compilable/functions.duck(59:21): Error: Expected a type
+tests/not-compilable/functions.duck(59:27-33): Error: Expected a type
 ---
 */

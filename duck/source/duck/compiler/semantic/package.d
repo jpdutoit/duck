@@ -30,6 +30,7 @@ struct SemanticAnalysis {
   DeclSemantic declSemantic;
 
   Stack!Node stack;
+  Stack!Decl access;
 
   void accept(E : Stmt)(ref E target) {
     debug(Semantic) {
@@ -46,6 +47,7 @@ struct SemanticAnalysis {
   }
 
   void accept(E : Expr)(ref E target) {
+    if (target.hasType) return;
     debug(Semantic) {
       logIndent();
       log(target.prettyName.red, target);
@@ -91,7 +93,12 @@ struct SemanticAnalysis {
     return exprSemantic.coerce(sourceExpr, targetType);
   }
 
+  Visibility accessLevel(StructType type) {
+    return access.find(type.decl) is null ? Visibility.public_ : Visibility.private_;
+  }
+
   void semantic(Library library) {
+    access.push(library);
     stack.push(library);
     symbolTable.pushScope(library.imports);
     symbolTable.pushScope(library.globals);
@@ -99,5 +106,6 @@ struct SemanticAnalysis {
     symbolTable.popScope();
     symbolTable.popScope();
     stack.pop();
+    access.pop();
   }
 }

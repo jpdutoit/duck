@@ -119,10 +119,6 @@ mixin template RecursiveAccept() {
       accept(expr.context);
   }
 
-  void recurse(TypeExpr expr) {
-    accept(expr.expr);
-  }
-
   void recurse(IdentifierExpr) { }
   void recurse(LiteralExpr expr) { }
 

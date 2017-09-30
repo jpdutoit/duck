@@ -108,7 +108,6 @@ struct JsonOutput {
     field("type", "declaration.callable.parameter");
     if (decl.name)
       field("name", decl.name.toString());
-    field("type-declaration", decl.typeExpr.decl);
   }
 
   void visit(VarDecl decl) {

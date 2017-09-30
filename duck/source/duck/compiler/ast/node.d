@@ -42,7 +42,6 @@ private import std.meta : AliasSeq;
 alias NodeTypes = AliasSeq!(
   ErrorExpr,
   RefExpr,
-  TypeExpr,
   InlineDeclExpr,
   ArrayLiteralExpr,
   LiteralExpr,

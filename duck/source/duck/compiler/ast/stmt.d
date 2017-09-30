@@ -23,7 +23,13 @@ class BlockStmt : Stmt {
   this() {
   }
 
-  mixin List!Stmt;
+  void append(Decl decl) {
+    append(new DeclStmt(decl).withSource(decl));
+  }
+  
+  alias append = list.append;
+
+  mixin List!Stmt list;
 }
 
 

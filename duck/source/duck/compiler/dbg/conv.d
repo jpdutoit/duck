@@ -19,7 +19,7 @@ struct ExprToString {
 
   string annotate(string whatever, Type type) {
     if (!showTypes) return whatever;
-    if (!type) return "?".green();
+    if (!type) return "(" ~ whatever ~ ":" ~ "?".green() ~ ")";
     return "(" ~ whatever ~ ":" ~ type.describe.green() ~ ")";
   }
 
@@ -33,9 +33,6 @@ struct ExprToString {
   }
   string visit(ErrorExpr expr) {
     return "ERROR";
-  }
-  string visit(TypeExpr expr) {
-    return expr.expr.accept(this);
   }
   string visit(RefExpr expr) {
     auto name = expr.decl.name.value;

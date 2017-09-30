@@ -27,8 +27,6 @@ struct DeclSemantic {
       accept(decl.returnExpr);
     }
 
-    debug(Semantic) log("=>", decl.parameterTypes, "->", decl.returnExpr);
-
     if (decl.returnExpr) {
       if (auto metaType = decl.returnExpr.type.as!MetaType) {
         decl.type = FunctionType.create(metaType.type, TupleType.create(paramTypes));
@@ -52,8 +50,9 @@ struct DeclSemantic {
 
   Node visit(ParameterDecl decl) {
     accept(decl.typeExpr);
-    if (decl.typeExpr.hasError) { return decl.taint(); }
-    decl.type = decl.typeExpr.decl.declaredType;
+    if (auto meta = decl.typeExpr.expect!MetaType)
+      decl.type = meta.type;
+    else return decl.taint;
 
     return decl;
   }
@@ -66,8 +65,7 @@ struct DeclSemantic {
     }
 
     if (!decl.typeExpr) {
-      if (!decl.valueExpr.hasType)
-        accept(decl.valueExpr);
+      accept(decl.valueExpr);
       decl.type = decl.valueExpr.type;
       return decl;
     }
@@ -91,16 +89,20 @@ struct DeclSemantic {
       decl.typeExpr = null;
       return decl;
     }
-    else {
+    else if (auto structDecl = decl.parent.as!StructDecl) {
       expect(!decl.valueExpr, decl.valueExpr, "Unexpected value in alias declaration");
       Expr target = decl.typeExpr;
-      auto mac = new CallableDecl(decl.name, [], target, decl.parentDecl);
+      auto mac = new CallableDecl(decl.name, target, structDecl);
       mac.isMacro = true;
       // Think of a nicer solution than replacing it in decls table,
       // perhaps the decls table should only be constructed after all the fields
       // have been analyzed
-      decl.parentDecl.members.replace(decl.name, mac);
+      structDecl.members.replace(decl.name, mac);
+      structDecl.publicMembers.replace(decl.name, mac);
       return mac;
+    } else {
+      decl.typeExpr.expect!MetaType;
+      return decl.taint;
     }
   }
 
@@ -111,10 +113,9 @@ struct DeclSemantic {
   CallableDecl generateDefaultConstructor(StructDecl structDecl) {
       auto callable = new CallableDecl();
       callable.name = Slice("__ctor");
-      callable.parentDecl = structDecl;
+      callable.parent = structDecl;
       callable.isConstructor = true;
       callable.isMethod = false;
-      callable.parameterTypes = [];
       callable.callableBody = new ScopeStmt();
       return callable;
   }
@@ -122,15 +123,18 @@ struct DeclSemantic {
   Node visit(StructDecl structDecl) {
     debug(Semantic) log("=>", structDecl.name.blue);
 
-    structDecl.context = new ParameterDecl(new TypeExpr(structDecl.reference()), Slice("this"));
+    access.push(structDecl);
+    structDecl.context = new ParameterDecl(structDecl.reference(), Slice("this"));
     accept(structDecl.context);
 
     semantic.symbolTable.pushScope(new ThisScope(structDecl));
 
     import std.algorithm.iteration: filter;
-    auto defaultCtors = structDecl.constructors.as!CallableDecl.filter!(c => c.parameterTypes.length == 0);
+    auto defaultCtors = structDecl.constructors.as!CallableDecl.filter!(c => c.parameters.length == 0);
     if (!structDecl.isExternal && defaultCtors.empty) {
-      structDecl.members.define(generateDefaultConstructor(structDecl));
+      auto ctor = generateDefaultConstructor(structDecl);
+      structDecl.members.define(ctor);
+      structDecl.publicMembers.define(ctor);
     }
 
     foreach(ref decl; structDecl.fields) accept(decl);
@@ -139,6 +143,7 @@ struct DeclSemantic {
     foreach(ref decl; structDecl.constructors) accept(decl);
 
     semantic.symbolTable.popScope();
+    access.pop();
     return structDecl;
   }
 }

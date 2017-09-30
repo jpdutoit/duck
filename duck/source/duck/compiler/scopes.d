@@ -55,7 +55,7 @@ class ParameterList : Scope {
 
   final RefExpr reference(Slice identifier) {
     if (auto decl = lookup(identifier)) {
-      return new RefExpr(decl).withSource(identifier);
+      return decl.reference().withSource(identifier);
     }
     return null;
   }
@@ -113,7 +113,7 @@ class BlockScope : Scope {
 }
 
 class ThisScope : Scope {
-  Decl thisDecl;
+  ValueDecl thisDecl;
   DeclTable table;
 
   this(StructDecl structDecl) {
@@ -121,7 +121,7 @@ class ThisScope : Scope {
     this.table = structDecl.members;
   }
 
-  this(Decl thisDecl, DeclTable table) {
+  this(ValueDecl thisDecl, DeclTable table) {
     this.thisDecl = thisDecl;
     this.table = table;
   }
@@ -141,7 +141,7 @@ class ThisScope : Scope {
     if ("this" == identifier) {
       return thisDecl.reference().withSource(identifier);
     }
-    return table.reference(identifier, thisDecl);
+    return table.reference(identifier, thisDecl.reference());
   }
 }
 
@@ -220,14 +220,9 @@ class DeclTable {
   }
 
   final RefExpr reference(Slice identifier, lazy Expr context = null) {
-    if (auto decl = lookup(identifier))
-      return new RefExpr(decl, context).withSource(identifier);
-    return null;
-  }
-
-  final RefExpr reference(Slice identifier, Decl context) {
-    if (auto decl = lookup(identifier))
-      return new RefExpr(decl, new RefExpr(context, null)).withSource(identifier);
+    if (auto decl = lookup(identifier)) {
+      return decl.reference(context).withSource(identifier);
+    }
     return null;
   }
 

@@ -193,7 +193,7 @@ struct Parser {
     if (lexer.front.type == Identifier && lexer.peek(1).type == Tok!":") {
       auto identifier = lexer.consume;
       lexer.expect(Tok!":", "Expected ':'");
-      auto typeExpr = new TypeExpr(parseExpression(Precedence.Unary));
+      auto typeExpr = parseExpression(Precedence.Unary);
       return new ParameterDecl(typeExpr, identifier).withSource(sliceFrom(identifier));
     }
     return null;
@@ -223,7 +223,7 @@ struct Parser {
           ctor = null;
         }
 
-        return new InlineDeclExpr(new DeclStmt(new VarDecl(new TypeExpr(typeExpr), identifier.identifier, ctor)));
+        return new InlineDeclExpr(new DeclStmt(new VarDecl(typeExpr, identifier.identifier, ctor)));
       case Tok!"(":
         // Call parenthesis
         return parseCall(left);
@@ -242,7 +242,7 @@ struct Parser {
         if (!identifier) return null;
 
         Expr value = expect(parseExpression(prec), "Expected expression on right side of declaration opertaor");
-        return new InlineDeclExpr(new DeclStmt(new VarDecl(cast(TypeExpr)null, identifier.identifier, value)));
+        return new InlineDeclExpr(new DeclStmt(new VarDecl(cast(Expr)null, identifier.identifier, value)));
       }
       case Tok!"=":
       case Tok!"+=":
@@ -366,14 +366,12 @@ struct Parser {
         ParameterDecl decl = parseParameterDecl(callable);
         if (decl) {
           callable.parameters.add(decl);
-          callable.parameterTypes ~= decl.typeExpr;
         }
         else {
           if (!callable.isExternal) {
             context.error(lexer.front, "Expected parameter name");
           }
-          auto typeExpr = new TypeExpr(parseExpression(Precedence.Unary));
-          callable.parameterTypes ~= typeExpr;
+          auto typeExpr = parseExpression(Precedence.Unary);
           callable.parameters.add(new ParameterDecl(typeExpr, Slice()));
         }
       } while (lexer.consume(Tok!","));
@@ -406,7 +404,7 @@ struct Parser {
     CallableDecl decl = new CallableDecl();
     decl.attributes = attributes;
     decl.isMethod = true;
-    decl.parentDecl = structDecl;
+    decl.parent = structDecl;
     parseCallable(decl);
     return decl.withSource(sliceFrom(start));
   }
@@ -481,6 +479,8 @@ struct Parser {
       }
 
       structDecl.members.define(member);
+      if (member.visibility == Visibility.public_)
+        structDecl.publicMembers.define(member);
     }
 
     expect(Tok!"}", "Expected '}'");

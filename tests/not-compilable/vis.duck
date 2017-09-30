@@ -3,7 +3,7 @@ struct B {
   function b4() { }
   @private @private:
   @private b3: float;
-  function b4() { }
+  function b4() { this.b3 = 2;}
 }
 
 struct A {
@@ -35,11 +35,11 @@ a.a2.b4;
 OUTPUT:
 ---
 tests/not-compilable/vis.duck(4:12-19): Error: Duplicate visibility attribute
-tests/not-compilable/vis.duck(20:1-4): Error: Cannot access private member `b3'
-tests/not-compilable/vis.duck(26:1-7): Error: Cannot access private member `b3'
-tests/not-compilable/vis.duck(29:1-4): Error: Cannot access private member `a2'
-tests/not-compilable/vis.duck(31:1-4): Error: Cannot access private member `a2'
-tests/not-compilable/vis.duck(32:1-4): Error: Cannot access private member `a2'
+tests/not-compilable/vis.duck(20:1-4): Error: No member b3 in B
+tests/not-compilable/vis.duck(26:1-7): Error: No member b3 in B
+tests/not-compilable/vis.duck(29:1-4): Error: No member a2 in A
+tests/not-compilable/vis.duck(31:1-4): Error: No member a2 in A
+tests/not-compilable/vis.duck(32:1-4): Error: No member a2 in A
 ---
 */
 

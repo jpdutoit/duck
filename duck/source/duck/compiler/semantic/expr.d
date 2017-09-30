@@ -80,6 +80,16 @@ struct ExprSemantic {
     return "a value of type " ~ type.describe;
   }
 
+  RefExpr reference(StructType type, Slice identifier) {
+    return type.reference(identifier, null, this.accessLevel(type));
+  }
+
+  RefExpr reference(Expr context, Slice identifier) {
+    if (auto structType = context.type.as!StructType)
+      return structType.reference(identifier, context, this.accessLevel(structType));
+    return null;
+  }
+
   Expr coerce(Expr sourceExpr, Type targetType) {
     debug(Semantic) log("=> coerce", sourceExpr.type.describe.green, "to", targetType.describe.green);
     auto sourceType = sourceExpr.type;
@@ -101,7 +111,7 @@ struct ExprSemantic {
     }
     // Coerce module by automatically reference field output
     if (auto moduleType = sourceType.as!ModuleType) {
-      if (auto output = moduleType.members.reference(Slice("output"), sourceExpr)) {
+      if (auto output = reference(sourceExpr, Slice("output"))) {
         semantic(output.withSource(sourceExpr));
         return coerce(output, targetType);
       }
@@ -287,8 +297,8 @@ struct ExprSemantic {
     foreach (i, parameter; macroDecl.parameters) {
       replacements[parameter] = arguments[i];
     }
-    if (macroDecl.parentDecl)
-      replacements[macroDecl.parentDecl.context] = contextExpr;
+    if (auto structDecl = macroDecl.parent.as!StructDecl)
+      replacements[structDecl.context] = contextExpr;
 
     Expr expansion = macroDecl.returnExpr;
     if (expansion.hasError) return expansion;
@@ -300,7 +310,6 @@ struct ExprSemantic {
   }
 
   Node visit(ConstructExpr expr) {
-    if (expr.hasType) return expr;
     if (semantic(expr.callable).hasError | semantic(expr.arguments).hasError)
       return expr.taint;
 
@@ -309,7 +318,7 @@ struct ExprSemantic {
     RefExpr ctors;
     CallableDecl[] viable;
     if (auto structType = type.as!StructType) {
-      ctors = structType.decl.members.reference(Slice("__ctor"));
+      ctors = reference(structType, Slice("__ctor"));
       if (ctors) semantic(ctors);
 
       if (auto resolved = resolveCall(ctors, expr.arguments, &viable)) {
@@ -349,7 +358,7 @@ struct ExprSemantic {
           expr.taint;
         }
         else {
-          auto indexFn = t.members.reference(Slice("[]"), expr.expr);
+          auto indexFn = reference(expr.expr, Slice("[]"));
           if (auto resolved = resolveCall(indexFn, expr.arguments)) {
             Expr expr = resolved.call(expr.arguments).withSource(expr);
             return semantic(expr);
@@ -401,7 +410,6 @@ struct ExprSemantic {
         }
 
         Expr re = arrayDecl.reference();
-        re.type = t;
         return semantic(re);
       }
     );
@@ -495,29 +503,9 @@ struct ExprSemantic {
     return expr.error("Undefined identifier " ~ expr.identifier.idup);
   }
 
-  Node visit(TypeExpr expr) {
-      semantic(expr.expr);
-      debug(Semantic) log("=>", expr.expr);
-
-      if (auto re = cast(RefExpr)expr.expr) {
-        if (expr.expr.type.as!MetaType && re.decl.as!TypeDecl) {
-          expr.type = expr.expr.type;
-          expr.decl = re.decl.as!TypeDecl;
-          return expr;
-        }
-      }
-
-      if (!expr.expr.hasError) {
-        expr.decl = new TypeDecl(ErrorType.create());
-        expr.error("Expected a type");
-      }
-      return expr.taint();
-  }
-
   Node visit(RefExpr expr) {
     if (expr.context) {
       semantic(expr.context);
-      debug(Semantic) log("=>", expr);
       implicitConstructCall(expr.context);
       if (expr.context.hasError) return expr.taint;
     }
@@ -535,14 +523,8 @@ struct ExprSemantic {
 
     return expr.context.type.visit!(
       (StructType type) {
-        auto contextRef = expr.context.as!RefExpr;
-        if (auto reference = type.members.reference(expr.name, expr.context)) {
-          // Only allow private members to be accessed through the context reference
-          if (reference.decl.visibility == Visibility.private_
-          && (!contextRef || contextRef.decl != type.decl.context))
-            return expr.error("Cannot access private member `" ~ expr.name ~ "'");
+        if (auto reference = reference(expr.context, expr.name))
           return semantic(reference.withSource(expr));
-        }
         return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
       },
       (Type t) {

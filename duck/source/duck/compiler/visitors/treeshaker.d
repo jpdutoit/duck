@@ -23,7 +23,7 @@ struct TreeShaker {
     referencedDecls[decl] = true;
     decl.visit!(
       (CallableDecl decl) {
-        this.addRoot(decl.parentDecl);
+        this.addRoot(decl.parent);
         if (decl.callableBody)
           this.addRoot(decl.callableBody);
         else
@@ -31,7 +31,7 @@ struct TreeShaker {
       },
       (VarDecl decl) {
         this.addRoot(decl.valueExpr);
-        this.addRoot(decl.parentDecl);
+        this.addRoot(decl.parent);
       },
       (ParameterDecl decl) { },
       (StructDecl decl) { },

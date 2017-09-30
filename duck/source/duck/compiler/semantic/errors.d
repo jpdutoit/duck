@@ -31,6 +31,8 @@ void error(Slice token, string message) {
   context.error(token, message);
 }
 
+string typeClassDescription(T: MetaType)() { return "type"; }
+
 Expr errorResolvingConstructorCall(ConstructExpr expr, RefExpr ctors, CallableDecl[] viable) {
   if (!ctors) {
    return expr.error("No constructors found for type");

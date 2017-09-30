@@ -9,6 +9,7 @@ public import duck.compiler.buffer;
 public import duck.compiler.dbg;
 public import duck.compiler.types;
 public import duck.compiler.scopes;
+public import duck.compiler.semantic.errors;
 
 
 struct DCode {

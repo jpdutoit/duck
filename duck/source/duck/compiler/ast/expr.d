@@ -37,6 +37,14 @@ abstract class Expr : Node {
     return new MemberExpr(this, name, this.source);
   }
 
+  final T expect(T:Type)() {
+    if (auto type = this._type.as!T) {
+      return type;
+    }
+    error(this, "Expected a " ~ typeClassDescription!T);
+    return null;
+  }
+
   @property
   final bool hasError() {
     return (cast(ErrorType)this._type) !is null;
@@ -77,19 +85,6 @@ class RefExpr : Expr {
     this.decl = decl;
     this.context = context;
     this.source = source;
-  }
-}
-
-class TypeExpr : Expr {
-  mixin NodeMixin;
-
-  Expr expr;
-  TypeDecl decl;
-
-  this(Expr expr, TypeDecl decl = null) {
-    this.expr = expr;
-    this.decl = decl;
-    this.source = expr.source;
   }
 }
 

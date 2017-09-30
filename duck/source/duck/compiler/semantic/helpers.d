@@ -17,12 +17,6 @@ bool isCallable(Expr e) {
   return e.type.isCallable;
 }
 
-Expr findTarget(Expr expr) {
-  return expr.visit!(
-    (Expr expr) => cast(Expr)null,
-    (RefExpr expr) => expr.context);
-}
-
 bool isLValue(Expr expr) {
   return expr.visit!(
     (IndexExpr i) => isLValue(i.expr),

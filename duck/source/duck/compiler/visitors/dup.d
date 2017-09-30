@@ -33,8 +33,7 @@ private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
       (ConstructExpr expr) => new ConstructExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), expr.source),
       (CallExpr expr) => new CallExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), expr.source),
       (BinaryExpr expr) => new BinaryExpr(expr.operator, cloneImpl(expr.left), cloneImpl(expr.right), expr.source),
-      (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array),
-      (TypeExpr expr) => new TypeExpr(cloneImpl(expr.expr), expr.decl)
+      (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array)
     );
     copy.source = expr.source;
     copy.type = expr._type;

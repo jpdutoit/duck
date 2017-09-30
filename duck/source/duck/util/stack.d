@@ -34,5 +34,12 @@ struct Stack(T) {
     return cast(U) find!(function U(T item) => cast(U)item);
   }
 
+  T find(T needle) {
+    for(int i = cast(int)(items.length)-1; i >= 0; --i) {
+      if (items[i] is needle) return needle;
+    }
+    return T.init;
+  }
+
   alias items this;
 }

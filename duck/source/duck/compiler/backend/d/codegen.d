@@ -329,10 +329,6 @@ struct CodeGen {
     }
   }
 
-  void visit(TypeExpr expr) {
-    output.put(expr.expr);
-  }
-
   void visit(RefExpr expr) {
     auto name = name(expr.decl);
 
@@ -376,16 +372,16 @@ struct CodeGen {
 
     if (!funcDecl.isExternal) {
 
-      if (!funcDecl.parentDecl) {
+      if (!funcDecl.parent) {
         output.statement("static");
       }
 
       auto callableName = name(funcDecl);
       if (funcDecl.isConstructor) {
-        if (funcDecl.parentDecl.declaredType.isModule)
-          output.functionDecl(name(funcDecl.parentDecl) ~ "* ", callableName);
+        if (funcDecl.parent.declaredType.isModule)
+          output.functionDecl(name(funcDecl.parent) ~ "* ", callableName);
         else
-          output.functionDecl(name(funcDecl.parentDecl), callableName);
+          output.functionDecl(name(funcDecl.parent), callableName);
       }
       else if (funcDecl.returnExpr)
         output.functionDecl(funcDecl.returnExpr, callableName);
@@ -398,7 +394,7 @@ struct CodeGen {
       output.functionBody(() {
         accept(funcDecl.callableBody);
         if (funcDecl.isConstructor) {
-          if (funcDecl.parentDecl.declaredType.isModule)
+          if (funcDecl.parent.declaredType.isModule)
             output.statement("return &this;");
           else
             output.statement("return this;");
