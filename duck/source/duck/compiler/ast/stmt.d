@@ -23,10 +23,10 @@ class BlockStmt : Stmt {
   this() {
   }
 
-  void append(Decl decl) {
+  final void append(Decl decl) {
     append(new DeclStmt(decl).withSource(decl));
   }
-  
+
   alias append = list.append;
 
   mixin List!Stmt list;

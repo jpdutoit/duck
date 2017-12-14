@@ -21,19 +21,19 @@ abstract class Expr : Node {
     return .toString(this);
   }
 
-  CallExpr call(Expr[] arguments = []) {
+  final CallExpr call(Expr[] arguments = []) {
     return new CallExpr(this, arguments, this.source);
   }
 
-  CallExpr call(TupleExpr arguments) {
+  final CallExpr call(TupleExpr arguments) {
     return new CallExpr(this, arguments, this.source);
   }
 
-  MemberExpr member(Slice name) {
+  final MemberExpr member(Slice name) {
     return new MemberExpr(this, name, this.source + name);
   }
 
-  MemberExpr member(string name) {
+  final MemberExpr member(string name) {
     return new MemberExpr(this, name, this.source);
   }
 

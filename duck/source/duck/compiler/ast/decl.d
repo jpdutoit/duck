@@ -126,7 +126,7 @@ class OverloadSet : ValueDecl {
   CallableDecl[] decls;
 
   alias decls this;
-  void add(CallableDecl decl) {
+  final void add(CallableDecl decl) {
     decls ~= decl;
   }
 
@@ -139,9 +139,9 @@ class CallableDecl : ValueDecl {
   mixin NodeMixin;
 
   @property
-  FunctionType type() { return cast(FunctionType)super.type; }
+  final FunctionType type() { return cast(FunctionType)super.type; }
   @property
-  void type(FunctionType type) { super.type = type; }
+  final void type(FunctionType type) { super.type = type; }
 
   union {
     uint flags;
@@ -166,11 +166,11 @@ class CallableDecl : ValueDecl {
 
   Expr returnExpr;
 
-  CallExpr call(Expr[] arguments = []) {
+  final CallExpr call(Expr[] arguments = []) {
     return this.reference().call(arguments);
   }
 
-  CallExpr call(TupleExpr arguments) {
+  final CallExpr call(TupleExpr arguments) {
     return this.reference().call(arguments);
   }
 
@@ -197,7 +197,7 @@ class CallableDecl : ValueDecl {
 class TypeDecl : Decl {
   mixin NodeMixin;
 
-  Type declaredType() { return this.type.as!MetaType.type; }
+  final Type declaredType() { return this.type.as!MetaType.type; }
 
   @property
   override bool hasError() {
@@ -244,11 +244,11 @@ class StructDecl : TypeDecl {
   DeclTable publicMembers;
   ValueDecl context;
 
-  auto fields() { return members.fields; }
-  auto constructors() { return members.constructors; }
-  auto methods() { return members.methods; }
-  auto macros() { return members.macros; }
-  auto all() { return members.all; }
+  final auto fields() { return members.fields; }
+  final auto constructors() { return members.constructors; }
+  final auto methods() { return members.methods; }
+  final auto macros() { return members.macros; }
+  final auto all() { return members.all; }
 
   this(Type type, Slice name) {
     super(type, name);
