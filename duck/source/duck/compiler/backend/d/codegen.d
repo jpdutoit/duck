@@ -102,6 +102,7 @@ struct CodeGen {
   string name(Decl decl) {
     return decl.visit!(
       (ParameterDecl d) => d.name,
+      (BuiltinVarDecl d) => d.name,
       (VarDecl d) => d.isExternal ? d.name : context.uniqueName(d),
       (FieldDecl d) => d.name, //d.parentDecl.external ? d.name : context.uniqueName(d),
       (CallableDecl d) {

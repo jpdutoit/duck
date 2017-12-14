@@ -153,16 +153,16 @@ struct JsonOutput {
   void visit(LiteralExpr expr) {
     if (expr.type.as!FloatType) {
         field("type", "expression.literal.float");
-        field("value", expr.value.toString());
+        field("value", expr.value);
     } else if (expr.type.as!IntegerType) {
         field("type", "expression.literal.int");
-        field("value", expr.value.toString());
+        field("value", expr.value);
     } else if (expr.type.as!StringType) {
         field("type", "expression.literal.string");
-        field("value", expr.value.toString()[1..$-1]);
+        field("value", expr.value[1..$-1]);
     } else {
       field("type", "expression.literal.error");
-      field("value", expr.value.toString());
+      field("value", expr.value);
     }
   }
 

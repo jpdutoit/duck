@@ -397,7 +397,7 @@ struct ExprSemantic {
           }
           import std.conv: to;
           auto size = expr.arguments[0].visit!(
-              (LiteralExpr literal) => literal.value.toString().to!uint,
+              (LiteralExpr literal) => literal.value.to!uint,
               (Expr e) {
                 expr.arguments.error("Expected a number for array size.");
                 expr.taint;
@@ -526,6 +526,25 @@ struct ExprSemantic {
         if (auto reference = reference(expr.context, expr.name))
           return semantic(reference.withSource(expr));
         return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
+      },
+      (ArrayType type) {
+        if (expr.name == "size") {
+          auto reference = new RefExpr(context.library.arraySizeDecl, expr.context);
+          return semantic(reference.withSource(expr));
+        }
+        expr.error("No member '" ~ expr.name ~ "' in " ~ expr.context.type.mangled());
+        return expr.taint.as!Expr;
+      },
+      (StaticArrayType type) {
+        if (expr.name == "size") {
+          // TODO: Is is awkward to have to convert a number to string just to
+          // represent it as a literal expression, probably makes sense to store
+          // the number it natively.
+          import std.conv: to;
+          return semantic(new LiteralExpr(Number, type.size.to!string).withSource(expr));
+        }
+        expr.error("No member '" ~ expr.name ~ "' in " ~ expr.context.type.mangled());
+        return expr.taint.as!Expr;
       },
       (Type t) {
         expr.context.error("Cannot access members of " ~ expr.context.type.mangled());

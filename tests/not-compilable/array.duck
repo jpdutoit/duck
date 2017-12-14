@@ -1,0 +1,31 @@
+
+module M {}
+
+a: float[];
+b: float[3];
+c: float;
+d: M;
+
+a.something;
+a.size;
+b.something;
+b.size;
+c.size;
+d.size;
+
+e: int = a.size;
+e = b.size;
+f: string = a.size;
+f = b.size;
+
+/*
+OUTPUT:
+---
+tests/not-compilable/array.duck(9:1-11): Error: No member 'something' in float[]
+tests/not-compilable/array.duck(11:1-11): Error: No member 'something' in float[3]
+tests/not-compilable/array.duck(13:1): Error: Cannot access members of float
+tests/not-compilable/array.duck(14:1-6): Error: No member size in M
+tests/not-compilable/array.duck(18:13-18): Error: Cannot coerce a value of type int to a value of type string
+tests/not-compilable/array.duck(19:5-10): Error: Cannot coerce a value of type int to a value of type string
+---
+*/

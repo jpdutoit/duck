@@ -34,6 +34,8 @@ class Library : Decl {
   ImportScope imports;
   FileScope globals;
 
+  BuiltinVarDecl arraySizeDecl;
+
   Decl[] exports;
 
   this(BlockStmt stmts) {
@@ -41,6 +43,7 @@ class Library : Decl {
     this.imports = new ImportScope();
     this.stmts = stmts;
     this.globals = new FileScope();
+    this.arraySizeDecl = new BuiltinVarDecl(IntegerType.create, "length");
   }
 
   static Library builtins() {
@@ -92,6 +95,17 @@ class FieldDecl : VarDecl {
     this.typeExpr = typeExpr;
     this.valueExpr = valueExpr;
     this.parent = parent;
+  }
+}
+
+class BuiltinVarDecl : VarDecl {
+  mixin NodeMixin;
+
+  string name;
+
+  this(Type type, string name) {
+    this.name = name;
+    super(type, Slice());
   }
 }
 

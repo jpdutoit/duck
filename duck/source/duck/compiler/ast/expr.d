@@ -91,18 +91,22 @@ class RefExpr : Expr {
 class LiteralExpr : Expr {
   mixin NodeMixin;
 
-  Slice value;
+  string value;
 
   this(Token token) {
-    this.source = token;
-    this.value = token;
-    switch (token.type) {
+    this.source = token.slice;
+    this(token.type, token.value);
+  }
+
+  this(Token.Type literalType, string value) {
+    this.value = value;
+    switch (literalType) {
       case BoolLiteral:
         this.type = BoolType.create;
         break;
       case Number:
         import std.string: indexOf;
-        if (token.slice.indexOf(".") >= 0)
+        if (value.indexOf(".") >= 0)
           this.type = FloatType.create;
         else
           this.type = IntegerType.create;
