@@ -16,6 +16,7 @@ struct Cost {
   static Cost infinity() { return Cost(int.max); }
   static Cost zero() { return Cost(0); }
   static Cost intToFloat() { return Cost(1); }
+  static Cost staticArrayToDynamic() { return Cost(2); }
   static Cost implicitCall() { return Cost(100); }
   static Cost implicitOutput() { return Cost(10000); }
   static Cost implicitConstruct() { return Cost(10000); }
@@ -66,6 +67,14 @@ Cost coercionCost(Type type, Type target) {
   if (type.as!IntegerType && target.as!FloatType) {
     return Cost.intToFloat;
   }
+
+  // Coerce static array by automatically converting it to dynamic arrayDecl
+  if (auto sourceArray = type.as!StaticArrayType)
+  if (auto targetArray = target.as!ArrayType)
+  if (sourceArray.elementType.isSameType(targetArray.elementType)) {
+    return Cost.staticArrayToDynamic;
+  }
+
   return Cost.infinity;
 }
 

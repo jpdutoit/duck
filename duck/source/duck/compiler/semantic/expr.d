@@ -131,6 +131,15 @@ struct ExprSemantic {
       return coerce(castExpr, targetType);
     }
 
+    // Coerce static array to dynamic array
+    if (auto sourceArray = sourceExpr.type.as!StaticArrayType)
+    if (auto targetArray = targetType.as!ArrayType)
+    if (sourceArray.elementType.isSameType(targetArray.elementType)) {
+      auto castExpr = new CastExpr(sourceExpr, targetType);
+      semantic(castExpr);
+      return coerce(castExpr, targetType);
+    }
+
     if (targetType.hasError || sourceType.hasError) return sourceExpr.taint;
     return sourceExpr.error("Cannot coerce " ~ describe(sourceType) ~ " to " ~ describe(targetType));
   }
@@ -192,7 +201,7 @@ struct ExprSemantic {
         e = coerce(e, elementType);
       }
     }
-    expr.type = ArrayType.create(expr.exprs[0].type);
+    expr.type = StaticArrayType.create(expr.exprs[0].type, cast(uint)expr.exprs.length);
     return expr;
   }
 
@@ -246,6 +255,14 @@ struct ExprSemantic {
     if (expr.sourceType.as!IntegerType || expr.sourceType.as!FloatType || expr.sourceType.as!BoolType) {
       if (expr.targetType.as!IntegerType || expr.targetType.as!FloatType || expr.targetType.as!BoolType) {
         return expr;
+      }
+    }
+
+    if (auto source = expr.sourceType.as!StaticArrayType) {
+      if (auto target = expr.targetType.as!ArrayType) {
+        if (source.elementType == target.elementType) {
+          return expr;
+        }
       }
     }
 
