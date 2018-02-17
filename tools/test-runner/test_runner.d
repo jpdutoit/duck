@@ -96,15 +96,15 @@ auto findFiles(string where) {
   return files;
 }
 
-auto advance(string s, ref int index, int howMuch) {
+auto advance(string[] s, ref int index, int howMuch) {
   import std.uni;
   int start = index;
   for (int i = 0; i < howMuch; ++i) {
-    index += graphemeStride(s, index);
+    index += 1;
   }
   return s[start..index];
 }
-void compare(string output, string expected) {
+void compare(string[] output, string[] expected) {
   import std.algorithm.comparison;
   import std.uni;
   import std.array;
@@ -122,39 +122,39 @@ void compare(string output, string expected) {
     final switch(current) {
       case EditOp.none:
         write("\033[0;30m");
-        write(output.advance(o, length));
+        write(output.advance(o, length).join("\n"));
         expected.advance(e, length);
-        write("\033[0m");
+        writeln("\033[0m");
         break;
       case EditOp.substitute:
         write("\033[0;34m");
-        write(expected.advance(e, length));
-        write("\033[0;31m");
-        write(output.advance(o, length));
-        write("\033[0m");
+        write(expected.advance(e, length).join("\n"));
+        writeln("\033[0;31m");
+        write(output.advance(o, length).join("\n"));
+        writeln("\033[0m");
         break;
       case EditOp.insert:
         write("\033[0;34m");
-        write(expected.advance(e, length));
-        write("\033[0m");
+        write(expected.advance(e, length).join("\n"));
+        writeln("\033[0m");
         break;
       case EditOp.remove:
         write("\033[0;31m");
-        write(output.advance(o, length));
-        write("\033[0m");
+        write(output.advance(o, length).join("\n"));
+        writeln("\033[0m");
         break;
     }
   }
 }
 
 void compareOutput(string output, string expected) {
-  /*
+
   if (output != expected) {
     writeln("Output not as expected: (blue missing, red unexpected)");
-  compare(output, expected);
+    compare(output.split("\n"), expected.split("\n"));
   }
-  return;*/
-  if (expected) {
+  return;
+  /*if (expected) {
     writeln("Expected output:");
     write("\033[0;33m");
     write(expected);
@@ -171,7 +171,7 @@ void compareOutput(string output, string expected) {
     write("\033[0;33m");
     write(output);
     write("\033[0m");
-  }
+  }*/
   //writefln("\033[0;9mstrikethrough\033[0m");
 }
 
