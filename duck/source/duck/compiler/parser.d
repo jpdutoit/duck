@@ -299,6 +299,7 @@ struct Parser {
   }
 
   Decl parseField(StructDecl structDecl, DeclAttr attributes) {
+    auto start = lexer.front;
     if (lexer.front.type == Identifier && lexer.peek(1).type == Tok!":") {
       auto identifier = lexer.consume;
       lexer.expect(Tok!":", "Expected ':'");
@@ -312,7 +313,7 @@ struct Parser {
       else
         decl = new FieldDecl(typeExpr, identifier, null, structDecl);
       decl.attributes = attributes;
-      return decl;
+      return decl.withSource(sliceFrom(start));
     }
     return null;
   }
