@@ -2,6 +2,7 @@ module AA {}
 module AA {}
 aa: float;
 aa: float;
+aa = 2;
 /*
 OUTPUT:
 ---

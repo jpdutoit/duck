@@ -2,7 +2,7 @@ module duck.compiler.ast.expr;
 
 import duck.compiler;
 
-abstract class Expr : Node {
+abstract class Expr : Node, LookupContext {
   Type _type;
 
   @property
@@ -53,6 +53,10 @@ abstract class Expr : Node {
   @property
   final bool hasType() {
     return this._type !is null;
+  }
+
+  final Expr createMemberReference(Decl member) {
+    return new RefExpr(member, this);
   }
 }
 

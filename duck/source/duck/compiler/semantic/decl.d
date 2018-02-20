@@ -29,14 +29,14 @@ struct DeclSemantic {
 
     if (decl.returnExpr) {
       if (auto metaType = decl.returnExpr.type.as!MetaType) {
-        decl.type = FunctionType.create(metaType.type, TupleType.create(paramTypes));
+        decl.type = FunctionType.create(metaType.type, TupleType.create(paramTypes), decl);
       } else {
         expect(!decl.callableBody, decl.returnExpr, "Cannot specify a function body along with an inline return expression");
         decl.isMacro = true;
         decl.type = MacroType.create(decl.returnExpr.type, TupleType.create(paramTypes), decl);
       }
     } else {
-      decl.type = FunctionType.create(VoidType.create, TupleType.create(paramTypes));
+      decl.type = FunctionType.create(VoidType.create, TupleType.create(paramTypes), decl);
     }
 
     if (decl.callableBody) {
@@ -97,8 +97,8 @@ struct DeclSemantic {
       // Think of a nicer solution than replacing it in decls table,
       // perhaps the decls table should only be constructed after all the fields
       // have been analyzed
-      structDecl.members.replace(decl.name, mac);
-      structDecl.publicMembers.replace(decl.name, mac);
+      structDecl.members.replace(decl, mac);
+      structDecl.publicMembers.replace(decl, mac);
       return mac;
     } else {
       decl.typeExpr.expect!MetaType;
@@ -124,7 +124,7 @@ struct DeclSemantic {
     debug(Semantic) log("=>", structDecl.name.blue);
 
     access.push(structDecl);
-    structDecl.context = new ParameterDecl(structDecl.reference(), Slice("this"));
+    structDecl.context = new ParameterDecl(structDecl.reference(null), Slice("this"));
     accept(structDecl.context);
 
     semantic.symbolTable.pushScope(new ThisScope(structDecl));

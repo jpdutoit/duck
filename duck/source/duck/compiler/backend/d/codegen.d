@@ -453,8 +453,8 @@ struct CodeGen {
                   output.statement("if (", name(field), "__dg) ", name(field), "__dg();");
                 }
               }
-              if (auto os = moduleDecl.members.lookup("tick").as!OverloadSet) {
-                output.statement(name(os.decls[0]), "();");
+              if (auto os = moduleDecl.members.lookup("tick")) {
+                if (os.length > 0) output.statement(name(os[0]), "();");
               }
             });
           }

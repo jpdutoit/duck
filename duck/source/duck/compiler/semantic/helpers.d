@@ -2,12 +2,18 @@ module duck.compiler.semantic.helpers;
 
 import duck.compiler;
 import duck.compiler.visitors;
+import duck.compiler.scopes;
 
 import std.stdio;
+import std.range;
+public import std.range.primitives;
+import std.algorithm.iteration;
+
+enum isDeclRange(R) = (isInputRange!R && is(ElementType!R: Decl));
 
 bool isCallable(Type type) {
   return type.visit!(
-    (OverloadSetType o) => true,
+    (UnresolvedType o) => o.lookup.filtered!(isCallable).count == o.lookup.count,
     (FunctionType o) => true,
     (Type t) => false
   );
@@ -15,6 +21,54 @@ bool isCallable(Type type) {
 
 bool isCallable(Expr e) {
   return e.type.isCallable;
+}
+
+bool isValueLike(Decl d) {
+  return d.type.visit!(
+    (FunctionType t) => t.parameterTypes.length == 0,
+    (MetaType t) => false,
+    (Type t) => true
+  );
+}
+
+bool isValue(Decl d) {
+  return d.type.visit!(
+    (FunctionType t) => false,
+    (MetaType t) => false,
+    (Type t) => true
+  );
+}
+
+import std.meta: staticMap;
+
+
+bool isCallable(Decl decl) { return decl.as!CallableDecl !is null; }
+struct CallableRecognizer(flags...) {
+  int parameters;
+
+  this(int parameters) {
+    this.parameters = parameters;
+  }
+
+  bool opCall(Decl decl) {
+    if (auto callable = decl.as!CallableDecl) {
+      if (parameters >= 0 && callable.parameters.length != parameters)
+        return false;
+      static foreach(flag; flags) {
+        if (!mixin("callable." ~ flag)) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+}
+
+auto isConstructor(int parameters = -1) {
+  return CallableRecognizer!"isConstructor"(parameters);
+}
+
+auto isCallable(int parameters) {
+  return CallableRecognizer!()(parameters);
 }
 
 bool isLValue(Expr expr) {
@@ -45,11 +99,6 @@ bool isPipeTarget(Expr expr) {
 
 Type getResultType(Decl decl, int line = __LINE__, string file = __FILE__) {
   return decl.visit!(
-    (OverloadSet os) {
-      if (os.decls.length == 1)
-        return os.decls[0].getResultType(line, file);
-      return ErrorType.create();
-    },
     (FieldDecl fd) => fd.type,
     (CallableDecl cd) => cd.type.returnType
   );

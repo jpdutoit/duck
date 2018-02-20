@@ -7,6 +7,9 @@ import duck.compiler.semantic.overloads;
 import duck.compiler.semantic.errors;
 import duck.compiler.visitors;
 
+//import std.conv: to;
+import std.format: format;
+
 struct ExprSemantic {
   SemanticAnalysis *semanticAnalysis;
   int pipeDepth = 0;
@@ -30,15 +33,25 @@ struct ExprSemantic {
   }
 
   bool implicitCall(ref Expr expr) {
-    if (auto r = expr.as!RefExpr)
-    if (r.isCallable) {
-      if (auto callable = resolveCall(r, [])) {
-        expr = callable.call().withSource(r);
-        semantic(expr);
-        return true;
-      }
-    }
-    return false;
+    return expr.type.visit!(
+      (FunctionType type) {
+        if (auto callable = resolveCall(expr, type.decl, [])) {
+          expr = expr.call().withSource(expr);
+          semantic(expr);
+          return true;
+        }
+        return false;
+      },
+      (UnresolvedType type) {
+        if (auto callable = resolveCall(expr, type.lookup, [])) {
+          expr = callable.reference().call().withSource(expr);
+          semantic(expr);
+          return true;
+        }
+        return false;
+      },
+      (Type type) => false
+    );
   }
 
   void implicitConstruct(ref Expr expr) {
@@ -80,21 +93,27 @@ struct ExprSemantic {
     return "a value of type " ~ type.describe;
   }
 
-  RefExpr reference(StructType type, Slice identifier) {
-    return type.reference(identifier, null, this.accessLevel(type));
-  }
-
-  RefExpr reference(Expr context, Slice identifier) {
-    if (auto structType = context.type.as!StructType)
-      return structType.reference(identifier, context, this.accessLevel(structType));
-    return null;
-  }
-
   Expr coerce(Expr sourceExpr, Type targetType) {
     debug(Semantic) log("=> coerce", sourceExpr.type.describe.green, "to", targetType.describe.green);
     auto sourceType = sourceExpr.type;
 
     if (sourceExpr.hasError || sourceType.isSameType(targetType)) return sourceExpr;
+
+    // Coerce tuple
+    if (auto sourceTuple = sourceExpr.as!TupleExpr)
+      if (auto targetTypeTuple = targetType.as!TupleType)
+        if (sourceTuple.length == targetTypeTuple.length) {
+          Expr[] output;
+          output.length = sourceTuple.length;
+
+          bool error = false;
+          foreach(i, parameter; sourceTuple) {
+            output[i] = coerce(parameter, targetTypeTuple[i]);
+            error |= output[i].hasError;
+          }
+          if (error) return sourceTuple.taint;
+          return new TupleExpr(output, targetTypeTuple);
+        }
 
     // Coerce an overload set by automatically calling it
     if (sourceType.isCallable) {
@@ -111,9 +130,8 @@ struct ExprSemantic {
     }
     // Coerce module by automatically reference field output
     if (auto moduleType = sourceType.as!ModuleType) {
-      if (auto output = reference(sourceExpr, Slice("output"))) {
-        semantic(output.withSource(sourceExpr));
-        return coerce(output, targetType);
+      if (auto resolved = sourceExpr.lookup!isValueLike("output").resolve()) {
+        return coerce(semantic(resolved.withSource(sourceExpr)), targetType);
       }
     }
 
@@ -144,36 +162,15 @@ struct ExprSemantic {
     return sourceExpr.error("Cannot coerce " ~ describe(sourceType) ~ " to " ~ describe(targetType));
   }
 
-  TupleExpr coerce(TupleExpr sourceExpr, TupleType parameterTypes) {
-    Expr[] output;
-    output.length = sourceExpr.length;
-
-    bool error = false;
-    foreach(i, parameter; sourceExpr) {
-      output[i] = coerce(parameter, parameterTypes[i]);
-      error |= output[i].hasError;
-    }
-    if (error) return sourceExpr.taint;
-    return new TupleExpr(output, parameterTypes);
+  auto resolveCall(Expr call, Decl decl, Expr[] arguments, CallableDecl[]* viable = null) {
+    Decl[1] decls = [decl];
+    return findBestOverload(decls[], arguments, viable);
   }
 
-  RefExpr resolveCall(RefExpr reference, Expr[] arguments, CallableDecl[]* viable = null) {
-    auto args = new TupleExpr(arguments);
-    semantic(args);
-    return resolveCall(reference, args, viable);
-  }
-
-  RefExpr resolveCall(RefExpr reference, TupleExpr arguments, CallableDecl[]* viable = null) {
-    if (reference)
-    if (auto overloadSet = reference.decl.as!OverloadSet) {
-      auto best = findBestOverload(overloadSet, arguments, viable);
-      if (best) {
-        auto expr = best.reference().withSource(reference);
-        expr.context = reference.context;
-        return expr;
-      }
-    }
-    return null;
+  auto resolveCall(R)(Expr call, R decls, Expr[] arguments, CallableDecl[]* viable = null)
+    if (isInputRange!R && is(ElementType!R: Decl))
+  {
+    return findBestOverload(decls, arguments, viable);
   }
 
   Node visit(ErrorExpr expr) {
@@ -186,9 +183,7 @@ struct ExprSemantic {
     expr.declStmt.withSource(expr.source).insertBefore(this.stack.find!Stmt);
     debug(Semantic) log("=> Split", expr.declStmt);
 
-    return semantic(expr.declStmt.decl.reference().withSource(expr.source));
-    //Expr identExpr = new IdentifierExpr(expr).withSource(expr);
-    //return semantic(identExpr);
+    return semantic(expr.declStmt.decl.reference(null).withSource(expr.source));
   }
 
   Node visit(ArrayLiteralExpr expr) {
@@ -273,24 +268,64 @@ struct ExprSemantic {
   }
 
   Node visit(UnaryExpr expr) {
-    if (semantic(expr.operand).hasError)
+    semantic(expr.operand);
+    if (resolveValue(expr.operand).hasError)
       return expr.taint;
 
-    if (auto callable = resolveCall(symbolTable.reference(expr.operator), expr.arguments))
-      return semantic(callable.call(expr.arguments).withSource(expr));
+    CallableDecl[] viable;
+    foreach (stage; symbolTable.stagedLookup(expr.operator)) {
+      if (auto best = resolveCall(expr, stage, expr.arguments, &viable)) {
+        return semantic(best.reference().call(expr.arguments).withSource(expr));
+      }
+      if (viable.length > 0) {
+        return error(expr, "Multiple overloads match arguments:", viable);
+      }
+    }
 
     return expr.operand.error("Operation " ~ expr.operator.value.idup ~ " " ~ mangled(expr.operand.type) ~ " is not defined.");
   }
 
   Node visit(BinaryExpr expr) {
-    if (semantic(expr.left).hasError | semantic(expr.right).hasError)
+    semantic(expr.left);
+    semantic(expr.right);
+    if (resolveValue(expr.left).hasError | resolveValue(expr.right).hasError)
       return expr.taint;
 
-    if (auto callable = resolveCall(symbolTable.reference(expr.operator), expr.arguments))
-      return semantic(callable.call(expr.arguments).withSource(expr));
+    CallableDecl[] viable;
+
+    foreach (stage; symbolTable.stagedLookup(expr.operator)) {
+      if (auto best = resolveCall(expr, stage, expr.arguments, &viable)) {
+        return semantic(best.reference().call(expr.arguments).withSource(expr));
+      }
+      if (viable.length > 0) {
+        return error(expr, "Multiple overloads match arguments:", viable);
+      }
+    }
 
     error(expr.operator, "Operation " ~ mangled(expr.left.type) ~ " " ~ expr.operator.value.idup ~ " " ~ mangled(expr.right.type) ~ " is not defined.");
     return expr.taint;
+  }
+
+  auto ref Expr resolveValue()(auto ref Expr expr) {
+    auto orType = expr.type.as!UnresolvedType;
+    if (!orType) return expr;
+
+    // If it contains a simple value, use that
+    if (auto properties = orType.lookup.filtered!isValue) {
+      if (auto property = properties.resolve) {
+        return expr = semantic(property.withSource(expr));
+      }
+      return expr.error("Ambiguous value:", properties);
+    }
+    // If it contains a property accessor, call and use it
+    if (auto properties = orType.lookup.filtered!(isCallable(0))) {
+      if (auto property = properties.resolve) {
+        return expr = semantic(property.call().withSource(expr));
+      }
+      return expr.error("Ambiguous value:", properties);
+    }
+
+    return expr;
   }
 
   Node visit(TupleExpr expr) {
@@ -298,8 +333,10 @@ struct ExprSemantic {
     Type[] elementTypes = [];
     elementTypes.length = expr.length;
     foreach (i, ref Expr e; expr) {
-      if (semantic(e).hasError)
+      resolveValue(semantic(e));
+      if (e.hasError)
         tupleError = true;
+
       elementTypes[i] = e.type;
     }
     if (tupleError) return expr.taint;
@@ -329,19 +366,14 @@ struct ExprSemantic {
   Node visit(ConstructExpr expr) {
     if (semantic(expr.callable).hasError | semantic(expr.arguments).hasError)
       return expr.taint;
-
     auto type = expr.callable.type.enforce!MetaType.type;
-
-    RefExpr ctors;
+    auto ctors = expr.callable.lookup!(isConstructor())(Slice("__ctor"));
     CallableDecl[] viable;
-    if (auto structType = type.as!StructType) {
-      ctors = reference(structType, Slice("__ctor"));
-      if (ctors) semantic(ctors);
-
-      if (auto resolved = resolveCall(ctors, expr.arguments, &viable)) {
-        expr.callable = resolved;
+    if (ctors) {
+      if (auto resolved = resolveCall(expr, ctors, expr.arguments, &viable)) {
+        expr.callable = resolved.declaration.reference(null);
         semantic(expr.callable);
-        expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameters);
+        expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameterTypes).as!TupleExpr;
         expr.type = type;
         return expr;
       }
@@ -358,7 +390,7 @@ struct ExprSemantic {
       return semantic(castExpr);
     }
 
-    return expr.errorResolvingConstructorCall(ctors, viable);
+    return expr.errorResolvingConstructorCall(ctors.decls, viable);
   }
 
   Node visit(IndexExpr expr) {
@@ -375,15 +407,14 @@ struct ExprSemantic {
           expr.taint;
         }
         else {
-          auto indexFn = reference(expr.expr, Slice("[]"));
-          if (auto resolved = resolveCall(indexFn, expr.arguments)) {
-            Expr expr = resolved.call(expr.arguments).withSource(expr);
-            return semantic(expr);
+          if (auto lookup = expr.expr.lookup("[]")) {
+            if (auto resolved = resolveCall(expr, lookup, expr.arguments)) {
+              Expr expr = resolved.reference().call(expr.arguments).withSource(expr);
+              return semantic(expr);
+            }
           }
         }
-        if (!expr.hasError)
-          expr.error("Cannot index type " ~ mangled(expr.expr.type) ~ " with " ~ mangled(expr.arguments.type) ~ ".");
-        return expr;
+        return expr.error("Cannot index type " ~ mangled(expr.expr.type) ~ " with " ~ mangled(expr.arguments.type) ~ ".");
       },
       (StaticArrayType t) {
         if (expr.arguments.length != 1) {
@@ -426,7 +457,7 @@ struct ExprSemantic {
           arrayDecl = new ArrayDecl(t.type, size);
         }
 
-        Expr re = arrayDecl.reference();
+        Expr re = arrayDecl.reference(null);
         return semantic(re);
       }
     );
@@ -440,49 +471,31 @@ struct ExprSemantic {
     pipeDepth--;
     debug(Semantic) log("=>", expr);
 
-
     if (expr.callable.hasError || expr.arguments.hasError)
       return expr.taint;
 
     Node resolve(CallExpr expr) {
       return expr.callable.type.visit!(
-        (MacroType type) {
-          expr.arguments = coerce(expr.arguments, type.parameters);
-          expr.type = type.returnType;
-          auto callable = expr.callable.enforce!RefExpr;
-          return expandMacro(type.decl, expr.arguments, callable.context).withSource(expr);
-        },
         (FunctionType ft) {
-          expr.arguments = coerce(expr.arguments, ft.parameters);
+          if (!resolveCall(expr, [ft.decl], expr.arguments)) {
+            return expr.error("Function does not match arguments:", [ft.decl]);
+          }
+          expr.arguments = coerce(expr.arguments, ft.parameterTypes).as!TupleExpr;
           expr.type = ft.returnType;
+          if (ft.as!MacroType) {
+            auto callable = expr.callable.enforce!RefExpr;
+            return expandMacro(ft.decl, expr.arguments, callable.context).withSource(expr);
+          }
           return expr;
         },
-        (OverloadSetType ot) {
+        (UnresolvedType ot) {
           CallableDecl[] viable = [];
-          auto overloadSet = expr.callable.enforce!RefExpr;
-          auto resolved = resolveCall(overloadSet, expr.arguments, &viable);
+          auto resolved = resolveCall(expr, ot.lookup, expr.arguments, &viable);
           if (resolved) {
-            expr.callable = semantic(resolved);
+            expr.callable = semantic(resolved.reference()).withSource(expr.callable);
             return resolve(expr);
           }
-          else {
-            CallableDecl[] candidates;
-            if (viable.length == 0) {
-              if (ot.overloadSet.decls.length > 1)
-                error(expr, "No function matches arguments:");
-              else
-                error(expr, "Function does not match arguments:");
-              candidates = ot.overloadSet.decls;
-            }
-            else {
-              error(expr, "Multiple functions matches arguments:");
-              candidates = viable;
-            }
-            foreach(CallableDecl callable; candidates) {
-              info(callable.headerSource, "  " ~ callable.headerSource);
-            }
-            return expr.taint;
-          }
+          return expr.errorResolvingCall(ot.lookup, viable);
         },
         (MetaType tt) {
           Expr expr = new ConstructExpr(expr.callable, expr.arguments, expr.source);
@@ -500,7 +513,8 @@ struct ExprSemantic {
     semantic(expr.left);
     implicitCall(expr.left);
     semantic(expr.right);
-    implicitCall(expr.right);
+    implicitCall(expr.left);
+    resolveValue(expr.right);
 
     if (!expr.left.hasError && !expr.right.hasError)
       expr.right = coerce(expr.right, expr.left.type);
@@ -513,10 +527,14 @@ struct ExprSemantic {
   }
 
   Node visit(IdentifierExpr expr) {
-    if (RefExpr reference = symbolTable.reference(expr.identifier)) {
-      return semantic(reference);
-    }
+    foreach (stage; symbolTable.stagedLookup(expr.identifier)) {
+      if (auto resolved = stage.resolve) {
+        return semantic(resolved.withSource(expr));
+      }
 
+      expr.type = UnresolvedType.create(stage);
+      return expr;
+    }
     return expr.error("Undefined identifier " ~ expr.identifier.idup);
   }
 
@@ -540,9 +558,15 @@ struct ExprSemantic {
 
     return expr.context.type.visit!(
       (StructType type) {
-        if (auto reference = reference(expr.context, expr.name))
-          return semantic(reference.withSource(expr));
+        if (auto lookup = expr.context.lookup(expr.name, this.accessLevel(type))) {
+          if (auto resolved = lookup.resolve())
+            return semantic(resolved.withSource(expr));
+
+          expr.type = UnresolvedType.create(lookup);
+          return expr;
+        }
         return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
+
       },
       (ArrayType type) {
         if (expr.name == "size") {

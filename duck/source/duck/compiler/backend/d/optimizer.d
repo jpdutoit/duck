@@ -17,8 +17,9 @@ class Optimizer {
   }
 
   CallableDecl hasTick(ModuleDecl mod) {
-    if (auto os = mod.members.lookup("tick").as!OverloadSet) {
-      return os.decls[0];
+    if (auto os = mod.members.lookup("tick")) {
+      if (os.length > 0)
+        return os[0].as!CallableDecl;
     }
     return null;
   }

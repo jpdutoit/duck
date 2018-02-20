@@ -7,9 +7,9 @@ private import std.typetuple: staticIndexOf;
 private import std.conv;
 
 alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int", "bool");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, MacroType, TupleType, OverloadSetType, StaticArrayType, MetaType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, MacroType, TupleType, StaticArrayType, MetaType, UnresolvedType);
 
-alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, MacroType, ArrayType, OverloadSetType, StaticArrayType);
+alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, MacroType, ArrayType, StaticArrayType, UnresolvedType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -106,15 +106,6 @@ class StructType : Type {
   string name;
   StructDecl decl;
   auto members() { return decl.members; }
-
-  RefExpr reference(Slice identifier, lazy Expr context = null, Visibility access = Visibility.public_) {
-    final switch (access) {
-      case Visibility.public_:
-        return decl.publicMembers.reference(identifier, context);
-      case Visibility.private_:
-        return decl.members.reference(identifier, context);
-    }
-  }
 
   override string describe() const {
     return cast(immutable)name;
@@ -229,38 +220,50 @@ class MetaType : Type {
   }
 }
 
-class OverloadSetType : Type {
+class UnresolvedType: Type {
   mixin TypeMixin;
 
-  static auto create(OverloadSet set) {
-    auto o = new OverloadSetType();
-    o.overloadSet = set;
-    return o;
+  Lookup!(Decl[]) lookup;
+
+  static auto create(D)(Lookup!D lookup) {
+    auto t = new UnresolvedType();
+    t.lookup = lookup;
+    return t;
   }
 
   override string describe() const {
-    return "overloads";
+    auto s = "(";
+    foreach (i, decl; lookup.decls) {
+      if (i != 0) s ~= " | ";
+      s ~= decl.type.describe();
+    }
+    return s ~ ")";
   }
-  OverloadSet overloadSet;
+
+  auto types() {
+    return lookup.decls.map!(decl => decl.type);
+  }
 }
 
 class FunctionType : Type {
   mixin TypeMixin;
 
-  static auto create(Type returnType, TupleType parameters) {
+  CallableDecl decl;
+
+  static auto create(Type returnType, TupleType parameters, CallableDecl decl) {
     auto f = new FunctionType();
     f.returnType = returnType;
-    f.parameters = parameters;
+    f.parameterTypes = parameters;
+    f.decl = decl;
     return f;
   }
 
   Type returnType;
-  //Type[] parameterTypes;
-  TupleType parameters;
+  TupleType parameterTypes;
 
   override string describe() const {
     auto s = "ƒ(";
-    foreach (i, param ; parameters.elementTypes) {
+    foreach (i, param ; parameterTypes.elementTypes) {
       if (i != 0) s ~= ", ";
       s ~= param.describe();
     }
@@ -274,14 +277,14 @@ class MacroType: FunctionType {
   static auto create(Type returnType, TupleType parameters, CallableDecl decl) {
     auto f = new MacroType();
     f.returnType = returnType;
-    f.parameters = parameters;
+    f.parameterTypes = parameters;
     f.decl = decl;
     return f;
   }
-  CallableDecl decl;
+
   override string describe() const {
     auto s = "macro(";
-    foreach (i, param ; parameters.elementTypes) {
+    foreach (i, param ; parameterTypes.elementTypes) {
       if (i != 0) s ~= ", ";
       s ~= param.describe();
     }

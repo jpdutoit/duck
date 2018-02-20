@@ -58,6 +58,33 @@ return;
 
 function testfn5(a: 1, b: testfn2) {}
 
+extern function operator+(float, float) -> float;
+extern function operator+(float) -> float;
+
+module B {
+  function a() -> float {}
+  a: float;
+  function a() -> float {}
+  function a(c: float) -> float {}
+  function b() -> float {}
+  function b(c: float) -> float {}
+  d: float;
+  d: int;
+  function d() -> float {}
+  function e() -> float {}
+  function e() -> int {}
+
+  function f(a: float) -> int {}
+  function f(b: float) -> int {}
+}
+
+B.a();
+1 + B.a;
+2 + B.b;
+1 + B.d;
+1 + B.e;
++B.f;
+
 /**
 OUTPUT:
 ---
@@ -83,5 +110,14 @@ tests/not-compilable/functions.duck(51:5-11): Error: Statement is not reachable
 tests/not-compilable/functions.duck(57:1-7): Error: Can only return from a function
 tests/not-compilable/functions.duck(59:21): Error: Expected a type
 tests/not-compilable/functions.duck(59:27-33): Error: Expected a type
+tests/not-compilable/functions.duck(81:1-5): Error: Multiple functions matches arguments:
+tests/not-compilable/functions.duck(65:3-23):   function a() -> float
+tests/not-compilable/functions.duck(67:3-23):   function a() -> float
+tests/not-compilable/functions.duck(84:5-7): Error: Ambiguous value:
+tests/not-compilable/functions.duck(71:3-10):   d: float
+tests/not-compilable/functions.duck(72:3-8):   d: int
+tests/not-compilable/functions.duck(85:5-7): Error: Ambiguous value:
+tests/not-compilable/functions.duck(74:3-23):   function e() -> float
+tests/not-compilable/functions.duck(75:3-21):   function e() -> int
 ---
 */

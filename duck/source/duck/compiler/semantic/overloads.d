@@ -41,14 +41,14 @@ Cost coercionCost(Type type, Type target) {
   if (!type || !target) return Cost.infinity;
   if (type.isSameType(target)) return Cost.zero;
 
-  // Coerce an overload set by automatically calling it with not arguments
-  if (auto overloadSetType = cast(OverloadSetType)type) {
-    if (overloadSetType.overloadSet.decls.length == 1) {
-      auto functionType = cast(FunctionType)overloadSetType.overloadSet.decls[0].type;
+  // Coerce a function with no arguments by calling it immediately
+  if (auto functionType = type.as!FunctionType) {
+    if (functionType.parameterTypes.length == 0) {
       auto returnType = functionType.returnType;
       return Cost.implicitCall + coercionCost(returnType, target);
     }
   }
+
   // Coerce type by constructing instance of that type
   if (auto metaType = cast(MetaType)type) {
     if (auto moduleType = cast(ModuleType)metaType.type) {
@@ -58,8 +58,8 @@ Cost coercionCost(Type type, Type target) {
   // Coerce module by automatically reference field output
   if (auto moduleType = cast(ModuleType)type) {
     auto output = moduleType.members.lookup("output");
-    if (output) {
-      return Cost.implicitOutput + coercionCost(output.getResultType, target);
+    if (output.length == 1) {
+      return Cost.implicitOutput + coercionCost(output[0].getResultType, target);
     }
   }
 
@@ -78,7 +78,7 @@ Cost coercionCost(Type type, Type target) {
   return Cost.infinity;
 }
 
-Cost coercionCost(TupleExpr args, Type[] targetTypes) {
+Cost coercionCost(Expr[] args, Type[] targetTypes) {
   if (args.length != targetTypes.length) return Cost.infinity;
 
   Cost cost;
@@ -90,37 +90,35 @@ Cost coercionCost(TupleExpr args, Type[] targetTypes) {
   return cost;
 }
 
-/*
-F1 is determined to be a better function than F2 if implicit conversions for
-all arguments of F1 are not worse than the implicit conversions for all arguments of F2, and
-1) there is at least one argument of F1 whose implicit conversion is better than the corresponding implicit conversion for that argument of F2
-2) or. if not that, (only in context of non-class initialization by conversion), the standard conversion sequence from the return type of F1 to the type being initialized is better than the standard conversion sequence from the return type of F2
-3) or, if not that, F1 is a non-template function while F2 is a template specialization
-4) or, if not that, F1 and F2 are both template specializations and F1 is more specialized according to the partial ordering rules for template specializations
-*/
-
-
-
-CallableDecl findBestOverload(OverloadSet os, TupleExpr args, CallableDecl[]* viable) {
+auto findBestOverload(R)(R decls, Expr[] args, CallableDecl[]* viable)
+if (isDeclRange!R)
+{
   Cost lowestCost = Cost.max;
   int matches = 0;
   CallableDecl[32] overloads;
-  foreach(callable; os.decls) {
-
-    Cost cost = coercionCost(args, callable.type.parameters);
-    debug(Semantic) log("=> Cost:", cost, "for", args.type.describe(), "to", callable.type.parameters.describe);
-    if (cost <= lowestCost) {
-      if (cost != lowestCost) {
-        lowestCost = cost;
-        matches = 0;
+  ElementType!R best;
+  foreach(candidate; decls) {
+    if (auto callable = candidate.as!CallableDecl) {
+      Cost cost = coercionCost(args, callable.type.parameterTypes);
+      //debug(Semantic) log("=> Cost:", cost, "for", args.map(a => a.describe()), "to", callable.type.parameters.describe);
+      if (cost <= lowestCost) {
+        if (cost != lowestCost) {
+          lowestCost = cost;
+          matches = 0;
+          best = candidate;
+        }
+        overloads[matches++] = callable;
       }
-      overloads[matches++] = callable;
     }
+  }
+
+  if (viable) {
+    (*viable).length = 0;
   }
 
   if (matches == 1) {
     debug(Semantic) log("=>", matches, "match at cost", lowestCost);
-    return overloads[0];
+    return best;
   }
   if (matches > 1) {
     debug(Semantic) log("=>", matches, "match at cost", lowestCost);
@@ -128,8 +126,8 @@ CallableDecl findBestOverload(OverloadSet os, TupleExpr args, CallableDecl[]* vi
       (*viable).reserve(matches);
       foreach (overload; overloads[0..matches]) *viable ~= overload;
     }
-    return null;
+    return ElementType!R.init;
   }
   debug(Semantic) log("=> 0 matches");
-  return null;
+  return ElementType!R.init;
 }

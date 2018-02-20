@@ -82,7 +82,7 @@ struct StmtSemantic {
     this.symbolTable.define(stmt.decl.name, stmt.decl);
 
     auto library = stack.find!Library;
-    if (this.symbolTable.top is library.globals
+    if (cast(FileScope)this.symbolTable.top
       && stmt.decl.visibility == Visibility.public_
       && !stmt.decl.hasError) {
       library.exports ~= stmt.decl;

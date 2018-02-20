@@ -6,6 +6,7 @@ import duck.util;
 
 import std.traits: isBasicType;
 import std.conv: to;
+import std.range.primitives;
 
 string generateJson(Context context) {
   auto output = JsonOutput();
@@ -45,10 +46,10 @@ struct JsonOutput {
     output.dictEnd();
   }
 
-  void field(T : Node)(string name, T[] nodes) {
+  void field(T)(string name, T nodes) if (is(ElementType!T: Node)) {
     output.dictField(name);
     output.arrayStart();
-    foreach (i, node; nodes) {
+    foreach (node; nodes) {
       output.arrayItem();
       put(node);
     }
@@ -76,11 +77,6 @@ struct JsonOutput {
     if (auto type = decl.declaredType.as!StaticArrayType) {
       field("length", type.size);
     }
-  }
-
-  void visit(OverloadSet decl) {
-    field("type", "declaration.overload_set");
-    field("overloads", decl.decls);
   }
 
   void visit(CallableDecl decl) {
@@ -136,7 +132,7 @@ struct JsonOutput {
     if (cast(ModuleDecl)decl !is null)
       field("is_module", true);
     field("context", decl.context);
-    if (decl.all.length > 0)
+    if (!decl.all.empty)
       field("members", decl.all);
   }
 
@@ -230,18 +226,13 @@ struct JsonOutput {
    output.dictStart();
 
    bool[string] seen;
-   foreach (v; library.globals.table.all) {
+   foreach (v; library.globals.all) {
      string key = v.name.toString();
      if (key in seen) continue;
      seen[key] = true;
 
-     auto value = library.globals.table.symbols[key];
-     auto os = cast(OverloadSet)value;
-     if (os && os.decls.length == 1) {
-       field(key, os.decls[0]);
-     } else {
-      field(key, value);
-    }
+     auto decls = library.globals.symbols[key];
+     field(key, decls);
    }
    output.dictEnd();
    field("statements", library.stmts.array);

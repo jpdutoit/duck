@@ -17,6 +17,7 @@ e: int = a.size;
 e = b.size;
 f: string = a.size;
 f = b.size;
+g: float[2] = [1, 2, 3];
 
 /*
 OUTPUT:
@@ -27,5 +28,6 @@ tests/not-compilable/array.duck(13:1): Error: Cannot access members of float
 tests/not-compilable/array.duck(14:1-6): Error: No member size in M
 tests/not-compilable/array.duck(18:13-18): Error: Cannot coerce a value of type int to a value of type string
 tests/not-compilable/array.duck(19:5-10): Error: Cannot coerce a value of type int to a value of type string
+tests/not-compilable/array.duck(20:15-23): Error: Cannot coerce a value of type int[3] to a value of type float[2]
 ---
 */

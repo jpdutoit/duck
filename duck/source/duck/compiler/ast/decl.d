@@ -12,7 +12,7 @@ abstract class Decl : Node {
   auto ref visibility() { return attributes.visibility; }
   auto ref isExternal() { return attributes.external; }
 
-  RefExpr reference(Expr context = null) {
+  RefExpr reference(Expr context) {
       return new RefExpr(this, context);
   }
 
@@ -31,8 +31,8 @@ class Library : Decl {
   mixin NodeMixin;
 
   BlockStmt stmts;
-  ImportScope imports;
-  FileScope globals;
+  DeclTable imports;
+  DeclTable globals;
 
   BuiltinVarDecl arraySizeDecl;
 
@@ -40,9 +40,9 @@ class Library : Decl {
 
   this(BlockStmt stmts) {
     super(Slice(""), null);
-    this.imports = new ImportScope();
+    this.imports = new DeclTable();
     this.stmts = stmts;
-    this.globals = new FileScope();
+    this.globals = new DeclTable();
     this.arraySizeDecl = new BuiltinVarDecl(IntegerType.create, "length");
   }
 
@@ -120,21 +120,6 @@ class ParameterDecl : ValueDecl {
   }
 }
 
-class OverloadSet : ValueDecl {
-  mixin NodeMixin;
-
-  CallableDecl[] decls;
-
-  alias decls this;
-  final void add(CallableDecl decl) {
-    decls ~= decl;
-  }
-
-  this(Slice name) {
-    super(OverloadSetType.create(this), name);
-  }
-}
-
 class CallableDecl : ValueDecl {
   mixin NodeMixin;
 
@@ -165,14 +150,6 @@ class CallableDecl : ValueDecl {
   ParameterList  parameters;
 
   Expr returnExpr;
-
-  final CallExpr call(Expr[] arguments = []) {
-    return this.reference().call(arguments);
-  }
-
-  final CallExpr call(TupleExpr arguments) {
-    return this.reference().call(arguments);
-  }
 
   this() {
     super(null, Slice());

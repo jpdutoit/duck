@@ -36,8 +36,9 @@ struct TreeShaker {
       (ParameterDecl decl) { },
       (StructDecl decl) { },
       (ModuleDecl decl) {
-        if (auto os = cast(OverloadSet)(decl.members.lookup("tick"))) {
-          this.addRoot(os.decls[0]);
+        if (auto os = (decl.members.lookup("tick"))) {
+          if (os.length > 0)
+            this.addRoot(os[0]);
         }
         // We don't care about the other fields or functions,
         // will only mark them as referenced

@@ -100,8 +100,8 @@ struct SemanticAnalysis {
   void semantic(Library library) {
     access.push(library);
     stack.push(library);
-    symbolTable.pushScope(library.imports);
-    symbolTable.pushScope(library.globals);
+    symbolTable.pushScope(new ImportScope(library.imports));
+    symbolTable.pushScope(new FileScope(library.globals));
     accept(library.stmts);
     symbolTable.popScope();
     symbolTable.popScope();
