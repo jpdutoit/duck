@@ -1,5 +1,7 @@
 module duck.compiler.semantic;
 
+import duck.util.stack;
+
 import duck.compiler;
 import duck.compiler.visitors;
 import duck.compiler.semantic.helpers;

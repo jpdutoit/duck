@@ -1,6 +1,6 @@
 module host;
 
-immutable VERSION = import("VERSION");
+immutable VERSION = "v0.0";
 
 import duck.compiler;
 import std.file : getcwd;
@@ -36,9 +36,9 @@ version (D_Coverage) {
 
 void printHelp(GetoptResult result, string error = null) {
   defaultGetoptPrinter(
-    "Duck " ~ VERSION ~ "\n"
-    "Usage:\n"
-    "  duck { options } input.duck\n"
+    "Duck " ~ VERSION ~ "\n" ~
+    "Usage:\n" ~
+    "  duck { options } input.duck\n" ~
     "  duck { options } -- \"duck code\"\n",
     result.options);
   if (error) {

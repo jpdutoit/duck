@@ -1,6 +1,7 @@
 module duck.compiler.backend.d.codegen;
 
 //debug = CodeGen;
+import duck.util.stack;
 
 import duck.compiler.ast;
 import duck.compiler.lexer.tokens;

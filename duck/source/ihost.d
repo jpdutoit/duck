@@ -56,11 +56,12 @@ void interactiveMode() {
         //writefln("Command %s", cmd);
         if (cmd.name) {
             if (cmd.name == "help") {
-                writeln("""Commands:
+                writeln(q"[
+Commands:
   list             - List all active modules
   stop id          - Stop the module with the given id
   start filename   - Start a module
-""");
+]");
             }
             else if (cmd.name == "start") {
                 foreach (filename; cmd.args) {

@@ -22,7 +22,7 @@ auto traverseFind(alias T)(Node node)  if (isSomeFunction!(T)) {
 }
 
 auto traverseCollect(alias T)(Node node) if (isSomeFunction!(T)) {
-  ReturnType!T found[];
+  ReturnType!T[] found;
   Traverse v(ParameterTypeTuple!(T)[0] t) {
     if (auto f = T(t)) {
       found ~= f;
