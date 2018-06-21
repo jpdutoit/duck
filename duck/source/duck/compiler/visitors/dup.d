@@ -24,16 +24,29 @@ private Expr clone(Expr expr, Expr[Decl] replacements = (Expr[Decl]).init) {
       (IdentifierExpr expr) => expr,
       (RefExpr expr) {
         auto replacement = expr.decl in replacements;
-        return replacement
-          ? *replacement
-          : new RefExpr(expr.decl, cloneImpl(expr.context), expr.source);
+        if (replacement) {
+          debug(Semantic) log("Replacing", expr.decl, "with", *replacement);
+        }
+        if (replacement)
+          return *replacement;
+        auto refExpr = new RefExpr(expr.decl, cloneImpl(expr.context), expr.source);
+        foreach (decl, value; expr.contexts) {
+          auto replacement = decl in replacements;
+          if (replacement) {
+            refExpr.contexts[decl] = *replacement;
+            debug(Semantic) log("Replacing", decl, "with", *replacement);
+          } else {
+            refExpr.contexts[decl] = cloneImpl(value);
+          }
+        }
+        return refExpr;
       },
       (CastExpr expr) => new CastExpr(cloneImpl(expr.expr), expr.targetType),
       (LiteralExpr expr) => expr,
       (ConstructExpr expr) => new ConstructExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), expr.source),
       (CallExpr expr) => new CallExpr(cloneImpl(expr.callable), cast(TupleExpr)cloneImpl(expr.arguments), expr.source),
       (BinaryExpr expr) => new BinaryExpr(expr.operator, cloneImpl(expr.left), cloneImpl(expr.right), expr.source),
-      (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array)
+      (TupleExpr expr) => new TupleExpr(expr.elements.map!(e => cloneImpl(e)).array),
     );
     copy.source = expr.source;
     copy.type = expr._type;

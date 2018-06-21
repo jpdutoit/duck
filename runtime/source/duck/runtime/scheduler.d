@@ -100,7 +100,7 @@ struct Scheduler {
     now.time = now.time + 1;
     sampleIndex++;
 
-    __idx = sampleIndex;
+    _idx = sampleIndex;
     //print("__idx ", __idx, "\n");
     foreach(ugenTick; UGenRegistry.endPoints.byValue()) {
       ugenTick();

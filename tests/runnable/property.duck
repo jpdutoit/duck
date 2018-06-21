@@ -1,0 +1,42 @@
+extern function assertEquals(float, float);
+extern function operator +(float, float) -> float;
+
+struct A {
+  aa: float = 2;
+  bb: float {
+    @private storage: float = 123;
+
+    get() -> float {
+      @private a := 2;
+      return this.storage;
+    }
+
+    set(value: float) {
+      this.storage = value;
+    }
+  }
+
+  cc: float {
+    get() -> float {
+      return outer.bb;
+    }
+  }
+}
+
+
+a: A;
+assertEquals(a.aa, 2);
+assertEquals(a.bb, 123);
+a.bb = 4;
+assertEquals(a.bb, 4);
+a.bb = 6;
+assertEquals(a.cc, 6);
+
+/*
+//TODO: Free standing properties
+d: float {
+  get() -> float { return 1 + 2; }
+}
+*/
+
+//assertEquals(d, 3);

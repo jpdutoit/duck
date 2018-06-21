@@ -7,6 +7,8 @@ import duck.compiler.util;
 import duck.compiler.visitors.dup;
 import duck.compiler.lexer;
 import duck.util.stack;
+import std.algorithm.iteration : filter;
+import std.algorithm.searching : find;
 
 //import duck.compiler.semantic.helpers;
 
@@ -112,18 +114,13 @@ class BlockScope : Scope {
   }
 }
 
-class ThisScope : Scope {
-  ValueDecl thisDecl;
+class StructScope : Scope {
+  ParameterList context;
   DeclTable table;
 
   this(StructDecl structDecl) {
-    this.thisDecl = structDecl.context;
+    this.context = structDecl.context;
     this.table = structDecl.members;
-  }
-
-  this(ValueDecl thisDecl, DeclTable table) {
-    this.thisDecl = thisDecl;
-    this.table = table;
   }
 
   final override void define(string identifier, Decl decl) {
@@ -131,15 +128,20 @@ class ThisScope : Scope {
   }
 
   final override ScopeLookup lookup(string identifier) {
-    if ("this" == identifier) {
-      return ScopeLookup(this, (cast(Decl*)&thisDecl)[0..1]);
+    auto lookup = this.context.lookup(identifier);
+    if (lookup.empty) {
+      return ScopeLookup(this, table.lookup(identifier));
     }
-    return ScopeLookup(this, table.lookup(identifier));
+    return lookup;
   }
 
   final Expr createMemberReference(Decl member) {
-    auto thisRef = new RefExpr(thisDecl);
-    return member is thisDecl ? thisRef : new RefExpr(member, thisRef);
+    if (!this.context.elements.find(member).empty) {
+      return new RefExpr(member);
+    } else {
+      auto thisRef = this.context.lookup("this").resolve();
+      return new RefExpr(member, thisRef);
+    }
   }
 }
 
@@ -168,7 +170,11 @@ class WithScope : Scope {
 
 class DeclTable {
   Decl[][string] symbols;
-  Decl[] all;
+
+  auto all() {
+    import std.algorithm.iteration: joiner;
+    return symbols.byValue().joiner;
+  }
 
   final void replace(Decl old, Decl decl) {
     if (auto existing = old.name in symbols) {
@@ -179,11 +185,15 @@ class DeclTable {
         return;
       }
     }
-    define(old.name, decl);
+    //define(old.name, decl);
   }
 
   final void define(Decl decl) {
     define(decl.name, decl);
+  }
+
+  final bool defines(string identifier) {
+    return !this.lookup(identifier).empty;
   }
 
   final void define(string identifier, Decl decl) {
@@ -196,7 +206,7 @@ class DeclTable {
       symbols[identifier] = [decl];
     }
 
-    all ~= decl;
+    //all ~= decl;
   }
 
   final Decl[] lookup(string identifier) {
@@ -210,10 +220,8 @@ class DeclTable {
     return all.filter!((d) => cast(D)d !is null);
   }
 
-  @property auto fields() { return filtered!FieldDecl; }
+  @property auto fields() { return filtered!VarDecl; }
   @property auto callables() { return filtered!CallableDecl; }
-  @property auto macros() { return callables.filter!(d => d.as!CallableDecl.isMacro); }
-  @property auto methods() { return callables.filter!(d => d.as!CallableDecl.isMethod); }
   @property auto constructors() { return callables.filter!(d => d.as!CallableDecl.isConstructor); }
 }
 

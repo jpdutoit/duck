@@ -25,7 +25,7 @@ struct UGenRegistry {
   }
 };
 
-__gshared ulong __idx = 0;
+__gshared ulong _idx = 0;
 
 
 mixin template UGEN(Impl) {
@@ -42,17 +42,17 @@ public:
     static enum opDispatch = false;
   }
 
-  alias scope void delegate() @system __ConnDg;
+  alias scope void delegate() @system _ConnDg;
 
   ulong __sampleIndex = ulong.max;
-  __ConnDg[] __connections;
+  _ConnDg[] __connections;
 
   void _tick() {
     // Only tick if we haven't previously
-    if (__sampleIndex == __idx)
+    if (__sampleIndex == _idx)
       return;
 
-    __sampleIndex = __idx;
+    __sampleIndex = _idx;
 
     // Process connections
     for (int c = 0; c < __connections.length; ++c) {
@@ -63,11 +63,11 @@ public:
     }
   }
 
-  void __add(scope void delegate() @system dg) {
+  void _add(scope void delegate() @system dg) {
     //UGenRegistry.register(&this);
     if (this.isEndPoint)
       UGenRegistry.register(cast(void*)&this, &this._tick);
     __connections ~= dg;
   }
 }
-alias scope void delegate() @system __ConnDg;
+alias scope void delegate() @system _ConnDg;

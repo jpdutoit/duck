@@ -18,6 +18,7 @@ struct StmtSemantic {
     }
 
     accept(stmt.expr);
+    semantic.exprSemantic.resolveValue(stmt.expr);
 
     return stmt;
   }

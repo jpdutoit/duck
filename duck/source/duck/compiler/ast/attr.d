@@ -25,7 +25,7 @@ enum StorageClass {
 }
 
 @property
-StorageClass storageClass(Token token)  {
+StorageClass storageClass(Token token) {
   switch (token.type) {
     case Tok!"@const": return StorageClass.constStorage;
     default:
@@ -33,15 +33,31 @@ StorageClass storageClass(Token token)  {
   }
 }
 
+enum MethodBinding {
+  dynamicBinding = 0,
+  staticBinding = 1
+}
+
+@property
+MethodBinding methodBinding(Token token)  {
+  switch (token.type) {
+    case Tok!"@static": return MethodBinding.staticBinding;
+    default:
+    throw __ICE("Cannot get method binding value for token: " ~ token);
+  }
+}
+
+
 struct DeclAttr {
   union {
     uint flags = 0;
     struct {
       import std.bitmanip;
       mixin(bitfields!(
-        int,  "_filler", 3,
+        int,  "_filler", 2,
         StorageClass, "storage", 2,
         Visibility, "visibility", 2,
+        MethodBinding, "binding", 1,
         bool, "external", 1));
     }
   }

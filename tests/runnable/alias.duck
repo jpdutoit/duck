@@ -2,8 +2,8 @@ extern function operator+(float, float) -> float;
 
 module A {
 	a: float;
-	input: a;
-	output: a;
+	alias input = a;
+	alias output = a;
 
 	function tick() {
 		a = 2;

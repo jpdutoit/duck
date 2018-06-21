@@ -100,7 +100,7 @@ struct DFile {
   }
 
   static tempFromHash(size_t hash) {
-    import std.digest.digest : toHexString;
+    import std.digest : toHexString;
     ubyte[8] result = (cast(ubyte*) &hash)[0..8];
     string name = "_duck_" ~ toHexString(result[0..8]).assumeUnique;
     string filename = (tmpFolder ~ name ~ ".d").assumeUnique;

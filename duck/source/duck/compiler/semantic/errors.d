@@ -2,6 +2,7 @@ module duck.compiler.semantic.errors;
 
 import duck.compiler;
 import duck.compiler.semantic.helpers;
+import duck.compiler.visitors;
 import std.algorithm;
 
 T taint(T: Expr)(T expr) {
@@ -61,7 +62,7 @@ void info(R)(R decls)
 import std.range.primitives;
 
 
-Expr errorResolvingCall(R)(CallExpr expr, R lookup, CallableDecl[] viable)
+Expr errorResolvingCall(R)(Expr expr, R lookup, CallableDecl[] viable)
   if (isDeclRange!R)
 {
   if (viable.length == 0)
@@ -85,4 +86,30 @@ Expr errorResolvingConstructorCall(R)(ConstructExpr expr, R ctors, CallableDecl[
     error(expr, "Found multiple constructors matching arguments:", viable);
   }
   return expr.taint;
+}
+
+
+Expr memberNotFoundError(MemberExpr expr) {
+  return expr.context.type.visit!(
+    (StructType type) => expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name),
+    (PropertyType type) {
+      switch (expr.name) {
+        case "get": return expr.error("Property " ~ type.decl.name ~ " does not have a getter");
+        case "set": return expr.error("Property " ~ type.decl.name ~ " does not have a setter");
+        default:
+         return expr.error("No member " ~ expr.name ~ " in property " ~ type.decl.name);
+      }
+    },
+    (ArrayType type) => expr.error("No member '" ~ expr.name ~ "' in " ~ expr.context.type.mangled()),
+    (StaticArrayType type) => expr.error("No member '" ~ expr.name ~ "' in " ~ expr.context.type.mangled()),
+    (Type type) => expr.error("Cannot access members of " ~ expr.context.type.mangled())
+  );
+}
+
+
+Expr coercionError(Expr expr, Type targetType) {
+  return expr.type.visit!(
+    (PropertyType property) => expr.error("Property " ~ property.decl.name ~ " does not have a getter"),
+    (Type type) =>  expr.error("Cannot coerce " ~ describe(type) ~ " to " ~ describe(targetType))
+  );
 }

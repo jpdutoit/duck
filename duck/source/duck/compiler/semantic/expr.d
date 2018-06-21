@@ -1,5 +1,6 @@
 module duck.compiler.semantic.expr;
 
+import std.range.primitives;
 import duck.compiler;
 import duck.compiler.semantic;
 import duck.compiler.semantic.helpers;
@@ -16,42 +17,28 @@ struct ExprSemantic {
 
   alias semanticAnalysis this;
 
-  E semantic(E)(E target) {
+  E semantic(E: Node)(E target) {
     E expr = target;
     semanticAnalysis.accept(expr);
     return expr;
   }
 
-  E semantic(E)(ref E target) {
+  E semantic(E: Node)(ref E target) {
     semanticAnalysis.accept(target);
     return target;
+  }
+
+  void semantic(R)(R targets)
+    if (isInputRange!R && is(ElementType!R: Node))
+  {
+    foreach (ref target; targets.save) {
+      semanticAnalysis.accept(target);
+    }
   }
 
   Expr makeModule(Type type, Expr ctor) {
     auto decl = new VarDecl(type, Slice(), ctor);
     return new InlineDeclExpr(new DeclStmt(decl)).withSource(ctor);
-  }
-
-  bool implicitCall(ref Expr expr) {
-    return expr.type.visit!(
-      (FunctionType type) {
-        if (auto callable = resolveCall(expr, type.decl, [])) {
-          expr = expr.call().withSource(expr);
-          semantic(expr);
-          return true;
-        }
-        return false;
-      },
-      (UnresolvedType type) {
-        if (auto callable = resolveCall(expr, type.lookup, [])) {
-          expr = callable.reference().call().withSource(expr);
-          semantic(expr);
-          return true;
-        }
-        return false;
-      },
-      (Type type) => false
-    );
   }
 
   void implicitConstruct(ref Expr expr) {
@@ -81,18 +68,6 @@ struct ExprSemantic {
     );
   }
 
-  void implicitConstructCall(ref Expr expr) {
-    implicitConstruct(expr);
-    implicitCall(expr);
-  }
-
-  string describe(Type type) {
-    if (auto metaType = cast(MetaType)type) {
-      return "type " ~ metaType.type.describe;
-    }
-    return "a value of type " ~ type.describe;
-  }
-
   Expr coerce(Expr sourceExpr, Type targetType) {
     debug(Semantic) log("=> coerce", sourceExpr.type.describe.green, "to", targetType.describe.green);
     auto sourceType = sourceExpr.type;
@@ -115,10 +90,11 @@ struct ExprSemantic {
           return new TupleExpr(output, targetTypeTuple);
         }
 
-    // Coerce an overload set by automatically calling it
-    if (sourceType.isCallable) {
-      if (implicitCall(sourceExpr))
-        return coerce(sourceExpr, targetType);
+    if (auto property = sourceType.as!PropertyType) {
+      auto getters = lookup(sourceExpr, "get");
+      if (auto resolved = getters.resolve) {
+        return coerce(semantic(resolved.call().withSource(sourceExpr)), targetType);
+      }
     }
 
     // Coerce type by constructing instance of that type
@@ -130,7 +106,7 @@ struct ExprSemantic {
     }
     // Coerce module by automatically reference field output
     if (auto moduleType = sourceType.as!ModuleType) {
-      if (auto resolved = sourceExpr.lookup!isValueLike("output").resolve()) {
+      if (auto resolved = lookup!isValueLike(sourceExpr, "output").resolve()) {
         return coerce(semantic(resolved.withSource(sourceExpr)), targetType);
       }
     }
@@ -159,18 +135,7 @@ struct ExprSemantic {
     }
 
     if (targetType.hasError || sourceType.hasError) return sourceExpr.taint;
-    return sourceExpr.error("Cannot coerce " ~ describe(sourceType) ~ " to " ~ describe(targetType));
-  }
-
-  auto resolveCall(Expr call, Decl decl, Expr[] arguments, CallableDecl[]* viable = null) {
-    Decl[1] decls = [decl];
-    return findBestOverload(decls[], arguments, viable);
-  }
-
-  auto resolveCall(R)(Expr call, R decls, Expr[] arguments, CallableDecl[]* viable = null)
-    if (isInputRange!R && is(ElementType!R: Decl))
-  {
-    return findBestOverload(decls, arguments, viable);
+    return sourceExpr.coercionError(targetType);
   }
 
   Node visit(ErrorExpr expr) {
@@ -207,7 +172,7 @@ struct ExprSemantic {
     pipeDepth--;
     debug(Semantic) log("=>", expr);
 
-    implicitConstructCall(expr.right);
+    implicitConstruct(expr.right);
 
     // Piping to a function is the same as calling that function
     if (expr.right.isCallable) {
@@ -220,7 +185,6 @@ struct ExprSemantic {
     while (expr.right.type.as!ModuleType && expr.right.isLValue) {
       expr.right = expr.right.member("input");
       semantic(expr.right);
-      implicitCall(expr.right);
       debug(Semantic) log("=>", expr);
     }
 
@@ -274,9 +238,10 @@ struct ExprSemantic {
 
     CallableDecl[] viable;
     foreach (stage; symbolTable.stagedLookup(expr.operator)) {
-      if (auto best = resolveCall(expr, stage, expr.arguments, &viable)) {
-        return semantic(best.reference().call(expr.arguments).withSource(expr));
-      }
+      semantic(stage);
+      if (auto best = findBestOverload(stage, expr.arguments, &viable))
+        return semantic(stage.reference(best).call(expr.arguments).withSource(expr));
+
       if (viable.length > 0) {
         return error(expr, "Multiple overloads match arguments:", viable);
       }
@@ -294,9 +259,10 @@ struct ExprSemantic {
     CallableDecl[] viable;
 
     foreach (stage; symbolTable.stagedLookup(expr.operator)) {
-      if (auto best = resolveCall(expr, stage, expr.arguments, &viable)) {
-        return semantic(best.reference().call(expr.arguments).withSource(expr));
-      }
+      semantic(stage);
+      if (auto best = findBestOverload(stage, expr.arguments, &viable))
+        return semantic(stage.reference(best).call(expr.arguments).withSource(expr));
+
       if (viable.length > 0) {
         return error(expr, "Multiple overloads match arguments:", viable);
       }
@@ -306,7 +272,12 @@ struct ExprSemantic {
     return expr.taint;
   }
 
-  auto ref Expr resolveValue()(auto ref Expr expr) {
+  Expr resolveValue(ref Expr expr) {
+    if (auto propertyType = expr.type.as!PropertyType) {
+      expr = semantic(new MemberExpr(expr, "get", expr.source).call());
+      return resolveValue(expr);
+    }
+
     auto orType = expr.type.as!UnresolvedType;
     if (!orType) return expr;
 
@@ -317,15 +288,8 @@ struct ExprSemantic {
       }
       return expr.error("Ambiguous value:", properties);
     }
-    // If it contains a property accessor, call and use it
-    if (auto properties = orType.lookup.filtered!(isCallable(0))) {
-      if (auto property = properties.resolve) {
-        return expr = semantic(property.call().withSource(expr));
-      }
-      return expr.error("Ambiguous value:", properties);
-    }
 
-    return expr;
+    return expr.error("Ambiguous value:", orType.lookup);
   }
 
   Node visit(TupleExpr expr) {
@@ -333,7 +297,8 @@ struct ExprSemantic {
     Type[] elementTypes = [];
     elementTypes.length = expr.length;
     foreach (i, ref Expr e; expr) {
-      resolveValue(semantic(e));
+      semantic(e);
+      resolveValue(e);
       if (e.hasError)
         tupleError = true;
 
@@ -351,10 +316,30 @@ struct ExprSemantic {
     foreach (i, parameter; macroDecl.parameters) {
       replacements[parameter] = arguments[i];
     }
-    if (auto structDecl = macroDecl.parent.as!StructDecl)
-      replacements[structDecl.context] = contextExpr;
+    if (auto structDecl = macroDecl.parent.as!StructDecl) {
+      // TODO: Is this safe?
+      replacements[structDecl.context.elements[0]] = contextExpr;
+    }
 
     Expr expansion = macroDecl.returnExpr;
+    if (expansion.hasError) return expansion;
+
+    debug(Semantic) log("=> expansion", expansion);
+    expansion = expansion.dupWithReplacements(replacements);
+    debug(Semantic) log("=> expansion", expansion);
+    return expansion;
+  }
+
+  Expr expandAlias(AliasDecl aliasDecl, Expr contextExpr = null) {
+    debug(Semantic) log("=> ExpandAlias", aliasDecl, contextExpr);
+
+    Expr[Decl] replacements;
+    if (auto structDecl = aliasDecl.parent.as!StructDecl) {
+      // TODO: Is this safe?
+      replacements[structDecl.context.elements[0]] = contextExpr;
+    }
+
+    Expr expansion = aliasDecl.value;
     if (expansion.hasError) return expansion;
 
     debug(Semantic) log("=> expansion", expansion);
@@ -367,13 +352,14 @@ struct ExprSemantic {
     if (semantic(expr.callable).hasError | semantic(expr.arguments).hasError)
       return expr.taint;
     auto type = expr.callable.type.enforce!MetaType.type;
-    auto ctors = expr.callable.lookup!(isConstructor())(Slice("__ctor"));
+    auto ctors = lookup(expr.callable, Slice("__ctor"));
     CallableDecl[] viable;
     if (ctors) {
-      if (auto resolved = resolveCall(expr, ctors, expr.arguments, &viable)) {
-        expr.callable = resolved.declaration.reference(null);
+      semantic(ctors);
+      if (auto best = findBestOverload(ctors, expr.arguments, &viable)) {
+        expr.callable = best.reference(null);
         semantic(expr.callable);
-        expr.arguments = coerce(expr.arguments, resolved.type.enforce!FunctionType.parameterTypes).as!TupleExpr;
+        expr.arguments = coerce(expr.arguments, best.type.enforce!FunctionType.parameterTypes).as!TupleExpr;
         expr.type = type;
         return expr;
       }
@@ -407,11 +393,10 @@ struct ExprSemantic {
           expr.taint;
         }
         else {
-          if (auto lookup = expr.expr.lookup("[]")) {
-            if (auto resolved = resolveCall(expr, lookup, expr.arguments)) {
-              Expr expr = resolved.reference().call(expr.arguments).withSource(expr);
-              return semantic(expr);
-            }
+          if (auto lookup = lookup(expr.expr, "[]")) {
+            semantic(lookup);
+            if (auto best = findBestOverload(lookup, expr.arguments))
+              return semantic(lookup.reference(best).call(expr.arguments).withSource(expr).as!Expr);
           }
         }
         return expr.error("Cannot index type " ~ mangled(expr.expr.type) ~ " with " ~ mangled(expr.arguments.type) ~ ".");
@@ -445,7 +430,7 @@ struct ExprSemantic {
           }
           import std.conv: to;
           auto size = expr.arguments[0].visit!(
-              (LiteralExpr literal) => literal.value.to!uint,
+              (IntegerValue integer) => integer.value,
               (Expr e) {
                 expr.arguments.error("Expected a number for array size.");
                 expr.taint;
@@ -463,6 +448,37 @@ struct ExprSemantic {
     );
   }
 
+  Expr findImplicitContext(RefExpr expr, Decl decl) {
+    //log("Looking for", decl, "in", expr);
+    //log("", expr.contexts);
+    auto value = decl in expr.contexts;
+    if (value) return *value;
+    if (auto next = expr.context.as!RefExpr) {
+      return findImplicitContext(next, decl);
+    }
+    return null;
+  }
+
+  TupleExpr findImplicitContexts(Expr expr, ParameterList parameters) {
+    auto refExpr = expr.enforce!RefExpr;
+    Expr[] values;
+    values.length = parameters.length - 1;
+    Type[] types;
+    types.length = parameters.length - 1;
+    foreach (int i, ValueDecl decl; parameters.elements[1..$]) {
+      auto value = findImplicitContext(refExpr, decl);
+
+      if (value) {
+        types[i] = value.type;
+        values[i] = value;
+      } else {
+        expr.error("Internal compiler error: Missing context: " ~ decl.name);
+      }
+    }
+    auto tupleExpr = new TupleExpr(values, TupleType.create(types));
+    return tupleExpr;
+  }
+
   Node visit(CallExpr expr) {
     semantic(expr.callable);
     debug(Semantic) log("=>", expr);
@@ -477,11 +493,14 @@ struct ExprSemantic {
     Node resolve(CallExpr expr) {
       return expr.callable.type.visit!(
         (FunctionType ft) {
-          if (!resolveCall(expr, [ft.decl], expr.arguments)) {
-            return expr.error("Function does not match arguments:", [ft.decl]);
+          import std.range: only;
+          if (!findBestOverload(only(ft.decl), expr.arguments, null)) {
+            return expr.error("Function does not match arguments:", only(ft.decl));
           }
           expr.arguments = coerce(expr.arguments, ft.parameterTypes).as!TupleExpr;
           expr.type = ft.returnType;
+          if (auto parentStruct = ft.decl.parent.as!StructDecl)
+            expr.context = findImplicitContexts(expr.callable, parentStruct.context);
           if (ft.as!MacroType) {
             auto callable = expr.callable.enforce!RefExpr;
             return expandMacro(ft.decl, expr.arguments, callable.context).withSource(expr);
@@ -490,9 +509,9 @@ struct ExprSemantic {
         },
         (UnresolvedType ot) {
           CallableDecl[] viable = [];
-          auto resolved = resolveCall(expr, ot.lookup, expr.arguments, &viable);
-          if (resolved) {
-            expr.callable = semantic(resolved.reference()).withSource(expr.callable);
+          auto best = findBestOverload(ot.lookup, expr.arguments, &viable);
+          if (best) {
+            expr.callable = semantic(ot.lookup.reference(best).withSource(expr.callable));
             return resolve(expr);
           }
           return expr.errorResolvingCall(ot.lookup, viable);
@@ -511,16 +530,23 @@ struct ExprSemantic {
 
   Node visit(AssignExpr expr) {
     semantic(expr.left);
-    implicitCall(expr.left);
     semantic(expr.right);
-    implicitCall(expr.left);
     resolveValue(expr.right);
-
-    if (!expr.left.hasError && !expr.right.hasError)
-      expr.right = coerce(expr.right, expr.left.type);
 
     if (expr.left.hasError || expr.right.hasError)
       return expr.taint;
+
+    if (auto propertyType = expr.left.type.as!PropertyType) {
+      return semantic((new MemberExpr(expr.left, "set", expr.left.source)).call([expr.right]).withSource(expr));
+    }
+
+    expr.right = coerce(expr.right, expr.left.type);
+    if (expr.right.hasError) return expr.taint;
+
+    if (!expr.left.isLValue) {
+      expr.left.error("Left hand side of assignment must be a l-value");
+      return expr.taint;
+    }
 
     expr.type = expr.left.type;
     return expr;
@@ -528,6 +554,8 @@ struct ExprSemantic {
 
   Node visit(IdentifierExpr expr) {
     foreach (stage; symbolTable.stagedLookup(expr.identifier)) {
+      semantic(stage);
+
       if (auto resolved = stage.resolve) {
         return semantic(resolved.withSource(expr));
       }
@@ -541,8 +569,20 @@ struct ExprSemantic {
   Node visit(RefExpr expr) {
     if (expr.context) {
       semantic(expr.context);
-      implicitConstructCall(expr.context);
+      implicitConstruct(expr.context);
       if (expr.context.hasError) return expr.taint;
+    }
+
+    foreach(decl, ref value; expr.contexts) {
+      semantic(value);
+      implicitConstruct(value);
+      if (value.hasError) return expr.taint;
+    }
+
+    semantic(expr.decl);
+
+    if (auto aliasDecl = expr.decl.as!AliasDecl) {
+      return expandAlias(aliasDecl, expr.context);
     }
 
     expr.type = expr.decl.type;
@@ -551,46 +591,38 @@ struct ExprSemantic {
 
   Node visit(MemberExpr expr) {
     semantic(expr.context);
-    implicitConstructCall(expr.context);
+    implicitConstruct(expr.context);
     debug(Semantic) log("=>", expr);
 
     if (expr.context.hasError) return expr.taint;
 
     return expr.context.type.visit!(
       (StructType type) {
-        if (auto lookup = expr.context.lookup(expr.name, this.accessLevel(type))) {
+        if (auto lookup = lookup(expr.context, expr.name, this.accessLevel(type))) {
+          semantic(lookup);
           if (auto resolved = lookup.resolve())
             return semantic(resolved.withSource(expr));
 
           expr.type = UnresolvedType.create(lookup);
           return expr;
         }
-        return expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name);
-
+        return expr.memberNotFoundError();
       },
       (ArrayType type) {
         if (expr.name == "size") {
           auto reference = new RefExpr(context.library.arraySizeDecl, expr.context);
           return semantic(reference.withSource(expr));
         }
-        expr.error("No member '" ~ expr.name ~ "' in " ~ expr.context.type.mangled());
-        return expr.taint.as!Expr;
+        return expr.memberNotFoundError();
       },
       (StaticArrayType type) {
         if (expr.name == "size") {
-          // TODO: Is is awkward to have to convert a number to string just to
-          // represent it as a literal expression, probably makes sense to store
-          // the number it natively.
-          import std.conv: to;
-          return semantic(new LiteralExpr(Number, type.size.to!string).withSource(expr));
+          return semantic(new IntegerValue(type.size).withSource(expr));
         }
-        expr.error("No member '" ~ expr.name ~ "' in " ~ expr.context.type.mangled());
-        return expr.taint.as!Expr;
+        return expr.memberNotFoundError();
       },
-      (Type t) {
-        expr.context.error("Cannot access members of " ~ expr.context.type.mangled());
-        return expr.taint;
-    });
+      (Type t) => expr.memberNotFoundError()
+    );
   }
 
   // Nothing to do for these

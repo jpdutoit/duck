@@ -1,6 +1,7 @@
 module duck.compiler.ast.expr;
 
 import duck.compiler;
+import std.conv: to;
 
 abstract class Expr : Node, LookupContext {
   Type _type;
@@ -83,7 +84,9 @@ class RefExpr : Expr {
   mixin NodeMixin;
 
   Decl decl;
+
   Expr context;
+  Expr[Decl] contexts;
 
   this(Decl decl, Expr context = null, Slice source = Slice()) {
     this.decl = decl;
@@ -92,32 +95,91 @@ class RefExpr : Expr {
   }
 }
 
-class LiteralExpr : Expr {
+class FloatValue : LiteralExpr {
+  mixin NodeMixin;
+
+  double value;
+
+  this(double value) {
+    this.value = value;
+    this.type = FloatType.create;
+  }
+
+  this(Token value) {
+    import std.conv: to;
+    this(value.slice.toString().to!double);
+    this.source = value.slice;
+  }
+}
+
+class IntegerValue : LiteralExpr {
+  mixin NodeMixin;
+
+  long value;
+
+  this(long value) {
+    this.value = value;
+    this.type = IntegerType.create;
+  }
+
+  this(Token value) {
+    import std.conv: to;
+    this(value.slice.toString().to!long);
+    this.source = value.slice;
+  }
+}
+
+class StringValue: LiteralExpr {
   mixin NodeMixin;
 
   string value;
 
-  this(Token token) {
-    this.source = token.slice;
-    this(token.type, token.value);
+  this(string value) {
+    this.value = value;
+    this.type = StringType.create;
   }
 
-  this(Token.Type literalType, string value) {
+  this(Token value) {
+    this(value.slice.toString()[1..$-1]);
+    this.source = value.slice;
+  }
+}
+
+class BoolValue: LiteralExpr {
+  mixin NodeMixin;
+
+  bool value;
+
+  this(bool value) {
+    this.type = BoolType.create();
     this.value = value;
-    switch (literalType) {
+  }
+
+  this(Token value) {
+    if (value.slice == "true")
+      this(true);
+    else if (value.slice == "false")
+      this(false);
+    else {
+      assert(0, "Invalid value for BoolValue");
+    }
+    this.source = value.slice;
+  }
+}
+
+abstract class LiteralExpr : Expr {
+  static LiteralExpr create(Token token) {
+    switch (token.type) {
       case BoolLiteral:
-        this.type = BoolType.create;
-        break;
+        return new BoolValue(token);
       case Number:
         import std.string: indexOf;
-        if (value.indexOf(".") >= 0)
-          this.type = FloatType.create;
+        if (token.slice.indexOf(".") >= 0)
+          return new FloatValue(token);
         else
-          this.type = IntegerType.create;
-        break;
+          return new IntegerValue(token);
       case StringLiteral:
-        this.type = StringType.create;
-        break;
+        return new StringValue(token);
       default:
         throw __ICE("Token is not a literal");
       }
@@ -255,6 +317,7 @@ class CallExpr : Expr {
 
   Expr callable;
   TupleExpr arguments;
+  TupleExpr context;
 
   this(Expr callable, TupleExpr arguments, Slice source = Slice()) {
     this.callable = callable;

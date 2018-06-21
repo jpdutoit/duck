@@ -9,7 +9,17 @@ string toString(Expr expr) {
   return expr.accept(ExprToString(true));
 }
 
+string toString(Decl decl) {
+  return decl.accept(DeclToString());
+}
+
 private:
+
+struct DeclToString {
+  string visit(Decl decl) {
+    return "(" ~ typeid(decl).name ~ " " ~ decl.name ~ ")";
+  }
+}
 
 struct ExprToString {
   bool showTypes;
@@ -35,8 +45,10 @@ struct ExprToString {
     return "ERROR";
   }
   string visit(RefExpr expr) {
+    import std.conv: to;
     auto name = expr.decl.name.value;
     if (!name) name = "_";
+    if (expr.contexts.length > 0) name ~= "<" ~ expr.contexts.length.to!string ~ ">";
     return annotate((expr.context ? expr.context.toString() ~ "." : "") ~ name.blue, expr._type);
   }
   string visit(MemberExpr expr) {
@@ -48,7 +60,7 @@ struct ExprToString {
     return annotate(name.blue, expr._type);
   }
   string visit(LiteralExpr expr) {
-    return annotate(expr.value.blue, expr._type);
+    return annotate(expr.source.blue, expr._type);
   }
   string visit(CastExpr expr) {
     return annotate("(cast " ~ expr.expr.accept(this) ~ ")", expr.targetType);

@@ -72,10 +72,14 @@ struct Slice {
   }
 
   Slice opSlice(uint x, uint y) {
+    if (!buffer)
+      return Slice(_value[x..y]);
     return Slice(buffer, start + x, start + y);
   }
 
-  @property int opDollar(size_t dim : 0)() { return end-start; }
+  @property int opDollar(size_t dim : 0)() {
+    return buffer !is null ? end-start : cast(int)_value.length;
+  }
 
   Slice opBinary(string op : "+")(Slice other){
     if (buffer != other.buffer) {

@@ -16,7 +16,7 @@ abstract class Stmt : Node {
   final void insertAfter(Stmt stmt) {
     stmt.parent.insertAfter(stmt, this);
   }
-};
+}
 
 class BlockStmt : Stmt {
   mixin NodeMixin;
@@ -24,10 +24,12 @@ class BlockStmt : Stmt {
   }
 
   final void append(Decl decl) {
-    append(new DeclStmt(decl).withSource(decl));
+    this.append(new DeclStmt(decl).withSource(decl));
   }
 
-  alias append = list.append;
+  final void append(Stmt stmt) {
+    list.append(stmt);
+  }
 
   mixin List!Stmt list;
 }

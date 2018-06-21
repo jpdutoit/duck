@@ -6,9 +6,9 @@ module A {
 module B {
   a: A;
   z: float;
-  f: a;
-  y: a.x;
-  t: this.a.x;
+  alias f = a;
+  alias y = a.x;
+  alias t = this.a.x;
 
   function tick() {
     this.y >> z;

@@ -1,5 +1,7 @@
 module duck.compiler.scopes.lookup;
 
+public import std.range.primitives;
+
 import duck.compiler.ast;
 import duck.compiler;
 import duck.compiler.dbg;
@@ -42,7 +44,7 @@ static struct ResolvedLookup {
   Decl declaration;
   alias declaration this;
 
-  bool opCast(T: bool)() { return declaration !is null; }
+  bool opCast(T: bool)() const { return declaration !is null; }
   Expr reference() { return parent.createMemberReference(declaration); }
 }
 
@@ -54,17 +56,33 @@ struct Lookup(DeclRange) if (isForwardRange!DeclRange && is(ElementType!DeclRang
 
   bool opCast(T: bool)() { return !decls.empty; }
 
-  bool empty() { return decls.empty; }
-  void popFront() { decls.popFront(); }
-  auto front() { return ResolvedLookup(parent, decls.front); }
   Lookup save() { return Lookup(parent, decls.save); }
   size_t count() { return decls.save.walkLength(); }
 
-  Expr resolve() {
+  Expr resolve(T = Expr)() {
     return decls.save.walkLength(2) == 1
       ? parent.createMemberReference(decls.front)
       : null;
   }
+
+  Type resolve(T: Type)() {
+    return decls.save.walkLength(2) == 1
+      ? decls.front().type
+      : null;
+  }
+
+  Type type()() {
+    if (empty) return null;
+    return decls.save.walkLength(2) == 1
+    ? front().type
+    : UnresolvedType.create(this);
+  }
+
+  Expr reference(Decl decl) {
+    return parent.createMemberReference(decl);
+  }
+
+  alias decls this;
 }
 
 static auto _lookup(T)(LookupContext parent, T decls) {
@@ -85,6 +103,28 @@ auto stagedLookup(SymbolTable symbolTable, Slice identifier) {
     .filter!(a => !a.empty);
 }
 
+
+auto lookup(Type type, string identifier, Visibility vis = Visibility.public_) {
+    Lookup!(Decl[]) lookup;
+
+    if (auto metaType = type.as!MetaType) {
+      if (auto structType = metaType.type.as!StructType) {
+        return _lookup(
+          null,
+          structType.decl.members.lookup(identifier));
+      }
+    }
+    else if (auto structType = type.as!StructType) {
+      return _lookup(
+        null,
+        vis == Visibility.public_
+          ? structType.decl.members.lookup(identifier).filter!(d => d.visibility == Visibility.public_).array
+          : structType.decl.members.lookup(identifier)
+      );
+    }
+    return Lookup!(Decl[]).init;
+}
+
 auto lookup(alias predicate = null)(Expr expr, string identifier, Visibility vis = Visibility.public_) {
 
   Lookup!(Decl[]) lookup;
@@ -96,11 +136,12 @@ auto lookup(alias predicate = null)(Expr expr, string identifier, Visibility vis
     }
   }
   else if (auto structType = expr.type.as!StructType) {
-    lookup = _lookup(
+    lookup = Lookup!(Decl[])(
       expr,
       vis == Visibility.public_
-        ? structType.decl.publicMembers.lookup(identifier)
-        : structType.decl.members.lookup(identifier));
+        ? structType.decl.members.lookup(identifier).filter!(d => d.visibility == Visibility.public_).array
+        : structType.decl.members.lookup(identifier)
+    );
   }
   else lookup = _lookup(cast(Expr)null, (cast(Decl[])[]));
   static if (is(predicate: typeof(null))) {

@@ -64,7 +64,8 @@ struct JsonOutput {
   void field(string name, string value) { output.dictField(name, value); }
   void field(string name, bool value)   { output.dictField(name, value); }
   void field(string name, Slice value)  { output.dictField(name, value.toString()); }
-  void field(string name, int value)    { output.dictField(name, value.to!string()); }
+  void field(string name, long value)    { output.dictField(name, value.to!string()); }
+  void field(string name, double value)    { output.dictField(name, value.to!string()); }
 
   void visit(TypeDecl decl) {
     field("type", "declaration.builtin_type");
@@ -88,16 +89,16 @@ struct JsonOutput {
       field("is_operator", decl.isOperator);
     if (decl.isExternal)
       field("is_external", decl.isExternal);
-    if (decl.isMethod)
-      field("is_method", decl.isMethod);
-    if (decl.isMacro)
-      field("is_macro", decl.isMacro);
     if (decl.callableBody)
       field("body", decl.callableBody);
-    if (decl.isMacro && decl.returnExpr)
-      field("expansion", decl.returnExpr);
-    if (!decl.isMacro && cast(RefExpr)decl.returnExpr)
-      field("return_type_declaration", (cast(RefExpr)decl.returnExpr).decl);
+
+
+    if (decl.returnExpr) {
+      if (decl.returnExpr.type.as!MetaType)
+        field("return_type_declaration", (cast(RefExpr)decl.returnExpr).decl);
+      else
+        field("expansion", decl.returnExpr);
+      }
   }
 
   void visit(ParameterDecl decl) {
@@ -116,13 +117,6 @@ struct JsonOutput {
       field("value-expression", decl.valueExpr);
     if (decl.isExternal)
       field("is_external", decl.isExternal);
-  }
-
-  void visit(FieldDecl decl) {
-    field("type", "declaration.struct.field");
-    field("name", decl.name.toString());
-    if (decl.valueExpr)
-      field("value_expression", decl.valueExpr);
   }
 
   void visit(StructDecl decl) {
@@ -147,19 +141,41 @@ struct JsonOutput {
   }
 
   void visit(LiteralExpr expr) {
-    if (expr.type.as!FloatType) {
+    if (expr.as!FloatValue) {
         field("type", "expression.literal.float");
-        field("value", expr.value);
+        field("value", expr.as!FloatValue.value);
     } else if (expr.type.as!IntegerType) {
         field("type", "expression.literal.int");
-        field("value", expr.value);
+        field("value", expr.as!IntegerValue.value);
     } else if (expr.type.as!StringType) {
         field("type", "expression.literal.string");
-        field("value", expr.value[1..$-1]);
+        field("value", expr.as!StringValue.value);
+    } else if (expr.type.as!BoolType) {
+        field("type", "expression.literal.bool");
+        field("value", expr.as!BoolValue.value);
     } else {
       field("type", "expression.literal.error");
-      field("value", expr.value);
     }
+  }
+
+  void visit(FloatValue expr) {
+    field("type", "expression.literal.float");
+    field("value", expr.value);
+  }
+
+  void visit(IntegerValue expr) {
+    field("type", "expression.literal.int");
+    field("value", expr.value);
+  }
+
+  void visit(StringValue expr) {
+    field("type", "expression.literal.string");
+    field("value", expr.value);
+  }
+
+  void visit(BoolValue expr) {
+    field("type", "expression.literal.bool");
+    field("value", expr.value ? "true" : "false");
   }
 
   void visit(RefExpr expr) {
@@ -216,7 +232,7 @@ struct JsonOutput {
 
   void visit(ImportStmt stmt) {
     field("type", "statement.import");
-    field("name", stmt.identifier);
+    field("name", stmt.identifier.length > 0 ? stmt.identifier[1..$-1] : "");
     field("library", stmt.targetContext.library);
   }
 

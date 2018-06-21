@@ -5,8 +5,11 @@ import duck.compiler;
 abstract class Decl : Node {
   Slice name;
   Type type;
+
+  Decl parent;
   DeclAttr attributes;
-  TypeDecl parent;
+
+  bool semantic;
 
   auto ref storage() { return attributes.storage; }
   auto ref visibility() { return attributes.visibility; }
@@ -14,6 +17,24 @@ abstract class Decl : Node {
 
   RefExpr reference(Expr context) {
       return new RefExpr(this, context);
+  }
+
+  final Type declaredType() {
+    if (auto metaType = this.type.as!MetaType) {
+      return metaType.type;
+    }
+    return null;
+  }
+
+  override string toString() {
+    import duck.compiler.dbg.conv: toString;
+    return .toString(this);
+  }
+
+  this(Decl parent, DeclAttr attributes, Slice name = Slice()) {
+    this.name = name;
+    this.parent = parent;
+    this.attributes = attributes;
   }
 
   this(Slice name, Type type) {
@@ -27,7 +48,7 @@ abstract class Decl : Node {
   }
 }
 
-class Library : Decl {
+class Library : TypeDecl {
   mixin NodeMixin;
 
   BlockStmt stmts;
@@ -39,7 +60,7 @@ class Library : Decl {
   Decl[] exports;
 
   this(BlockStmt stmts) {
-    super(Slice(""), null);
+    super(null, Slice(""));
     this.imports = new DeclTable();
     this.stmts = stmts;
     this.globals = new DeclTable();
@@ -84,20 +105,6 @@ class VarDecl : ValueDecl {
   }
 }
 
-class FieldDecl : VarDecl {
-  mixin NodeMixin;
-
-  final StructDecl parent() { return super.parent.enforce!StructDecl; }
-  final void parent(StructDecl parent) { super.parent = parent; }
-
-  this(Expr typeExpr, Token identifier, Expr valueExpr, StructDecl parent) {
-    super(cast(Type)null, identifier);
-    this.typeExpr = typeExpr;
-    this.valueExpr = valueExpr;
-    this.parent = parent;
-  }
-}
-
 class BuiltinVarDecl : VarDecl {
   mixin NodeMixin;
 
@@ -120,6 +127,16 @@ class ParameterDecl : ValueDecl {
   }
 }
 
+class AliasDecl : ValueDecl {
+  mixin NodeMixin;
+  Expr value;
+
+  this(Slice name, Expr value) {
+    super(null, name);
+    this.value = value;
+  }
+}
+
 class CallableDecl : ValueDecl {
   mixin NodeMixin;
 
@@ -131,50 +148,46 @@ class CallableDecl : ValueDecl {
   union {
     uint flags;
     struct {
-      import std.bitmanip;
+      import std.bitmanip: bitfields;
       mixin(bitfields!(
-          int,  "filler", 4,
+          int,  "filler", 5,
           bool, "isConstructor", 1,
           bool, "isOperator", 1,
-          bool, "isMethod", 1,
-          bool, "isMacro", 1));
+          bool, "isPropertyAccessor", 1));
     }
   }
 
   Slice headerSource;
 
-  @property bool isFunction() { return !isMethod; }
-
   Stmt callableBody;
 
-  ParameterList  parameters;
+  ParameterList parameters;
 
   Expr returnExpr;
 
   this() {
     super(null, Slice());
     this.parameters = new ParameterList();
+    //this.context = new ParameterList();
   }
 
   this(Slice identifier) {
     super(null, identifier);
     this.parameters = new ParameterList();
+    //this.context = new ParameterList();
   }
 
   this(Slice identifier, Expr expansion, StructDecl parentDecl) {
     super(null, identifier);
     this.parameters = new ParameterList();
+    //this.context = new ParameterList();
     this.returnExpr = expansion;
     this.parent = parentDecl;
   }
 }
 
-
-
 class TypeDecl : Decl {
   mixin NodeMixin;
-
-  final Type declaredType() { return this.type.as!MetaType.type; }
 
   @property
   override bool hasError() {
@@ -208,7 +221,7 @@ class ArrayDecl : TypeDecl {
     super(ArrayType.create(elementType), Token());
   }
 
-  this(Type elementType, uint size) {
+  this(Type elementType, long size) {
     this.elementType = elementType;
     super(StaticArrayType.create(elementType, size), Token());
   }
@@ -218,25 +231,38 @@ class StructDecl : TypeDecl {
   mixin NodeMixin;
 
   DeclTable members;
-  DeclTable publicMembers;
-  ValueDecl context;
+  ParameterList context;
 
   final auto fields() { return members.fields; }
   final auto constructors() { return members.constructors; }
-  final auto methods() { return members.methods; }
-  final auto macros() { return members.macros; }
   final auto all() { return members.all; }
+
+  BlockStmt structBody;
 
   this(Type type, Slice name) {
     super(type, name);
     this.members = new DeclTable();
-    this.publicMembers = new DeclTable();
+    this.context = new ParameterList();
+    this.context.add(new ParameterDecl(this.reference(null), Slice("this")));
   }
 
   this(Slice name) {
     auto type = StructType.create(name);
     type.decl = this;
     this(type, name);
+  }
+}
+
+class PropertyDecl: StructDecl {
+  mixin NodeMixin;
+
+  Expr typeExpr;
+
+  this(Expr typeExpr, Slice identifier) {
+    auto type = PropertyType.create(identifier);
+    type.decl = this;
+    super(type, identifier);
+    this.typeExpr = typeExpr;
   }
 }
 

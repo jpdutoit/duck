@@ -40,8 +40,12 @@ void ASSERT(T)(T value, lazy string message, int line = __LINE__, string file = 
   }
 }
 
-string describe(const Type type) {
-  return type ? type.mangled() : "?";
+string describe(Type type) {
+  if (type is null) return "?";
+  if (auto metaType = cast(MetaType)type) {
+    return "type " ~ metaType.type.describe;
+  }
+  return "a value of type " ~ type.describe;
 }
 
 string prettyName(T)(ref T t) {

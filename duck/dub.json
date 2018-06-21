@@ -5,7 +5,7 @@
   "authors": ["jpdutoit@gmail.com"],
   "targetPath": "../bin",
   "targetType": "executable",
-  "sourcePaths": [],
+  "sourcePaths": ["source/duck"],
   "sourceFiles": [
     "source/duck/package.d",
     "source/duck/util/stack.d",
@@ -61,7 +61,7 @@
     "name": "default",
     "targetName": "duck",
     "mainSourceFile": "source/host.d",
-    "buildRequirements": ["silenceDeprecations"]
+    "buildRequirements": []
   }, {
     "name": "interactive",
     "targetName": "iduck",

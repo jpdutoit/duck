@@ -59,6 +59,18 @@ struct DAppender(Generator) {
     put("(");
   }
 
+  void functionDecl(T)(scope T returnType, string attributes, string name) {
+    childCount.push(0);
+    newline();
+    newline();
+    put(attributes);
+    put(" ");
+    put(returnType);
+    put(" ");
+    put(name);
+    put("(");
+  }
+
   void functionArgument(T)(scope T type, string name) {
     if (childCount.top > 0) {
       put(", ");

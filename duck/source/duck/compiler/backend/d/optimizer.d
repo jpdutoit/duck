@@ -8,7 +8,7 @@ import duck.compiler.visitors.treeshaker;
 import duck.compiler.dbg;
 
 class Optimizer {
-  int[FieldDecl] fieldDependencyCount;
+  int[VarDecl] fieldDependencyCount;
   TreeShaker treeShaker;
 
   this(Library main) {
@@ -24,15 +24,15 @@ class Optimizer {
     return null;
   }
 
-  bool isDynamicField(FieldDecl field) {
+  bool isDynamicField(VarDecl field) {
     //TODO: Reenable this at a later stage once it works correctly.
-    return field && field.parent.declaredType.isModule && !field.type.isModule;
-    //return field && field.parentDecl.declaredType.isModule && !field.type.isModule && (field in fieldDependencyCount) !is null;
+    return field && field.parent && field.parent.declaredType.as!ModuleType && !field.type.as!ModuleType;
+    //return field && field.parentDecl.declaredType.as!ModuleType && !field.type.as!ModuleType && (field in fieldDependencyCount) !is null;
   }
 
   bool hasDynamicFields(ModuleDecl mod) {
     if (hasTick(mod)) return true;
-    foreach(field; mod.fields.as!FieldDecl) {
+    foreach(field; mod.fields.as!VarDecl) {
       if (isDynamicField(field))
         return true;
     }
@@ -45,7 +45,7 @@ class Optimizer {
 
   auto findField(Node node) {
     return node.traverseFind!(
-      (RefExpr e) => e.decl.as!FieldDecl
+      (RefExpr e) => e.decl.parent.as!ModuleDecl ? e.decl.as!VarDecl : null
     );
   }
 
@@ -60,7 +60,7 @@ class Optimizer {
     });
   }
 
-  void findFieldDependencies(Node node) {
+  final void findFieldDependencies(Node node) {
     import std.algorithm: max;
     node.traverse!(
       (PipeExpr e) {

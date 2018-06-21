@@ -14,6 +14,13 @@ alias range = float[2];
 
 alias Time = double;
 alias duration = double;
+T _defaultValue(T)() { return T.init; }
+T _defaultValue(T : double)() {
+  return 0;
+}
+T _defaultValue(T : float)() {
+  return 0;
+}
 
 alias note = float;
 alias interval = float;

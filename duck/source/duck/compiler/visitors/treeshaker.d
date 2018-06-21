@@ -11,7 +11,7 @@ struct TreeShaker {
   }
 
   bool isReferenced(Decl d) {
-    return (d in referencedDecls) !is null;
+    return true || (d in referencedDecls) !is null;
   }
 
   auto declarations() {
@@ -35,6 +35,7 @@ struct TreeShaker {
       },
       (ParameterDecl decl) { },
       (StructDecl decl) { },
+      (AliasDecl decl) { },
       (ModuleDecl decl) {
         if (auto os = (decl.members.lookup("tick"))) {
           if (os.length > 0)

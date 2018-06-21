@@ -19,7 +19,7 @@ short instrumentationCode(string id, void* address) {
 	if (!b) {
 		codeForAddr[addr] = ++instr_codes;
 
-		rawWrite3(cast(short)(-instr_codes));
+		rawWrite3(cast(short)(-int(instr_codes)));
 		rawWrite3(cast(short)id.length);
 		rawWrite2(id);
 	}

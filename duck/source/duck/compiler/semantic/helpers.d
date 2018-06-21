@@ -84,7 +84,7 @@ bool isLValue(Expr expr) {
         (Decl d) => false
       );
     },
-    (Expr e) => false
+    (Expr _) => false
   );
 }
 
@@ -92,15 +92,8 @@ bool isPipeTarget(Expr expr) {
   return expr.visit!(
     (IndexExpr i) => isPipeTarget(i.expr),
     (IdentifierExpr i) => true,
-    (RefExpr r) => r.context && r.context.type.as!ModuleType && r.decl.as!FieldDecl,
+    (RefExpr r) => r.context && r.context.type.as!ModuleType && r.decl.as!VarDecl,
     (Expr e) => false
-  );
-}
-
-Type getResultType(Decl decl, int line = __LINE__, string file = __FILE__) {
-  return decl.visit!(
-    (FieldDecl fd) => fd.type,
-    (CallableDecl cd) => cd.type.returnType
   );
 }
 

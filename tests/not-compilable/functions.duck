@@ -76,6 +76,9 @@ module B {
 
   function f(a: float) -> int {}
   function f(b: float) -> int {}
+
+  g: float;
+  function g() -> float {}
 }
 
 B.a();
@@ -84,6 +87,7 @@ B.a();
 1 + B.d;
 1 + B.e;
 +B.f;
+B.g;
 
 /**
 OUTPUT:
@@ -110,14 +114,23 @@ tests/not-compilable/functions.duck(51:5-11): Error: Statement is not reachable
 tests/not-compilable/functions.duck(57:1-7): Error: Can only return from a function
 tests/not-compilable/functions.duck(59:21): Error: Expected a type
 tests/not-compilable/functions.duck(59:27-33): Error: Expected a type
-tests/not-compilable/functions.duck(81:1-5): Error: Multiple functions matches arguments:
+tests/not-compilable/functions.duck(66:3): Error: Cannot redefine a
+tests/not-compilable/functions.duck(72:3): Error: Cannot redefine d
+tests/not-compilable/functions.duck(84:1-5): Error: Multiple functions matches arguments:
 tests/not-compilable/functions.duck(65:3-23):   function a() -> float
 tests/not-compilable/functions.duck(67:3-23):   function a() -> float
-tests/not-compilable/functions.duck(84:5-7): Error: Ambiguous value:
-tests/not-compilable/functions.duck(71:3-10):   d: float
-tests/not-compilable/functions.duck(72:3-8):   d: int
 tests/not-compilable/functions.duck(85:5-7): Error: Ambiguous value:
+tests/not-compilable/functions.duck(65:3-23):   function a() -> float
+tests/not-compilable/functions.duck(67:3-23):   function a() -> float
+tests/not-compilable/functions.duck(68:3-31):   function a(c: float) -> float
+tests/not-compilable/functions.duck(86:5-7): Error: Ambiguous value:
+tests/not-compilable/functions.duck(69:3-23):   function b() -> float
+tests/not-compilable/functions.duck(70:3-31):   function b(c: float) -> float
+tests/not-compilable/functions.duck(88:5-7): Error: Ambiguous value:
 tests/not-compilable/functions.duck(74:3-23):   function e() -> float
 tests/not-compilable/functions.duck(75:3-21):   function e() -> int
+tests/not-compilable/functions.duck(89:2-4): Error: Ambiguous value:
+tests/not-compilable/functions.duck(77:3-29):   function f(a: float) -> int
+tests/not-compilable/functions.duck(78:3-29):   function f(b: float) -> int
 ---
 */

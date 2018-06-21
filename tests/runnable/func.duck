@@ -19,7 +19,7 @@ function add(a: float, b: float) -> float {
 
 module A {
   input: float;
-  output: input;
+  alias output = input;
 }
 
 add((2 >> c: A), (2 >> d: A)) >> e: A;

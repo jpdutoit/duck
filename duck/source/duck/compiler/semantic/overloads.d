@@ -1,6 +1,7 @@
 module duck.compiler.semantic.overloads;
 
 import duck.compiler;
+import duck.compiler.visitors;
 import duck.compiler.semantic.helpers;
 
 // Type coercion cost
@@ -41,11 +42,14 @@ Cost coercionCost(Type type, Type target) {
   if (!type || !target) return Cost.infinity;
   if (type.isSameType(target)) return Cost.zero;
 
-  // Coerce a function with no arguments by calling it immediately
-  if (auto functionType = type.as!FunctionType) {
-    if (functionType.parameterTypes.length == 0) {
-      auto returnType = functionType.returnType;
-      return Cost.implicitCall + coercionCost(returnType, target);
+  if (auto property = type.as!PropertyType) {
+    auto getters = lookup(property, "get");
+    if (getters.count == 1) {
+      if (auto getter = getters.front.type.as!FunctionType) {
+        if (getter.parameterTypes.length == 0)
+          return Cost.implicitCall + coercionCost(getter.returnType, target);
+      }
+      return coercionCost(getters.front.type, target);
     }
   }
 
@@ -57,9 +61,9 @@ Cost coercionCost(Type type, Type target) {
   }
   // Coerce module by automatically reference field output
   if (auto moduleType = cast(ModuleType)type) {
-    auto output = moduleType.members.lookup("output");
-    if (output.length == 1) {
-      return Cost.implicitOutput + coercionCost(output[0].getResultType, target);
+    auto output = lookup(moduleType, "output");
+    if (output.count == 1) {
+      return Cost.implicitOutput + coercionCost(output.front.type, target);
     }
   }
 
@@ -90,7 +94,7 @@ Cost coercionCost(Expr[] args, Type[] targetTypes) {
   return cost;
 }
 
-auto findBestOverload(R)(R decls, Expr[] args, CallableDecl[]* viable)
+auto findBestOverload(R)(R decls, Expr[] args, CallableDecl[]* viable = null)
 if (isDeclRange!R)
 {
   Cost lowestCost = Cost.max;

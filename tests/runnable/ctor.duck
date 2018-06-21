@@ -6,6 +6,8 @@ extern struct frequency {
 extern function raw(f: frequency) -> float;
 function hz(amount: float) -> frequency(amount);
 
+a: frequency = 2hz;
+
 module A {
   value: mono;
   constructor() {

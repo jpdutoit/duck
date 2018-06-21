@@ -1,0 +1,28 @@
+extern function assertEquals(float, float);
+extern function operator+(float, float) -> float;
+
+struct A {
+  subscript(index: float) {
+    cc: float = 100;
+    get -> float {
+      return cc + index;
+    }
+    set(value: float) {
+      cc = value;
+    }
+  }
+  //function d(index: int) -> this.c;
+  function d(index: int) -> float {
+    return this.c;
+  }
+
+  c: float;
+}
+
+a: A;
+
+assertEquals(a[0], 100);
+a[0] = 500;
+a[0];
+assertEquals(a[0], 500);
+a.d(2);

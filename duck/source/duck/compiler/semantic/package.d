@@ -34,6 +34,8 @@ struct SemanticAnalysis {
   Stack!Node stack;
   Stack!Decl access;
 
+  Expr[Decl] implicitContexts;
+
   void accept(E : Stmt)(ref E target) {
     debug(Semantic) {
       logIndent();
@@ -66,12 +68,17 @@ struct SemanticAnalysis {
   }
 
   void accept(E : Decl)(ref E target) {
+    if (target.semantic) return;
+
     debug(Semantic) {
       logIndent();
       log(target.prettyName.red, target, "'" ~ target.name ~ "'");
     }
+
     stack.push(target);
-    auto obj = target.accept(declSemantic);
+    target.semantic = true;
+    Decl obj = cast(Decl)target.accept(declSemantic);
+    obj.semantic = true;
     stack.pop();
     debug(Semantic)  logOutdent();
 

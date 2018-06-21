@@ -1,0 +1,49 @@
+
+extern function operator +(float, float) -> float;
+
+struct A {
+  a: float = 2;
+  b: float {
+    @private storage: float;
+
+    get() -> float {
+      return storage;
+    }
+
+    set(value: float) {
+      storage = value;
+    }
+  }
+}
+
+
+c: float {
+  get() -> 1 + 2;
+}
+
+d: float {
+  set(value: float) { }
+}
+
+
+a: A;
+a.b = a.a;
+a.a = a.b;
+a.b = a.b;
+c = a.b;
+c = d;
+d = a.a;
+d = a.b;
+d = c;
+
+
+extern function fn1(float, float) -> float;
+fn1(a.a, a.b);
+
+/**
+OUTPUT:
+---
+tests/not-compilable/property.duck(33:1): Error: Property c does not have a setter
+tests/not-compilable/property.duck(34:5): Error: Property d does not have a getter
+---
+*/

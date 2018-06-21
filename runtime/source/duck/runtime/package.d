@@ -88,8 +88,19 @@ struct TypedBuffer(T) {
     return *(cast(T*)_buffer[index * T.sizeof]);
   }
 
+  T get(int index) {
+    index = modulus(index, this.length);
+    return *(cast(T*)_buffer[index * T.sizeof]);
+  }
+
+  void set(int index, T value) {
+    index = modulus(index, this.length);
+    *(cast(T*)_buffer[index * T.sizeof]) = value;
+  }
+
   void resize(int newLength) {
     auto oldLength = length;
+    if (newLength < 1) newLength = 1;
     _buffer.resize(newLength * cast(int)T.sizeof);
     for (auto i = oldLength; i < length; ++i)
       this[i] = 0;
@@ -108,7 +119,7 @@ struct TypedBuffer(T) {
   }
 }
 
-alias SampleBuffer = TypedBuffer!float;
+alias SampleBuffer_ = TypedBuffer!float;
 
 version(USE_PORT_AUDIO) {
   public import duck.plugin.portaudio;

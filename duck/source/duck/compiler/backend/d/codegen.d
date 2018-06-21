@@ -42,7 +42,7 @@ class CodeGenContext {
     string* name = decl in uniqueNames;
     if (name is null) {
       declCount++;
-      string s = "__symbol_" ~ declCount.to!string();
+      string s = "_symbol_" ~ declCount.to!string();
       uniqueNames[decl] = s;
       debug(CodeGen) log("symbolName", s, decl, decl.name.toString());
       return s;
@@ -67,18 +67,18 @@ ModuleDecl moduleDecl(RefExpr expr) {
 
 auto findModules(Expr expr) {
   return expr.traverseCollect!(
-    (RefExpr r) => r.context && r.context.type.isModule ? r.context.as!RefExpr : null
+    (RefExpr r) => r.context && r.context.type.as!ModuleType ? r.context.as!RefExpr : null
   );
 }
 
 RefExpr findModuleContext(Expr expr) {
   return expr.traverseFind!(
-    (RefExpr e) => e.context && e.context.type.isModule ? e.context.as!RefExpr : null
+    (RefExpr e) => e.context && e.context.type.as!ModuleType ? e.context.as!RefExpr : null
   );
 }
 
 auto findField(Expr expr) {
-  return expr.traverseFind!((RefExpr e) => e.decl.as!FieldDecl);
+  return expr.traverseFind!((RefExpr e) => e.decl.as!VarDecl);
 }
 
 struct CodeGen {
@@ -101,11 +101,18 @@ struct CodeGen {
   }
 
   string name(Decl decl) {
-    return decl.visit!(
-      (ParameterDecl d) => d.name,
+    auto prefix = "";
+    if (auto property = decl.parent.as!PropertyDecl) {
+      prefix = name(property) ~ "_";
+    }
+    return prefix ~ decl.visit!(
+      (PropertyDecl d) => context.uniqueName(d),
+      (ParameterDecl d) {
+        if (d.name == "this") return "this";
+        return "p_" ~ d.name;
+      },
       (BuiltinVarDecl d) => d.name,
       (VarDecl d) => d.isExternal ? d.name : context.uniqueName(d),
-      (FieldDecl d) => d.name, //d.parentDecl.external ? d.name : context.uniqueName(d),
       (CallableDecl d) {
         if (d.isExternal) {
           return d.isConstructor ? "initialize" : d.name;
@@ -138,7 +145,21 @@ struct CodeGen {
     output.put(expr.identifier);
   }
 
-  void visit(LiteralExpr expr) {
+  void visit(BoolValue expr) {
+    output.put(expr.value ? "true" : "false");
+  }
+
+  void visit(StringValue expr) {
+    output.put("\"");
+    output.put(expr.value);
+    output.put("\"");
+  }
+
+  void visit(FloatValue expr) {
+    output.put(expr.value);
+  }
+
+  void visit(IntegerValue expr) {
     output.put(expr.value);
   }
 
@@ -174,9 +195,9 @@ struct CodeGen {
     }
 
     if (typeDecl.isExternal)
-      output.statement(targetModule, ".__add( () ");
+      output.statement(targetModule, "._add( () ");
     else
-      output.statement(expr.right, "__dg = ()");
+      output.statement(expr.right, "_dg = ()");
 
     output.block(() {
       foreach(mod; modules) {
@@ -202,7 +223,7 @@ struct CodeGen {
 
     if (metrics.isDynamicField(expr.left.findField())) {
       if (!ownerDecl.isExternal && expr.left.as!RefExpr) {
-        output.statement(expr.left, "__dg = null;");
+        output.statement(expr.left, "_dg = null;");
       }
     }
     foreach(mod; modules) {
@@ -237,7 +258,7 @@ struct CodeGen {
   void putDefaultValue(Type type) {
     type.visit!(
       (ModuleType t) => output.put(name(type), ".alloc()"),
-      (StructType t) => output.put(name(type), ".init"),
+      (StructType t) => output.put("_defaultValue!", name(type), "()"),
       (StringType t) => output.put("\"\""),
       (FloatType t) => output.put("0"),
       (IntegerType t) => output.put("0"),
@@ -256,7 +277,6 @@ struct CodeGen {
 
   void visit(ConstructExpr expr) {
     auto typeName = name(expr.type);
-
     // Default construction
     if (!expr.callable) {
       if (expr.arguments.length == 0)
@@ -268,7 +288,7 @@ struct CodeGen {
     }
 
     auto callable = expr.callableDecl;
-    if (expr.type.isModule || !callable.isExternal)
+    if (expr.type.as!ModuleType || !callable.isExternal)
       output.put(typeName, ".alloc().", expr.callable, "(", expr.arguments, ")");
     else
       output.put(typeName, "(", expr.arguments, ")");
@@ -282,22 +302,38 @@ struct CodeGen {
         output.expression(re.context, "[", expr.arguments, "]");
       } else if (expr.arguments.length == 2) {
         output.expression(expr.arguments[0], expr.callable, expr.arguments[1]);
+      } else if (expr.arguments.length == 1) {
+        output.expression(expr.callable, expr.arguments[0]);
       } else {
-        context.error(expr.source, "Interal compiler error");
+        context.error(expr.source, "Internal compiler error");
       }
     } else {
-      output.put(expr.callable, "(", expr.arguments, ")");
+      output.put(expr.callable, "(");
+      if (expr.context) {
+        output.put(expr.context);
+        if (expr.context.length && expr.arguments.length > 0)
+          output.put(",");
+      }
+      output.put(expr.arguments);
+      output.put(")");
     }
   }
 
   void visit(VarDecl decl) {
     if (decl.isExternal) return;
+    if (!metrics.isReferenced(decl)) return;
+    if (metrics.isDynamicField(decl))
+      output.statement("_ConnDg ", name(decl), "_dg = void; ");
 
-    output.statement(name(decl.type), decl.type.isModule ? "* " : " ", name(decl), " = ");
-    if (decl.valueExpr)
-      output.put(decl.valueExpr, ";");
-    else
-      output.put("void;");
+    if (auto property = decl.type.as!PropertyType) {
+      visit(property.decl);
+    } else {
+      output.statement(name(decl.type), decl.type.as!ModuleType ? "* " : " ", name(decl), " = ");
+      if (decl.valueExpr && !(decl.parent && decl.parent.as!StructDecl))
+        output.put(decl.valueExpr, ";");
+      else
+        output.put("void;");
+    }
   }
 
   void visit(DeclStmt stmt) {
@@ -334,8 +370,16 @@ struct CodeGen {
   void visit(RefExpr expr) {
     auto name = name(expr.decl);
 
-    if (expr.context)
-      output.put(expr.context, ".", name);
+    auto context = expr.context;
+    while (context && context.type.as!PropertyType) {
+      if (auto parent = context.as!RefExpr.context)
+        context = parent;
+      else
+        break;
+    }
+
+    if (context)
+      output.put(context, ".", name);
     else
       output.put(name);
   }
@@ -354,15 +398,7 @@ struct CodeGen {
   }
 
   void visit(ParameterDecl decl) {
-    output.put(decl.type.isModule ? "* " : " ", name(decl));
-  }
-
-  void visit(FieldDecl field) {
-    if (!metrics.isReferenced(field)) return;
-    if (metrics.isDynamicField(field))
-      output.statement("__ConnDg ", name(field), "__dg = void; ");
-
-    output.statement(name(field.type), field.type.isModule ? "* " : " ", name(field), " = void;");
+    output.put(decl.type.as!ModuleType ? "* " : " ", name(decl));
   }
 
   void visit(ReturnStmt returnStmt) {
@@ -370,7 +406,7 @@ struct CodeGen {
   }
 
   void visit(CallableDecl funcDecl) {
-    if (funcDecl.isMacro) return;
+    if (funcDecl.type.as!MacroType) return;
 
     if (!funcDecl.isExternal) {
 
@@ -380,7 +416,7 @@ struct CodeGen {
 
       auto callableName = name(funcDecl);
       if (funcDecl.isConstructor) {
-        if (funcDecl.parent.declaredType.isModule)
+        if (funcDecl.parent.declaredType.as!ModuleType)
           output.functionDecl(name(funcDecl.parent) ~ "* ", callableName);
         else
           output.functionDecl(name(funcDecl.parent), callableName);
@@ -390,13 +426,18 @@ struct CodeGen {
       else
         output.functionDecl("void", callableName);
 
+      if (auto structDecl = funcDecl.parent.as!StructDecl) {
+        foreach (i, parameter; structDecl.context)
+          if (parameter.name != "this")
+            output.functionArgument(parameter.as!ParameterDecl().typeExpr, name(parameter));
+      }
       foreach (i, parameter; funcDecl.parameters)
         output.functionArgument(parameter.as!ParameterDecl().typeExpr, name(parameter));
 
       output.functionBody(() {
         accept(funcDecl.callableBody);
         if (funcDecl.isConstructor) {
-          if (funcDecl.parent.declaredType.isModule)
+          if (funcDecl.parent.declaredType.as!ModuleType)
             output.statement("return &this;");
           else
             output.statement("return this;");
@@ -405,10 +446,72 @@ struct CodeGen {
     }
   }
 
+  void visit(PropertyDecl propertyDecl) {
+    if (!metrics.isReferenced(propertyDecl)) return;
+      foreach(field ; propertyDecl.members.all)
+        if (field.name != "this")
+          accept(field);
+  }
+
+  void visit(AliasDecl _) {
+  }
+
   void visit(StructDecl structDecl) {
+    if (!metrics.isReferenced(structDecl)) return;
     if (!structDecl.isExternal) {
-      assert(false, "Structs not yet supported");
+      output.statement("static");
+      output.structDecl(name(structDecl), () {
+        foreach(field ; structDecl.members.all) accept(field);
+
+        auto typeName = name(structDecl);
+        output.functionDecl("static auto", "alloc");
+        output.functionBody((){
+          output.statement("return ",typeName, "()", ".initialize();");
+        });
+
+        output.functionDecl("auto", "initialize");
+        output.functionBody((){
+          this.emitInitializers(structDecl);
+          output.statement("return this;");
+        });
+      });
     }
+  }
+
+  void emitInitializers(Decl decl) {
+    decl.visit!(
+      (ModuleDecl decl) {
+        if (metrics.hasDynamicFields(decl))
+          output.statement("this._sampleIndex = ulong.max;");
+
+        foreach(member; decl.members.all) emitInitializers(member);
+      },
+
+      (StructDecl decl) {
+        foreach(member; decl.members.all) emitInitializers(member);
+      },
+      (AliasDecl decl) { },
+      (VarDecl decl) {
+        //if (!metrics.isReferenced(decl)) return;
+        if (metrics.isDynamicField(decl))
+          output.statement("this.", name(decl), "_dg = null;");
+        if (auto value = decl.valueExpr)
+          output.statement("this.", name(decl), " = ", value, ";");
+
+        if (decl.typeExpr)
+        if (auto type = decl.typeExpr.type.as!MetaType)
+        if (auto property = type.type.as!PropertyType) {
+          emitInitializers(property.decl);
+        }
+      },
+
+      (PropertyDecl decl) {
+        foreach(member; decl.members.all) emitInitializers(member);
+      },
+
+      (CallableDecl decl) { },
+      (ParameterDecl decl) { }
+    );
   }
 
   void visit(ModuleDecl moduleDecl) {
@@ -417,41 +520,32 @@ struct CodeGen {
         output.statement("static");
         output.structDecl(name(moduleDecl), () {
           if (metrics.hasDynamicFields(moduleDecl))
-            output.statement("ulong __sampleIndex = void;");
+            output.statement("ulong _sampleIndex = void;");
 
           foreach(field ; moduleDecl.members.all) accept(field);
 
           auto typeName = name(moduleDecl);
           output.functionDecl("static auto", "alloc");
           output.functionBody((){
-            output.statement("return alloc(new ", typeName, "());");
+            output.statement("return new ", typeName, "().initialize();");
           });
 
-          output.functionDecl("static auto", "alloc");
-          output.functionArgument(typeName ~ "*", "instance");
+          output.functionDecl("auto", "initialize");
           output.functionBody((){
-            if (metrics.hasDynamicFields(moduleDecl))
-              output.statement("instance.__sampleIndex = ulong.max;");
-            foreach(field; moduleDecl.members.fields.as!FieldDecl) {
-              if (!metrics.isReferenced(field)) continue;
-              if (metrics.isDynamicField(field))
-                output.statement("instance.", name(field), "__dg = null;");
-              if (auto value = field.valueExpr)
-                output.statement("instance.", name(field), " = ", value, ";");
-            }
-            output.statement("return instance;");
+            this.emitInitializers(moduleDecl);
+            output.statement("return &this;");
           });
 
           if (metrics.hasDynamicFields(moduleDecl)) {
             output.functionDecl("void", "_tick");
             output.functionBody((){
-              output.statement("if (__sampleIndex == __idx) return;");
-              output.statement("__sampleIndex = __idx;");
+              output.statement("if (_sampleIndex == _idx) return;");
+              output.statement("_sampleIndex = _idx;");
 
-              foreach(field; moduleDecl.members.fields.as!FieldDecl) {
+              foreach(field; moduleDecl.members.fields.as!VarDecl) {
                 if (!metrics.isReferenced(field)) continue;
                 if (metrics.isDynamicField(field)) {
-                  output.statement("if (", name(field), "__dg) ", name(field), "__dg();");
+                  output.statement("if (", name(field), "_dg) ", name(field), "_dg();");
                 }
               }
               if (auto os = moduleDecl.members.lookup("tick")) {

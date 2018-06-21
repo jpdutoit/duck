@@ -6,10 +6,23 @@ extern struct duration {
   constructor(float);
 }
 
-extern struct SampleBuffer {
+extern struct SampleBuffer_ {
   length: int;
-  function operator[](int) -> float;
+  function get(index: int) -> float;
+  function set(index: int, value: float);
 }
+
+struct SampleBuffer {
+  buffer: SampleBuffer_;
+  alias length = buffer.length;
+  subscript(index: int) {
+    get() -> float { return buffer.get(index); }
+    set(value: float) {
+      buffer.set(index, value);
+    }
+  }
+}
+
 
 extern struct Time;
 
@@ -89,7 +102,7 @@ module Phasor {
   freq: frequency = 440 hz;
   phase: mono = 0;
   output: mono = 0;
-  input: freq;
+  alias input = freq;
 
   function tick() {
     output = phase;
@@ -99,7 +112,7 @@ module Phasor {
 
 module Clock {
   freq: frequency = 1 hz;
-  input: freq;
+  alias input = freq;
   output: mono = 1;
 
   //TODO: Phase should be double precision
@@ -152,8 +165,8 @@ module LowPass {
 module SinOsc {
   @private phasor: Phasor;
 
-  freq: this.phasor.freq;
-  input: this.phasor.freq;
+  alias freq = this.phasor.freq;
+  alias input = this.phasor.freq;
   output: mono;
 
   //TODO: Implement pipes in definition
@@ -167,8 +180,8 @@ module SinOsc {
 
 module Triangle {
   @private phasor: Phasor;
-  freq: this.phasor.freq;
-  input: this.phasor.freq;
+  alias freq = this.phasor.freq;
+  alias input = this.phasor.freq;
   output: mono;
 
   function tick() {
@@ -178,8 +191,8 @@ module Triangle {
 
 module SawOsc {
   @private phasor: Phasor;
-  freq: this.phasor.freq;
-  input: this.phasor.freq;
+  alias freq = this.phasor.freq;
+  alias input = this.phasor.freq;
   output: mono;
 
   function tick() {
@@ -205,12 +218,12 @@ extern module DAC {
 
 module Mono {
   input: mono;
-  output: input;
+  alias output = input;
 }
 
 module Frequency {
   input: frequency;
-  output: input;
+  alias output = input;
 }
 
 extern module Assert {
@@ -238,8 +251,8 @@ extern module ScaleQuant {
 
 module Square {
   phasor: Phasor;
-  freq: phasor.freq;
-  input: phasor.freq;
+  alias freq = phasor.freq;
+  alias input = phasor.freq;
   output: mono;
 
   lo: float = 0;
@@ -290,7 +303,7 @@ module Echo {
   }
 
   @private delay: Delay;
-  length: delay.length;
+  alias length = delay.length;
   input: mono = 0;
   gain: mono = 0.5;
   output: mono = 0;
@@ -326,7 +339,7 @@ module PairwiseAvg {
 
 module TriggerDivider {
   input: mono;
-  trigger: input;
+  alias trigger = input;
   output: mono;
   counter: float = 0;
   divisor: float = 2;
@@ -348,7 +361,7 @@ module TriggerDivider {
 
 module Gate {
   input: mono = 0;
-  trigger: input;
+  alias trigger = input;
   output: mono;
 
   length: duration;

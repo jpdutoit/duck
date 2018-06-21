@@ -13,7 +13,7 @@ module Phasor {
   freq: frequency = 440 hz;
   phase: mono = 0;
   output: mono = 0;
-  input: freq;
+  alias input = freq;
 
   function tick() {
     output = phase;

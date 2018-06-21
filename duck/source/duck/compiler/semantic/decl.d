@@ -14,6 +14,13 @@ struct DeclSemantic {
 
   void accept(E)(ref E target) { semantic.accept!E(target); }
 
+
+  Node visit(AliasDecl decl) {
+    accept(decl.value);
+    decl.type = decl.value.type;
+    return decl;
+  }
+
   Node visit(CallableDecl decl) {
     Type[] paramTypes;
 
@@ -23,6 +30,7 @@ struct DeclSemantic {
     }
 
     semantic.symbolTable.pushScope(decl.parameters.readonly());
+
     if (decl.returnExpr) {
       accept(decl.returnExpr);
     }
@@ -30,9 +38,9 @@ struct DeclSemantic {
     if (decl.returnExpr) {
       if (auto metaType = decl.returnExpr.type.as!MetaType) {
         decl.type = FunctionType.create(metaType.type, TupleType.create(paramTypes), decl);
+        expect(decl.isExternal || decl.callableBody !is null, decl.returnExpr, "Function body expected");
       } else {
         expect(!decl.callableBody, decl.returnExpr, "Cannot specify a function body along with an inline return expression");
-        decl.isMacro = true;
         decl.type = MacroType.create(decl.returnExpr.type, TupleType.create(paramTypes), decl);
       }
     } else {
@@ -57,6 +65,10 @@ struct DeclSemantic {
     return decl;
   }
 
+  Node visit(BuiltinVarDecl decl) {
+    return decl;
+  }
+
   Node visit(VarDecl decl) {
     debug(Semantic) log("=>", decl.name, decl.typeExpr);
 
@@ -66,6 +78,7 @@ struct DeclSemantic {
 
     if (!decl.typeExpr) {
       accept(decl.valueExpr);
+      exprSemantic.resolveValue(decl.valueExpr);
       decl.type = decl.valueExpr.type;
       return decl;
     }
@@ -82,31 +95,23 @@ struct DeclSemantic {
     }
     else if (auto metaType = decl.typeExpr.type.as!MetaType) {
       decl.type = metaType.type;
-      if (!decl.valueExpr)
-        decl.valueExpr = new ConstructExpr(decl.typeExpr, [], decl.typeExpr.source);
-      accept(decl.valueExpr);
-      decl.valueExpr = exprSemantic.coerce(decl.valueExpr, metaType.type);
-      decl.typeExpr = null;
+      if (decl.typeExpr.as!RefExpr && decl.typeExpr.as!RefExpr.decl.as!PropertyDecl) {
+
+      } else {
+        if (!decl.valueExpr)
+          decl.valueExpr = new ConstructExpr(decl.typeExpr, [], decl.typeExpr.source);
+        accept(decl.valueExpr);
+        decl.valueExpr = exprSemantic.coerce(decl.valueExpr, metaType.type);
+        decl.typeExpr = null;
+      }
       return decl;
     }
-    else if (auto structDecl = decl.parent.as!StructDecl) {
-      expect(!decl.valueExpr, decl.valueExpr, "Unexpected value in alias declaration");
-      Expr target = decl.typeExpr;
-      auto mac = new CallableDecl(decl.name, target, structDecl);
-      mac.isMacro = true;
-      // Think of a nicer solution than replacing it in decls table,
-      // perhaps the decls table should only be constructed after all the fields
-      // have been analyzed
-      structDecl.members.replace(decl, mac);
-      structDecl.publicMembers.replace(decl, mac);
-      return mac;
-    } else {
-      decl.typeExpr.expect!MetaType;
-      return decl.taint;
-    }
+
+    decl.typeExpr.expect!MetaType;
+    return decl.taint;
   }
 
-  Node visit(BasicTypeDecl decl) {
+  Node visit(Decl decl) {
     return decl;
   }
 
@@ -115,7 +120,6 @@ struct DeclSemantic {
       callable.name = Slice("__ctor");
       callable.parent = structDecl;
       callable.isConstructor = true;
-      callable.isMethod = false;
       callable.callableBody = new ScopeStmt();
       return callable;
   }
@@ -124,24 +128,51 @@ struct DeclSemantic {
     debug(Semantic) log("=>", structDecl.name.blue);
 
     access.push(structDecl);
-    structDecl.context = new ParameterDecl(structDecl.reference(null), Slice("this"));
-    accept(structDecl.context);
 
-    semantic.symbolTable.pushScope(new ThisScope(structDecl));
+    if (auto outer = structDecl.parent.as!StructDecl) {
+      AliasDecl a = new AliasDecl(Slice("outer"), new RefExpr(outer.context.elements[0]));
+      accept(a);
+      structDecl.members.define("outer", a);
+    }
+
+    foreach(decl; structDecl.context) {
+      accept(decl);
+    }
+
+    semantic.symbolTable.pushScope(new StructScope(structDecl));
+
+    if (structDecl.structBody)
+    foreach(Stmt stmt; structDecl.structBody) {
+      stmt.visit!(
+        (DeclStmt stmt) {
+          debug(Semantic) log("Add to symbol table:", stmt.decl.name, stmt.decl);
+
+          if (!stmt.decl.as!CallableDecl && structDecl.members.defines(stmt.decl.name)) {
+            error(stmt.decl.name, "Cannot redefine " ~ stmt.decl.name);
+            return;
+          }
+          structDecl.members.define(stmt.decl.name, stmt.decl);
+        },
+        (Stmt stmt) {
+          stmt.error("Statement unexpected as part of struct declarations");
+        }
+      );
+    }
 
     import std.algorithm.iteration: filter;
     auto defaultCtors = structDecl.constructors.as!CallableDecl.filter!(c => c.parameters.length == 0);
-    if (!structDecl.isExternal && defaultCtors.empty) {
+    if (!structDecl.isExternal && defaultCtors.empty && !structDecl.as!PropertyDecl) {
       auto ctor = generateDefaultConstructor(structDecl);
       structDecl.members.define(ctor);
-      structDecl.publicMembers.define(ctor);
     }
 
-    foreach(ref decl; structDecl.fields) accept(decl);
-    foreach(ref decl; structDecl.macros) accept(decl);
-    foreach(ref decl; structDecl.methods) accept(decl);
-    foreach(ref decl; structDecl.constructors) accept(decl);
-
+    if (structDecl.structBody)
+    foreach(Stmt stmt; structDecl.structBody) {
+      stmt.visit!(
+        (DeclStmt stmt) { accept(stmt.decl); },
+        (Stmt stmt) { }
+      );
+    }
     semantic.symbolTable.popScope();
     access.pop();
     return structDecl;

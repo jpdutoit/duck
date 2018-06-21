@@ -10,7 +10,7 @@ extern function hz(duration) -> frequency;
 extern function operator+(frequency, frequency) -> frequency;
 extern function operator+(float, float) -> frequency;
 
-extern function test3() -> frequency;
+test3: frequency;
 
 f : frequency = 1 hz + test3;
 

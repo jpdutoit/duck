@@ -11,12 +11,12 @@ module A {
     output = a(input, input);
   }
   input: float;
-  output: input;
+  alias output = input;
 }
 
 module B {
   input: float;
-  output: input;
+  alias output = input;
 }
 
 A + A >> A;

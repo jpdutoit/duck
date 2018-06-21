@@ -2,14 +2,18 @@ module duck.compiler.types;
 
 import duck.compiler;
 
+import std.algorithm.iteration : map;
 private import std.meta : AliasSeq;
 private import std.typetuple: staticIndexOf;
 private import std.conv;
+private import std.range, std.range.primitives;
+private import std.array;
+private import std.traits: Unqual;
 
 alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int", "bool");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, FunctionType, ArrayType, MacroType, TupleType, StaticArrayType, MetaType, UnresolvedType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, PropertyType, FunctionType, ArrayType, MacroType, TupleType, StaticArrayType, MetaType, UnresolvedType);
 
-alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, FunctionType, MacroType, ArrayType, StaticArrayType, UnresolvedType);
+alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, PropertyType, FunctionType, MacroType, TupleType, ArrayType, StaticArrayType, UnresolvedType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -19,13 +23,15 @@ template TypeId(T) {
   }
 }
 
-template BasicType(string desc) {
-  final class BasicType : Type {
+abstract class BasicType : Type { }
+
+template ABasicType(string desc) {
+  final class ABasicType : BasicType {
     static enum _Kind Kind = staticIndexOf!(desc, BasicTypes);
     override _Kind kind() { return Kind; };
     static assert(Kind >= 0, T.stringof ~ " is not in basic types list.");
 
-    static BasicType create() {
+    static ABasicType create() {
       return instance;
     }
 
@@ -35,17 +41,17 @@ template BasicType(string desc) {
     override bool opEquals(Object o) {
       return this is o;
     }
-    private: static __gshared instance = new BasicType();
+    private: static __gshared instance = new ABasicType();
   }
   //static __gshared BasicType = new BasicTypeT();
 }
 
-alias FloatType = BasicType!("float");
-alias IntegerType = BasicType!("int");
-alias BoolType = BasicType!("bool");
-alias StringType = BasicType!("string");
-alias VoidType = BasicType!("nothing");
-alias ErrorType = BasicType!("error");
+alias FloatType = ABasicType!("float");
+alias IntegerType = ABasicType!("int");
+alias BoolType = ABasicType!("bool");
+alias StringType = ABasicType!("string");
+alias VoidType = ABasicType!("nothing");
+alias ErrorType = ABasicType!("error");
 
 
 mixin template TypeMixin() {
@@ -79,22 +85,14 @@ final class TupleType : Type {
   Type[] elementTypes;
 
   override string describe() const {
-    import std.conv : to;
-    string s = "(";
-    foreach (i, e ; elementTypes) {
-      if (i != 0) s ~= ", ";
-      s ~= e.describe();
-    }
-    return s ~ ")";
+    return "(" ~ elementTypes.describe(",") ~ ")";
   }
+
 
   static auto create(Type[] elementTypes) {
-    return new TupleType().init(elementTypes);
-  }
-
-  auto init(Type[] elementTypes) {
-    this.elementTypes = elementTypes;
-    return this;
+    auto t = new TupleType();
+    t.elementTypes = elementTypes;
+  	return t;
   }
 
   alias elementTypes this;
@@ -107,17 +105,16 @@ class StructType : Type {
   StructDecl decl;
   auto members() { return decl.members; }
 
+  this(string name) {
+    this.name = name;
+  }
+
   override string describe() const {
     return cast(immutable)name;
   }
 
   static auto create(string name) {
-    return new StructType().init(name);
-  }
-
-  auto init(string name) {
-    this.name = name;
-    return this;
+    return new StructType(name);
   }
 }
 
@@ -131,7 +128,7 @@ final class ArrayType : Type {
   }
 
   static auto create(Type elementType) {
-    return new ArrayType().init(elementType);
+    return new ArrayType(elementType);
   }
 
   override
@@ -140,9 +137,8 @@ final class ArrayType : Type {
     return a && a.elementType.isSameType((elementType));
   }
 
-  auto init(Type elementType) {
+  this(Type elementType) {
     this.elementType = elementType;
-    return this;
   }
 }
 
@@ -150,14 +146,14 @@ final class StaticArrayType : Type {
   mixin TypeMixin;
 
   Type elementType;
-  uint size;
+  long size;
 
   override string describe() const {
     return elementType.describe() ~ "[" ~ size.to!string ~ "]";
   }
 
-  static auto create(Type elementType, uint size) {
-    return new StaticArrayType().init(elementType, size);
+  static auto create(Type elementType, long size) {
+    return new StaticArrayType(elementType, size);
   }
 
   override
@@ -166,10 +162,9 @@ final class StaticArrayType : Type {
     return a && a.size == this.size && a.elementType.isSameType((elementType));
   }
 
-  auto init(Type elementType, uint size) {
+  this(Type elementType, long size) {
     this.elementType = elementType;
     this.size = size;
-    return this;
   }
 }
 
@@ -185,12 +180,32 @@ final class ModuleType : StructType {
   }
 
   static ModuleType create(string name) {
-    return new ModuleType().init(name);
+    return new ModuleType(name);
   }
 
-  ModuleType init(string name) {
-    this.name = name;
-    return this;
+  this(string name) {
+    super(name);
+  }
+
+}
+
+
+final class PropertyType : StructType {
+  mixin TypeMixin;
+
+  PropertyDecl decl() { return cast(PropertyDecl)super.decl; }
+  void decl(PropertyDecl decl) { super.decl = decl; }
+
+  override string describe() const {
+    return "Property_" ~ name;
+  }
+
+  static PropertyType create(string name) {
+    return new PropertyType(name);
+  }
+
+  this(string name) {
+    super(name);
   }
 
 }
@@ -205,7 +220,7 @@ class MetaType : Type {
   }
 
   static auto create(Type type) {
-    return new MetaType().init(type);
+    return new MetaType(type);
   }
 
   override
@@ -214,9 +229,8 @@ class MetaType : Type {
     return a && a.type.isSameType(type);
   }
 
-  auto init(Type type) {
+  this(Type type) {
     this.type = type;
-    return this;
   }
 }
 
@@ -232,12 +246,7 @@ class UnresolvedType: Type {
   }
 
   override string describe() const {
-    auto s = "(";
-    foreach (i, decl; lookup.decls) {
-      if (i != 0) s ~= " | ";
-      s ~= decl.type.describe();
-    }
-    return s ~ ")";
+    return "(" ~ lookup.decls.describe(" | ") ~ ")";
   }
 
   auto types() {
@@ -262,14 +271,9 @@ class FunctionType : Type {
   TupleType parameterTypes;
 
   override string describe() const {
-    auto s = "ƒ(";
-    foreach (i, param ; parameterTypes.elementTypes) {
-      if (i != 0) s ~= ", ";
-      s ~= param.describe();
-    }
-    return s ~ ") -> "~returnType.describe;
+    return "ƒ" ~ parameterTypes.describe ~ " -> " ~ returnType.describe;
   }
-};
+}
 
 class MacroType: FunctionType {
   mixin TypeMixin;
@@ -283,20 +287,28 @@ class MacroType: FunctionType {
   }
 
   override string describe() const {
-    auto s = "macro(";
-    foreach (i, param ; parameterTypes.elementTypes) {
-      if (i != 0) s ~= ", ";
-      s ~= param.describe();
-    }
-    return s ~ ") -> "~returnType.describe;
+    return "macro" ~ parameterTypes.describe ~ " -> expr";
   }
+}
+
+string describe(R)(R r, string separator = ", ") if (isForwardRange!R && is(Unqual!(ElementType!R): Type)) {
+  auto s = "";
+  foreach (i, param ; r.save) {
+    if (i != 0) s ~= separator;
+    s ~= param.describe();
+  }
+  return s;
+}
+
+string describe(R)(R r, string separator = ", ") if (isInputRange!R && is(Unqual!(ElementType!R): Decl)) {
+  auto s = "";
+  foreach (i, param ; r.save) {
+    if (i != 0) s ~= separator;
+    s ~= param.type.describe();
+  }
+  return s;
 }
 
 string mangled(const Type type) {
   return type ? type.describe() : "?";
-}
-
-@property
-bool isModule(const Type type) {
-  return (cast(ModuleType)type) !is null;
 }

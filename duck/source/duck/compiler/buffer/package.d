@@ -18,7 +18,7 @@ abstract class Buffer {
   }
 
   string hashString() {
-    import std.digest.digest : toHexString;
+    import std.digest : toHexString;
     size_t hash = this.hashOf;
     ubyte[8] result = (cast(ubyte*) &hash)[0..8];
     return toHexString(result[0..8]).dup;

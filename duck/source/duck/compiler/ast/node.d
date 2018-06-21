@@ -7,13 +7,13 @@ abstract class Node {
   alias NodeType = ubyte;
   NodeType nodeType();
 
-  final override size_t toHash() @trusted { return cast(size_t)cast(void*)this; }
-  final override bool opEquals(Object other) {
+  final override size_t toHash() @trusted const { return cast(size_t)cast(void*)this; }
+  final override bool opEquals(Object other) const {
       return this is other;
   }
 
   Slice source;
-};
+}
 
 N withSource(N: Node)(N node, Node source) {
   node.source = source.source;
@@ -31,7 +31,7 @@ D as(D : Decl)(Decl decl) { return cast(D) decl; }
 
 import std.range.primitives;
 auto as(N: Node, R)(R range) if (isInputRange!R && is(ElementType!R: Node)) {
-  import std.algorithm.iteration;
+  import std.algorithm.iteration : map;
   return range.map!(node => node.as!N);
 }
 
@@ -44,7 +44,10 @@ alias NodeTypes = AliasSeq!(
   RefExpr,
   InlineDeclExpr,
   ArrayLiteralExpr,
-  LiteralExpr,
+  StringValue,
+  BoolValue,
+  IntegerValue,
+  FloatValue,
   IdentifierExpr,
   UnaryExpr,
   AssignExpr,
@@ -72,9 +75,10 @@ alias NodeTypes = AliasSeq!(
   VarDecl,
   TypeDecl,
   ArrayDecl,
-  FieldDecl,
+  PropertyDecl,
   StructDecl,
   ModuleDecl,
+  AliasDecl,
 
   Library);
 
