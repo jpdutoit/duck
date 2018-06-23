@@ -1,0 +1,89 @@
+
+distinct frequency: float;
+distinct duration: float;
+
+extern struct SampleBuffer_ {
+  length: int;
+  function get(index: int) -> float;
+  function set(index: int, value: float);
+}
+
+struct SampleBuffer {
+  buffer: SampleBuffer_;
+  alias length = buffer.length;
+  subscript(index: int) {
+    get() -> float { return buffer.get(index); }
+    set(value: float) {
+      buffer.set(index, value);
+    }
+  }
+}
+
+distinct Time: float;
+extern SAMPLE_RATE: frequency;
+extern now: Time;
+
+extern function operator+(int, int) -> int;
+extern function operator*(int, int) -> int;
+extern function operator-(int, int) -> int;
+extern function operator/(int, int) -> int;
+extern function operator%(int, int) -> int;
+
+extern function operator+(float, float) -> float;
+extern function operator*(float, float) -> float;
+extern function operator-(float, float) -> float;
+extern function operator/(float, float) -> float;
+extern function operator%(float, float) -> float;
+extern function operator%(duration, duration) -> duration;
+
+extern function operator!=(bool, bool) -> bool;
+extern function operator==(bool, bool) -> bool;
+
+extern function operator!=(int, int) -> bool;
+extern function operator==(int, int) -> bool;
+extern function operator>(int, int) -> bool;
+extern function operator>=(int, int) -> bool;
+extern function operator<(int, int) -> bool;
+
+extern function operator!=(float, float) -> bool;
+extern function operator==(float, float) -> bool;
+extern function operator>(float, float) -> bool;
+extern function operator>=(float, float) -> bool;
+extern function operator<(float, float) -> bool;
+
+extern function operator>(duration, duration) -> bool;
+
+extern function operator*(duration, float) -> duration;
+extern function operator*(frequency, float) -> frequency;
+extern function operator*(float, frequency) -> frequency;
+
+extern function operator/(frequency, float) -> frequency;
+extern function operator/(float, frequency) -> duration;
+extern function operator/(float, duration) -> frequency;
+
+extern function operator/(frequency, frequency) -> float;
+extern function operator+(frequency, frequency) -> frequency;
+extern function operator-(frequency, frequency) -> frequency;
+
+extern function operator%(Time, duration) -> duration;
+extern function operator*(float, duration) -> duration;
+extern function operator+(duration, duration) -> duration;
+extern function operator-(duration, duration) -> duration;
+
+extern function printf(string) -> float;
+extern function printf(string, float) -> float;
+extern function printf(string, float, float) -> float;
+
+extern function sin(float) -> float;
+extern function cos(float) -> float;
+extern function abs(float) -> float;
+
+function hz(amount: float) -> frequency(amount);
+function samples(amount: float) -> duration(amount);
+function bpm(amount: float) -> frequency(amount / 60.0);
+function ms(amount: float) -> duration(amount / 1000.0 * float(SAMPLE_RATE));
+function seconds(amount: float) -> duration(amount * float(SAMPLE_RATE));
+
+extern function wait(duration);
+extern function uniform(float, float) -> float;
+extern function powf(float, float) -> float;

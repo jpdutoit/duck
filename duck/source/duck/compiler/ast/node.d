@@ -64,7 +64,6 @@ alias NodeTypes = AliasSeq!(
   ExprStmt,
   DeclStmt,
   ScopeStmt,
-  ImportStmt,
   ReturnStmt,
   IfStmt,
 
@@ -80,6 +79,7 @@ alias NodeTypes = AliasSeq!(
   StructDecl,
   ModuleDecl,
   AliasDecl,
+  ImportDecl,
 
   Library);
 

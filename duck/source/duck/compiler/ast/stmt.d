@@ -34,20 +34,6 @@ class BlockStmt : Stmt {
   mixin List!Stmt list;
 }
 
-
-
-class ImportStmt : Stmt {
-  mixin NodeMixin;
-
-  Slice identifier;
-  Context targetContext;
-
-  this(Slice identifier, Context context = null) {
-    this.identifier = identifier;
-    this.targetContext = context;
-  }
-}
-
 class DeclStmt: Stmt {
   mixin NodeMixin;
   Decl decl;

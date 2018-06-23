@@ -1,5 +1,4 @@
-import "prelude";
-
+import "runtime";
 
 a: float = sin(2);
 

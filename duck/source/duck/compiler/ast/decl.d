@@ -71,8 +71,8 @@ class Library : TypeDecl {
     BlockStmt stmts = new BlockStmt();
     stmts.append(new BasicTypeDecl(IntegerType.create, "int"));
     stmts.append(new BasicTypeDecl(FloatType.create, "float"));
-    stmts.append(new BasicTypeDecl(BoolType.create, "bool"));
     stmts.append(new BasicTypeDecl(FloatType.create, "mono"));
+    stmts.append(new BasicTypeDecl(BoolType.create, "bool"));
     stmts.append(new BasicTypeDecl(StringType.create, "string"));
     return new Library(stmts);
   }
@@ -284,5 +284,17 @@ class ModuleDecl : StructDecl {
     auto type = ModuleType.create(name);
     type.decl = this;
     super(type, name);
+  }
+}
+
+class ImportDecl : Decl {
+  mixin NodeMixin;
+
+  alias identifier = name;
+  Context targetContext;
+
+  this(Slice identifier, Context context = null) {
+    super(identifier, null);
+    this.targetContext = context;
   }
 }

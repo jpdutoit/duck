@@ -185,4 +185,33 @@ struct DeclSemantic {
     access.pop();
     return structDecl;
   }
+
+  Node visit(ImportDecl decl) {
+    debug(Semantic) log("=>", decl.identifier.value);
+
+    if (decl.identifier.length <= 2) {
+      return decl.taint;
+    }
+
+    if (!decl.targetContext)
+      decl.targetContext = context.createImportContext(decl.identifier[1..$-1]);
+
+    if (decl.targetContext) {
+      auto importee = stack.find!Library;
+      if (auto library = decl.targetContext.library) {
+        foreach(exported; library.exports) {
+          import std.algorithm.searching: canFind;
+
+          importee.imports.define(exported.name, exported);
+
+          if (decl.attributes.visibility == Visibility.public_)
+          if (!importee.exports.canFind(exported))
+            importee.exports ~= exported;
+        }
+      }
+      context.errors ~= decl.targetContext.errors;
+      return decl;
+    }
+    return decl.taint;
+  }
 }

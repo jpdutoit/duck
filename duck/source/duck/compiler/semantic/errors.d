@@ -10,12 +10,7 @@ T taint(T: Expr)(T expr) {
   return expr;
 }
 
-D taint(D: ValueDecl)(D decl) {
-  decl.type = ErrorType.create;
-  return decl;
-}
-
-D taint(D: TypeDecl)(D decl) {
+D taint(D: Decl)(D decl) {
   decl.type = ErrorType.create;
   return decl;
 }

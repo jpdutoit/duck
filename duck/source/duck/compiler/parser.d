@@ -565,14 +565,19 @@ struct Parser {
     return structDecl.withSource(sliceFrom(start));
   }
 
-  ImportStmt parseImport() {
+  ImportDecl parseImport(TypeDecl parent, DeclAttr attributes) {
     auto start = lexer.front;
     lexer.expect(Tok!"import", "Expected import");
     Token ident;
     ident = expect(StringLiteral, "Expected library name");
-    if (!ident) return null;
+    if (lexer.front.type != Tok!";") lexer.consume();
     lexer.expect(Tok!";", "Expected ';'");
-    return new ImportStmt(ident).withSource(sliceFrom(start));
+
+    auto decl = new ImportDecl(ident);
+    decl.attributes = attributes;
+    decl.parent = parent;
+
+    return decl.withSource(sliceFrom(start));
   }
 
   Stmt parseReturnStmt() {
@@ -598,7 +603,7 @@ struct Parser {
   Stmt parseStatement(TypeDecl parent, DeclAttr attributes = DeclAttr.init) {
     switch (lexer.front.type) {
       case Tok!";":        return null;
-      case Tok!"import":   return parseImport();
+      case Tok!"import":   return new DeclStmt(parseImport(parent, attributes));
       case Tok!"return":   return parseReturnStmt();
       case Tok!"if":       return parseIf();
       case Tok!"{":        return expect(parseBlock(new ScopeStmt()), "Block expected");
@@ -687,9 +692,11 @@ struct Parser {
   Library parseLibrary() {
     auto prog = new Library(parseStatements(new BlockStmt(), null));
     if (context.options.includePrelude) {
-      prog.stmts.prepend(new ImportStmt(Slice("\"prelude\""), context.createStdlibContext()));
+      prog.stmts.prepend(new DeclStmt(new ImportDecl(Slice("\"std\""), context.createStdlibContext("std.duck"))));
     }
-    prog.stmts.prepend(new ImportStmt(Slice("\"builtin\""), context.createBuiltinContext()));
+    auto builtinDecl = new ImportDecl(Slice("\"builtin\""), context.createBuiltinContext());
+    builtinDecl.attributes.visibility = Visibility.private_;
+    prog.stmts.prepend(new DeclStmt(builtinDecl));
     lexer.expect(EOF, "Expected end of file");
     return prog;
   }

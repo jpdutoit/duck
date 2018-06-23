@@ -588,7 +588,7 @@ struct CodeGen {
     }
   }
 
-  void visit(ImportStmt importStatement) {
+  void visit(ImportDecl importStatement) {
     if (importStatement.targetContext.type != ContextType.builtin)
       output.statement("import ", importStatement.targetContext.moduleName, ";");
   }

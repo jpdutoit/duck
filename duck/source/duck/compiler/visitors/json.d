@@ -230,8 +230,8 @@ struct JsonOutput {
     field("argument", stmt.value);
   }
 
-  void visit(ImportStmt stmt) {
-    field("type", "statement.import");
+  void visit(ImportDecl stmt) {
+    field("type", "declaration.import");
     field("name", stmt.identifier.length > 0 ? stmt.identifier[1..$-1] : "");
     field("library", stmt.targetContext.library);
   }

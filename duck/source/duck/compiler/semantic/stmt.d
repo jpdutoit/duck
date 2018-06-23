@@ -100,29 +100,4 @@ struct StmtSemantic {
       accept(stmt.falseBody);
     return stmt;
   }
-
-  Node visit(ImportStmt stmt) {
-    import std.path, std.file, duck.compiler;
-    debug(Semantic) log("=>", stmt.identifier.value);
-
-    if (stmt.identifier.length <= 2) {
-      context.error(stmt.identifier, "Expected path to package to not be empty.");
-      return null;
-    }
-
-    if (!stmt.targetContext)
-      stmt.targetContext = context.createImportContext(stmt.identifier[1..$-1]);
-
-    if (stmt.targetContext) {
-      auto importee = stack.find!Library;
-      if (auto library = stmt.targetContext.library) {
-        foreach(decl; library.exports) {
-          importee.imports.define(decl.name, decl);
-        }
-      }
-      context.errors ~= stmt.targetContext.errors;
-      return stmt;
-    }
-    return null;
-  }
 }
