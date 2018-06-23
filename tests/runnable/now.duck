@@ -1,7 +1,5 @@
-extern struct duration {
-  constructor(float);
-}
-extern struct Now;
+distinct duration: float;
+
 extern function wait(duration);
 
 function samples(amount: float) -> duration(amount);

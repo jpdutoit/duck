@@ -211,6 +211,17 @@ class BasicTypeDecl : TypeDecl {
   }
 }
 
+class DistinctDecl : TypeDecl {
+  mixin NodeMixin;
+
+  Expr baseTypeExpr;
+
+  this(Slice name, Expr baseTypeExpr) {
+    super(null, name);
+    this.baseTypeExpr = baseTypeExpr;
+  }
+}
+
 class ArrayDecl : TypeDecl {
   mixin NodeMixin;
 

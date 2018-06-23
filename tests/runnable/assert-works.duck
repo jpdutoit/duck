@@ -1,11 +1,6 @@
 import "./assert";
-
-extern struct duration {
-  constructor(float);
-}
-
-extern struct Now;
-extern now: Now;
+distinct duration: float;
+distinct time: float;
 extern function operator+(float, float) -> float;
 function samples(amount: float) -> duration(amount);
 extern function wait(duration);
@@ -34,8 +29,8 @@ wait(10 samples);
 OPTIONS: --engine=null
 OUTPUT:
 ---
-tests/runnable/assert-works.duck(18): Expected [20.000000], got [10.000000] at index 0
-tests/runnable/assert-works.duck(29): Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
-tests/runnable/assert-works.duck(28): Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
+tests/runnable/assert-works.duck(13): Expected [20.000000], got [10.000000] at index 0
+tests/runnable/assert-works.duck(24): Expected [1.000000, 2.000000, 3.000000, 4.000000, 0.000000], got [1.000000, 2.000000, 3.000000, 4.000000, 5.000000] at index 0
+tests/runnable/assert-works.duck(23): Expected [1.000000, 2.000000, 3.000000, 4.000000, 5.000000], got [6.000000, 7.000000, 8.000000, 9.000000, 10.000000] at index 5
 ---
 */

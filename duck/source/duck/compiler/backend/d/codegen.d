@@ -94,6 +94,7 @@ struct CodeGen {
       (StringType t) => "string",
       (FloatType t) => "float",
       (IntegerType t) => "int",
+      (DistinctType t) => name(t.baseType),
       (BoolType t) => "bool",
       (ArrayType t) => name(t.elementType) ~ "[]",
       (StaticArrayType t) => name(t.elementType) ~ "[" ~ t.size.to!string ~ "]"
@@ -236,11 +237,20 @@ struct CodeGen {
   }
 
   void visit(CastExpr expr) {
-    if ((expr.sourceType.as!IntegerType && expr.targetType.as!FloatType) ||
-        (expr.sourceType.as!BoolType && (expr.targetType.as!IntegerType || expr.targetType.as!FloatType)))
+    auto sourceType = expr.sourceType;
+    if (auto distinctType = sourceType.as!DistinctType)
+      sourceType = distinctType.baseType;
+
+    auto targetType = expr.targetType;
+    if (auto distinctType = targetType.as!DistinctType)
+      targetType = distinctType.baseType;
+
+    if ((sourceType == targetType) ||
+        (sourceType.as!IntegerType && targetType.as!FloatType) ||
+        (sourceType.as!BoolType && (targetType.as!IntegerType || targetType.as!FloatType)))
       output.expression(expr.expr);
     else
-      output.expression("cast(", name(expr.targetType), ")", expr.expr);
+      output.expression("cast(", name(targetType), ")", expr.expr);
   }
 
   void visit(UnaryExpr expr) {
@@ -258,8 +268,9 @@ struct CodeGen {
   void putDefaultValue(Type type) {
     type.visit!(
       (ModuleType t) => output.put(name(type), ".alloc()"),
-      (StructType t) => output.put("_defaultValue!", name(type), "()"),
+      (StructType t) => output.put(name(type), ".alloc()"),
       (StringType t) => output.put("\"\""),
+      (DistinctType t) => putDefaultValue(t.baseType),
       (FloatType t) => output.put("0"),
       (IntegerType t) => output.put("0"),
       (BoolType t) => output.put("false"),
@@ -454,6 +465,9 @@ struct CodeGen {
   }
 
   void visit(AliasDecl _) {
+  }
+
+  void visit(DistinctDecl _) {
   }
 
   void visit(StructDecl structDecl) {

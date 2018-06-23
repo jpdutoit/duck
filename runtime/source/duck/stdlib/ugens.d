@@ -1,8 +1,6 @@
 module duck.stdlib.ugens;
 
 import duck.runtime, duck.stdlib, duck.runtime.global;
-//public import std.math;
-
 
 enum PI = 3.14159265359;
 
@@ -22,7 +20,7 @@ struct Value(T) {
 alias Mono = Value!mono;
 alias Stereo = Value!stereo;
 alias Float = Value!float;
-alias Frequency = Value!frequency;
+alias Frequency = Value!float;
 
 ///////////////////////////////////////////////////////////////////////////////
  uint bigEndian(uint value) {
@@ -212,8 +210,8 @@ struct AR {
 
   auto initialize() { return &this; }
 
-  duration attack = 1000;
-  duration release = 1000;
+  float attack = 1000;
+  float release = 1000;
 
   mono input = 0;
   mono output = 0;
@@ -237,7 +235,7 @@ struct AR {
     if (lastInput > 0) {
       // ADS
       if (elapsed < att) {
-        duration tmp = ((1 - output) * 1);
+        float tmp = ((1 - output) * 1);
         output += tmp / (att - elapsed);
       } else {
         output = 1.0;
@@ -257,9 +255,9 @@ struct AR {
   }
 
 //private:
-  duration att = 0, rel = 0;
+  float att = 0, rel = 0;
   mono lastInput = 0;
-  duration elapsed = 0;
+  float elapsed = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

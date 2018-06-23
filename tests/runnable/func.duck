@@ -1,5 +1,5 @@
 extern function operator+(float, float) -> float;
-extern struct bool;
+
 extern function assertEquals(float, float);
 
 module B {
@@ -26,7 +26,8 @@ add((2 >> c: A), (2 >> d: A)) >> e: A;
 
 assertEquals(add(2,2), 6);
 
-extern struct Now;
+distinct Now: float;
+
 function fnc(a:Now, b:Now) -> float {
   return 2;
 }

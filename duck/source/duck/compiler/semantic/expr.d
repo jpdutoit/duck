@@ -211,14 +211,22 @@ struct ExprSemantic {
     }
     expr.type = expr.targetType;
 
-    if (expr.sourceType.as!IntegerType || expr.sourceType.as!FloatType || expr.sourceType.as!BoolType) {
-      if (expr.targetType.as!IntegerType || expr.targetType.as!FloatType || expr.targetType.as!BoolType) {
+    auto sourceType = expr.sourceType;
+    if (auto distinctType = sourceType.as!DistinctType)
+      sourceType = distinctType.baseType;
+
+    auto targetType = expr.targetType;
+    if (auto distinctType = targetType.as!DistinctType)
+      targetType = distinctType.baseType;
+
+    if (sourceType.as!IntegerType || sourceType.as!FloatType || sourceType.as!BoolType) {
+      if (targetType.as!IntegerType || targetType.as!FloatType || targetType.as!BoolType) {
         return expr;
       }
     }
 
-    if (auto source = expr.sourceType.as!StaticArrayType) {
-      if (auto target = expr.targetType.as!ArrayType) {
+    if (auto source = sourceType.as!StaticArrayType) {
+      if (auto target = targetType.as!ArrayType) {
         if (source.elementType == target.elementType) {
           return expr;
         }
@@ -372,7 +380,7 @@ struct ExprSemantic {
       expr.callable = null;
       return expr;
     } else if (expr.arguments.length == 1 && !type.as!StructType) {
-      auto castExpr = new CastExpr(expr.arguments[0], type);
+      Expr castExpr = new CastExpr(expr.arguments[0], type);
       return semantic(castExpr);
     }
 

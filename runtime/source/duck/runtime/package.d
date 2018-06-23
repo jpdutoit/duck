@@ -82,6 +82,10 @@ private struct RawBuffer(int ChunkSize) {
 }
 
 struct TypedBuffer(T) {
+  static auto alloc() {
+    return TypedBuffer.init;
+  }
+
   RawBuffer!65536 _buffer;
   auto ref opIndex(int index) {
     index = modulus(index, this.length);

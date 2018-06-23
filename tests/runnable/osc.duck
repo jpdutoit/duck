@@ -1,6 +1,4 @@
-extern struct frequency {
-  constructor(float);
-}
+distinct frequency: float;
 extern SAMPLE_RATE: frequency;
 
 function hz(amount: float) -> frequency(amount);

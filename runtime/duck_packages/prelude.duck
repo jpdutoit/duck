@@ -1,10 +1,6 @@
-extern struct frequency {
-  constructor(float);
-}
 
-extern struct duration {
-  constructor(float);
-}
+distinct frequency: float;
+distinct duration: float;
 
 extern struct SampleBuffer_ {
   length: int;
@@ -23,12 +19,9 @@ struct SampleBuffer {
   }
 }
 
-
-extern struct Time;
-
+distinct Time: float;
 extern SAMPLE_RATE: frequency;
-extern struct Now;
-extern now: Now;
+extern now: Time;
 
 extern function operator+(int, int) -> int;
 extern function operator*(int, int) -> int;
@@ -85,14 +78,11 @@ extern function sin(float) -> float;
 extern function cos(float) -> float;
 extern function abs(float) -> float;
 
-extern function raw(f: frequency) -> float;
-extern function raw(f: duration) -> float;
-
 function hz(amount: float) -> frequency(amount);
 function samples(amount: float) -> duration(amount);
 function bpm(amount: float) -> frequency(amount / 60.0);
-function ms(amount: float) -> duration(amount / 1000.0 * raw(SAMPLE_RATE));
-function seconds(amount: float) -> duration(amount * raw(SAMPLE_RATE));
+function ms(amount: float) -> duration(amount / 1000.0 * float(SAMPLE_RATE));
+function seconds(amount: float) -> duration(amount * float(SAMPLE_RATE));
 
 extern function wait(duration);
 extern function uniform(float, float) -> float;
@@ -286,7 +276,7 @@ module Delay {
   length: duration;
 
   function tick() {
-    buffer.length = int(raw(length));
+    buffer.length = int(length);
     output = buffer[index];
     buffer[index] = input;
     index = (index + 1) % buffer.length;

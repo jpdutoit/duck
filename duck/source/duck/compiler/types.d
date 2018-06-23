@@ -11,9 +11,9 @@ private import std.array;
 private import std.traits: Unqual;
 
 alias BasicTypes = AliasSeq!("string", "nothing", "error", "float", "int", "bool");
-alias ExtendedTypes = AliasSeq!(StructType, ModuleType, PropertyType, FunctionType, ArrayType, MacroType, TupleType, StaticArrayType, MetaType, UnresolvedType);
+alias ExtendedTypes = AliasSeq!(StructType, ModuleType, PropertyType, FunctionType, ArrayType, MacroType, TupleType, StaticArrayType, MetaType, UnresolvedType, DistinctType);
 
-alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, PropertyType, FunctionType, MacroType, TupleType, ArrayType, StaticArrayType, UnresolvedType);
+alias Types = AliasSeq!(FloatType, IntegerType, BoolType, StringType, MetaType, VoidType, ErrorType, StructType, ModuleType, PropertyType, FunctionType, MacroType, TupleType, ArrayType, StaticArrayType, UnresolvedType, DistinctType);
 
 template TypeId(T) {
   static if (staticIndexOf!(T, ExtendedTypes) >= 0) {
@@ -67,7 +67,7 @@ abstract class Type {
   alias _Kind = ubyte;
 
   _Kind kind();
-  string describe() const ;
+  string describe() const;
 
   bool isSameType(Type other) {
     return (this is other);
@@ -77,7 +77,7 @@ abstract class Type {
   final bool hasError() {
     return cast(ErrorType)this !is null;
   }
-};
+}
 
 final class TupleType : Type {
   mixin TypeMixin;
@@ -96,6 +96,28 @@ final class TupleType : Type {
   }
 
   alias elementTypes this;
+}
+
+class DistinctType: Type {
+  mixin TypeMixin;
+
+  string name;
+  Type baseType;
+
+  string debugDescription() const {
+    return "(" ~ this.name ~ ": distinct " ~ this.baseType.describe() ~ ")";
+  }
+
+  override string describe() const {
+    return this.name;
+  }
+
+  static auto create(string name, Type baseType) {
+    auto t = new DistinctType();
+    t.name = name;
+    t.baseType = baseType;
+    return t;
+  }
 }
 
 class StructType : Type {

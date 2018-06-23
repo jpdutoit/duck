@@ -30,8 +30,10 @@ auto __ICE(string message = "", int line = __LINE__, string file = __FILE__) {
   stderr.write("): ");
   stderr.write("Internal compiler error: ");
   stderr.writeln(message);
-  exit(1);
-  return new AssertError(message);
+  /*debug {
+    asm { int 3; }
+  }*/
+  return new Exception(message);
 }
 
 void ASSERT(T)(T value, lazy string message, int line = __LINE__, string file = __FILE__) {

@@ -8,7 +8,7 @@ enum TokenSpecial  = AliasSeq!(
   "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown", "__Bool"
 );
 enum TokenReservedWords = AliasSeq!(
-  "function", "module", "extern", "import", "struct", "return", "constructor", "if", "else", "@private", "@public", "@const", "@static", "true", "false", "alias"
+  "function", "module", "extern", "import", "struct", "distinct", "return", "constructor", "if", "else", "@private", "@public", "@const", "@static", "true", "false", "alias"
 );
 enum TokenSymbols = AliasSeq!(
   " ", "\n",
@@ -66,6 +66,7 @@ shared static this()
     "@const": Tok!"@const",
     "@static": Tok!"@static",
     "alias": Tok!"alias",
+    "distinct": Tok!"distinct",
     "true": BoolLiteral,
     "false": BoolLiteral
   ];

@@ -9,7 +9,7 @@ version(USE_OSC) {
 
 void initialize(string[] args) {
   version(USE_OSC) {
-    oscServer = new OSCServer();
+    oscServer = OSCServer();
     oscServer.start(8000);
   }
 

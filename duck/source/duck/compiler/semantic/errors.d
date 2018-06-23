@@ -15,6 +15,12 @@ D taint(D: ValueDecl)(D decl) {
   return decl;
 }
 
+D taint(D: TypeDecl)(D decl) {
+  decl.type = ErrorType.create;
+  return decl;
+}
+
+
 void info(Slice slice, lazy string message) {
   context.info(slice, message);
 }

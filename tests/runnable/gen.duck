@@ -1,8 +1,6 @@
 import "./assert";
 
-extern struct duration {
-  constructor(float);
-}
+distinct duration: float;
 function samples(amount: float) -> duration(amount);
 extern function wait(duration);
 

@@ -54,7 +54,7 @@ struct OSCMessage {
   }
 }
 
-class OSCServer {
+struct OSCServer {
   enum MAX_QUEUE_SIZE = 50;
   OSCMessage[MAX_QUEUE_SIZE] messages;
   int messagesLength;

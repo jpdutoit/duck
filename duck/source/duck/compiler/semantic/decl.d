@@ -21,6 +21,14 @@ struct DeclSemantic {
     return decl;
   }
 
+  Node visit(DistinctDecl decl) {
+    accept(decl.baseTypeExpr);
+    if (auto meta = decl.baseTypeExpr.expect!MetaType)
+      decl.type = MetaType.create(DistinctType.create(decl.name, meta.type));
+    else return decl.taint;
+    return decl;
+  }
+
   Node visit(CallableDecl decl) {
     Type[] paramTypes;
 

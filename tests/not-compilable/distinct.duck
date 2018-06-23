@@ -1,0 +1,26 @@
+
+extern function operator+(float, float) -> float;
+
+distinct frequency: float;
+
+a1: float = 2.0;
+a2: float = 2;
+b1: frequency = frequency(2.0);
+b2: frequency = frequency(2);
+b3: frequency = frequency(true);
+
+b1 = frequency(a1 + a2);
+b1 = frequency(2);
+b1 = a1;
+a1 = float(b1 + b2);
+a2 = float(b1);
+a1 = b1;
+
+/*
+OUTPUT:
+---
+tests/not-compilable/distinct.duck(14:6-7): Error: Cannot coerce a value of type float to a value of type frequency
+tests/not-compilable/distinct.duck(15:15): Error: Operation frequency + frequency is not defined.
+tests/not-compilable/distinct.duck(17:6-7): Error: Cannot coerce a value of type frequency to a value of type float
+---
+*/

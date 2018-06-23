@@ -477,6 +477,22 @@ struct Parser {
     return decl.withSource(sliceFrom(start));
   }
 
+  DistinctDecl parseDistinct(TypeDecl parent, DeclAttr attributes) {
+    Token start = lexer.front;
+
+    expect(Tok!"distinct", "Expected 'distinct'");
+    auto ident = expect(Identifier, "Expected 'identifier'");
+    expect(Tok!":", "Expected ':'");
+    auto type = expect(parseExpression(Precedence.Unary), "Expected type expression");
+    lexer.expect(Tok!";", "Expected ';'");
+
+    auto decl = new DistinctDecl(ident, type);
+    decl.attributes = attributes;
+    decl.parent = parent;
+
+    return decl.withSource(sliceFrom(start));
+  }
+
   DeclAttr parseAttributes(DeclAttr base) {
     if (lexer.front.isAttribute) {
       bool foundVisibilityAttr, foundStorageAttr, foundMethodBindingAttr;
@@ -587,6 +603,7 @@ struct Parser {
       case Tok!"function": return new DeclStmt(parseFunction(parent, attributes));
       case Tok!"constructor": return new DeclStmt(parseFunction(parent, attributes));
       case Tok!"alias":    return new DeclStmt(parseAlias(parent, attributes));
+      case Tok!"distinct":  return new DeclStmt(parseDistinct(parent, attributes));
       case Identifier:
         auto name = lexer.front.slice;
         if (name == "get" || name == "set") {

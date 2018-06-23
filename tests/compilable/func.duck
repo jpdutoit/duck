@@ -1,5 +1,5 @@
-extern struct duration;
-extern struct frequency;
+distinct duration: float;
+distinct frequency: float;
 
 extern function test1() -> float;
 extern function test2(float, duration) -> frequency;

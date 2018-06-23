@@ -24,7 +24,7 @@ class ProcFiber : Fiber
     uuid = ++fiberUuid;
   }
   uint uuid;
-  Time wakeTime;
+  double wakeTime;
   ProcFiber[] children;
 };
 
@@ -50,18 +50,19 @@ struct Scheduler {
     ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     if (fiber) {
       while (true) {
-        duration waitTime = 1000.0 * SAMPLE_RATE;
+        double waitTime = 1000.0 * SAMPLE_RATE;
         int alive = 0;
         for (int i = 0; i < fiber.children.length; ++i) {
           if (fiber.children[i].state != Fiber.State.TERM) {
             alive++;
-            duration newWaitTime = fiber.children[i].wakeTime - now;
+            double newWaitTime = fiber.children[i].wakeTime - now;
             if (newWaitTime < waitTime)
               waitTime = newWaitTime;
           }
         }
         if (alive > 0) {
-          waitTime >> now;
+          sleep(waitTime);
+          //waitTime >> now;
           //wait(waitTime);
         }
         else
@@ -70,7 +71,7 @@ struct Scheduler {
     }
   }
 
-  static void sleep(duration dur)
+  static void sleep(double dur)
   {
     ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     fiber.wakeTime = fiber.wakeTime + dur;
@@ -84,7 +85,7 @@ struct Scheduler {
     ProcFiber parent = cast(ProcFiber)Fiber.getThis();
 
     ProcFiber fiber = new ProcFiber( dg );
-    fiber.wakeTime = now.time;
+    fiber.wakeTime = now;
     fiber.call();
 
     if (fiber.state != Fiber.State.TERM) {
@@ -97,7 +98,7 @@ struct Scheduler {
   }
 
   static void tick(ref ulong sampleIndex) {
-    now.time = now.time + 1;
+    now += 1;
     sampleIndex++;
 
     _idx = sampleIndex;
@@ -153,33 +154,14 @@ struct Scheduler {
     }
     //Scheduler.server.stop();
   }
-};
+}
 
-void sleep(duration dur) {
+void sleep(double dur) {
   Scheduler.sleep(dur);
 }
 
-void wait(duration dur) {
+void wait(double dur) {
   Scheduler.sleep(dur);
 }
 
-struct Now {
-  Time time = 0;
-  alias time this;
-
-  void opBinaryRight(string op: ">>")(auto ref duration other) {
-    sleep(other);
-  }
-
-  void opOpAssign(string op: "+")(auto ref duration other) {
-    /*print("sleep ");
-    print(other.value);
-    print("\n");*/
-    sleep(other);
-  }
-
-  void set() {
-
-  }
-}
-Now now;
+double now = 0;
