@@ -456,6 +456,10 @@ struct Parser {
     expect(callable.parameters.length == 1 || callable.name != "set", sliceFrom(start), "Setters must take 1 argument");
 
     parseCallableReturnValue(callable);
+    if (!callable.returnExpr && callable.name == "get")
+    if (auto propertyDecl = parent.as!PropertyDecl)
+      callable.returnExpr = propertyDecl.typeExpr;
+
     parseCallableBody(callable);
 
     return callable.withSource(sliceFrom(start));

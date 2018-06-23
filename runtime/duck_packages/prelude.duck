@@ -91,13 +91,15 @@ extern function powf(float, float) -> float;
 module Phasor {
   freq: frequency = 440 hz;
   phase: mono = 0;
+
   output: mono = 0;
-  alias input = freq;
 
   function tick() {
     output = phase;
     phase = (phase + (input / SAMPLE_RATE)) % 1.0;
+
   }
+  alias input = freq;
 }
 
 module Clock {
@@ -157,14 +159,14 @@ module SinOsc {
 
   alias freq = this.phasor.freq;
   alias input = this.phasor.freq;
-  output: mono;
+  output: mono {
+    get {
+      return sin(phasor * 2 * 3.141592);
+    }
+  }
 
   //TODO: Implement pipes in definition
   //sin(phasor * 2 * 3.141592) >> output: mono;
-
-  function tick() {
-    output = sin(phasor * 2 * 3.141592);
-  }
 }
 
 
@@ -172,10 +174,10 @@ module Triangle {
   @private phasor: Phasor;
   alias freq = this.phasor.freq;
   alias input = this.phasor.freq;
-  output: mono;
-
-  function tick() {
-    output = abs(phasor * 2 - 1.0) * 2 - 1;
+  output: mono {
+    get {
+      return abs(phasor * 2 - 1.0) * 2 - 1;
+    }
   }
 }
 
@@ -183,10 +185,10 @@ module SawOsc {
   @private phasor: Phasor;
   alias freq = this.phasor.freq;
   alias input = this.phasor.freq;
-  output: mono;
-
-  function tick() {
-    output = phasor * 2 - 1;
+  output: mono {
+    get {
+      return phasor * 2 - 1;
+    }
   }
 }
 
@@ -309,9 +311,10 @@ module Echo {
 }*/
 
 module WhiteNoise {
-  output: mono = 0;
-  function tick() {
-    output = uniform(0-1.0, 1.0);
+  output: mono {
+    get {
+      return uniform(0-1.0, 1.0);
+    }
   }
 }
 
