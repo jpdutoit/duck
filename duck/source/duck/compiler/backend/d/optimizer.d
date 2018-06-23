@@ -1,6 +1,7 @@
 module duck.compiler.backend.d.optimizer;
 
 import duck.compiler.ast;
+import duck.compiler.context;
 import duck.compiler.visitors;
 import duck.compiler.semantic.helpers;
 import duck.compiler.types;
@@ -11,7 +12,8 @@ class Optimizer {
   int[VarDecl] fieldDependencyCount;
   TreeShaker treeShaker;
 
-  this(Library main) {
+  this(Library main, Context context) {
+    treeShaker = TreeShaker(context);
     findFieldDependencies(main.stmts);
     treeShaker.addRoot(main.stmts);
   }

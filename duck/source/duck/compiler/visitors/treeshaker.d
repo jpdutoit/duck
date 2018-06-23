@@ -1,17 +1,19 @@
 module duck.compiler.visitors.treeshaker;
 
+import duck.compiler.context;
 import duck.compiler.ast;
 import duck.compiler.visitors;
 
 struct TreeShaker {
+  Context context;
   bool[Decl] referencedDecls;
 
-  this(Node root) {
-    addRoot(root);
+  this(Context context) {
+    this.context = context;
   }
 
   bool isReferenced(Decl d) {
-    return true || (d in referencedDecls) !is null;
+    return !context.options.treeshake || (d in referencedDecls) !is null;
   }
 
   auto declarations() {
@@ -50,6 +52,7 @@ struct TreeShaker {
   }
 
   void addRoot(Node root) {
+    if (!context.options.treeshake) return;
     if (!root) return;
     root.traverse!(
       (RefExpr r) => this.addRoot(r.decl),

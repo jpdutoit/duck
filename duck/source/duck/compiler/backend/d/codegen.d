@@ -29,7 +29,7 @@ class CodeGenContext {
 
   this(Context root) {
     this.context = root;
-    this.metrics = new Optimizer(root.library);
+    this.metrics = new Optimizer(root.library, root);
   }
 
   private {
@@ -493,6 +493,8 @@ struct CodeGen {
   }
 
   void emitInitializers(Decl decl) {
+    if (!metrics.isReferenced(decl)) return;
+
     decl.visit!(
       (ModuleDecl decl) {
         if (metrics.hasDynamicFields(decl))
@@ -506,7 +508,6 @@ struct CodeGen {
       },
       (AliasDecl decl) { },
       (VarDecl decl) {
-        //if (!metrics.isReferenced(decl)) return;
         if (metrics.isDynamicField(decl))
           output.statement("this.", name(decl), "_dg = null;");
         if (auto value = decl.valueExpr)

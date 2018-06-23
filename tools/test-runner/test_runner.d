@@ -183,7 +183,7 @@ auto test(string file, bool expectProcessSuccess, bool run = false)
 {
   total++;
   TestCase testCase = TestCase(file);
-  string options = (testCase.options ? testCase.options : "") ~ " -n -e null";
+  string options = (testCase.options ? testCase.options : "") ~ " -n -e null --notreeshake";
   if (!run) options ~= " -t check";
 
   auto proc = Proc(file, options);

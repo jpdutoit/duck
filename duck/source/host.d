@@ -75,6 +75,7 @@ int main(string[] args) {
     bool verbose = false;
     //bool forever = false;
     bool noStdLib = false;
+    bool noTreeshake = false;
     bool instrument = false;
     string outputName = "output";
     string[] engines = [];
@@ -89,6 +90,7 @@ int main(string[] args) {
       "engine|e", format("Audio engines: %-(%s, %)  (defaults to %s)", ENGINES, ENGINES_DEFAULT), &engines,
       "nostdlib|n", "Do not automatically import the standard library", &noStdLib,
       "instrument|i", "Add instrumentation code to built binary", &instrument,
+      "notreeshake", "Do not remove unused code when building", &noTreeshake,
       //"forever|f", "Run forever", &forever,
       "verbose|v", "Verbose output", &verbose
     );
@@ -105,6 +107,7 @@ int main(string[] args) {
     root.options.instrument = instrument;
     root.options.verbose = verbose;
     root.options.includePrelude = !noStdLib;
+    root.options.treeshake = !noTreeshake;
 
     Context context;
     if (args[1] == "--") {

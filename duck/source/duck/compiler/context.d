@@ -31,6 +31,7 @@ struct ContextOptions {
   bool instrument = false;
   bool includePrelude = true;
   bool verbose = false;
+  bool treeshake = true;
 }
 
 private string _stdlibPath;
