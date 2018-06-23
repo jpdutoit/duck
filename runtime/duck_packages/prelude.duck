@@ -123,11 +123,7 @@ module Clock {
 
 module Pitch {
   input: mono;
-  output: frequency;
-
-  function tick() {
-    output = frequency(440 * powf(2, (input - 49)/ 12));
-  }
+  alias output = frequency(440 * powf(2, (input - 49)/ 12));
 }
 
 extern function log2(float) -> float;
@@ -159,14 +155,7 @@ module SinOsc {
 
   alias freq = this.phasor.freq;
   alias input = this.phasor.freq;
-  output: mono {
-    get {
-      return sin(phasor * 2 * 3.141592);
-    }
-  }
-
-  //TODO: Implement pipes in definition
-  //sin(phasor * 2 * 3.141592) >> output: mono;
+  alias output = sin(phasor * 2 * 3.141592);
 }
 
 
@@ -174,22 +163,14 @@ module Triangle {
   @private phasor: Phasor;
   alias freq = this.phasor.freq;
   alias input = this.phasor.freq;
-  output: mono {
-    get {
-      return abs(phasor * 2 - 1.0) * 2 - 1;
-    }
-  }
+  alias output = abs(phasor * 2 - 1.0) * 2 - 1;
 }
 
 module SawOsc {
   @private phasor: Phasor;
   alias freq = this.phasor.freq;
   alias input = this.phasor.freq;
-  output: mono {
-    get {
-      return phasor * 2 - 1;
-    }
-  }
+  alias output = phasor * 2 - 1;
 }
 
 extern module ADC {
@@ -311,11 +292,7 @@ module Echo {
 }*/
 
 module WhiteNoise {
-  output: mono {
-    get {
-      return uniform(0-1.0, 1.0);
-    }
-  }
+  alias output = uniform(0-1.0, 1.0);
 }
 
 module PairwiseAvg {
