@@ -1,22 +1,23 @@
 module duck.runtime.model;
 
 
-alias TickDg = void delegate();
+alias TickDg = void delegate() nothrow;
+alias _ConnDg = void delegate() nothrow @system;
 
 struct UGenRegistry {
-  static void*[void*] all;
-  static TickDg[void*]endPoints;
+  __gshared static void*[void*] all;
+  __gshared static TickDg[void*]endPoints;
 
-  static void register(void* obj, TickDg dg) {
+  static void register(void* obj, TickDg dg) nothrow {
     if (obj !in all) {
-      import duck.runtime;
+      //import duck.runtime;
       //print("Register UGEN:");
       endPoints[obj] = dg;
       all[obj] = obj;
     }
   }
 
-  static void deregister(void* obj) {
+  static void deregister(void* obj) nothrow {
     if (obj in all) {
       all.remove(obj);
       endPoints.remove(obj);
@@ -34,7 +35,7 @@ public:
     UGenRegistry.deregister(&this);
   }
 
-  static Impl* alloc() {
+  static Impl* alloc() nothrow {
     return new Impl();
   }
 
@@ -42,12 +43,10 @@ public:
     static enum opDispatch = false;
   }
 
-  alias scope void delegate() @system _ConnDg;
-
   ulong __sampleIndex = ulong.max;
   _ConnDg[] __connections;
 
-  void _tick() {
+  void _tick() nothrow @system {
     // Only tick if we haven't previously
     if (__sampleIndex == _idx)
       return;
@@ -63,11 +62,10 @@ public:
     }
   }
 
-  void _add(scope void delegate() @system dg) {
+  void _add(scope void delegate() nothrow @system dg) nothrow {
     //UGenRegistry.register(&this);
     if (this.isEndPoint)
       UGenRegistry.register(cast(void*)&this, &this._tick);
     __connections ~= dg;
   }
 }
-alias scope void delegate() @system _ConnDg;

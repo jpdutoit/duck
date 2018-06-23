@@ -13,7 +13,7 @@ struct Audio
     return Pa_GetStreamWriteAvailable(stream);
   }
 
-  void write(void* buffer) {
+  void write(void* buffer) nothrow {
     //writefln("%s", framesToWriteWithoutBlocking());
     PaError err = Pa_WriteStream( stream, buffer, 64);
     if (err != paNoError) {
@@ -23,7 +23,7 @@ struct Audio
     }
   }
 
-  void read(void *buffer) {
+  void read(void *buffer) nothrow {
     PaError err = Pa_ReadStream( stream, buffer, 64 );
     if (err != paNoError) {
       print("read.error ");
@@ -33,7 +33,7 @@ struct Audio
     }
   }
 
-  void done() {
+  void done() nothrow {
     if (!stream)
       return;
 
@@ -52,7 +52,7 @@ struct Audio
       print("\n");
   }
 
-  void init() {
+  void init() nothrow {
     PaError err;
     if ((err = Pa_Initialize()) != paNoError
       || (err = Pa_OpenDefaultStream(&stream,

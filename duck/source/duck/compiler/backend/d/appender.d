@@ -82,7 +82,7 @@ struct DAppender(Generator) {
   }
 
   void functionBody(T)(scope T block) {
-    put(") ");
+    put(") nothrow ");
     childCount.pop();
     blockStart();
     put(block);

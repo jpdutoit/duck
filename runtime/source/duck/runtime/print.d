@@ -44,48 +44,48 @@ void halt(lazy string s) nothrow {
   _halt(haltOnException(s));
 }
 
-void print(long i) {
+void print(long i) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%lld", i);
 }
 
-void print(int i) {
+void print(int i) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%ld", i);
 }
 
-void print(double f) {
+void print(double f) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%lf", f);
 }
 
-void print(float f) {
+void print(float f) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%f", f);
 }
 
-void print(real f) {
+void print(real f) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%lf", cast(double)f);
 }
 
-void print(string s) {
+void print(string s) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%.*s", s.length, s.ptr);
 }
 
-void print(const(char)* s) {
+void print(const(char)* s) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%s", s);
 }
 
-void print(char* s) {
+void print(char* s) nothrow {
   import core.stdc.stdio;
   stderr.fprintf("%s", s);
 }
 
 
-void print(float[] s) {
+void print(float[] s) nothrow {
   print("[");
   foreach(i, f ; s) {
     if (i != 0) print(", ");
@@ -94,13 +94,13 @@ void print(float[] s) {
   print("]");
 }
 
-void print(A...)(A a) if (A.length > 1) {
+void print(A...)(A a) nothrow if (A.length > 1) {
   foreach(b; a)
     print(b);
 }
 
 
-void rawWrite3(T)(in T buffer)
+void rawWrite3(T)(in T buffer) nothrow
 {
     import core.stdc.stdio;
     import core.stdc.stdlib;
@@ -111,7 +111,6 @@ void rawWrite3(T)(in T buffer)
         flush(); // before changing translation mode
         immutable fd = ._fileno(handle);
         immutable mode = ._setmode(fd, _O_BINARY);
-        scope(exit) ._setmode(fd, mode);
         version(DIGITAL_MARS_STDIO)
         {
             import core.atomic;
@@ -119,9 +118,7 @@ void rawWrite3(T)(in T buffer)
             // @@@BUG@@@ 4243
             immutable info = __fhnd_info[fd];
             atomicOp!"&="(__fhnd_info[fd], ~FHND_TEXT);
-            scope(exit) __fhnd_info[fd] = info;
         }
-        scope(exit) flush(); // before restoring translation mode
     }
     auto result =
         fwrite(&buffer, T.sizeof, 1, handle);
@@ -134,9 +131,17 @@ void rawWrite3(T)(in T buffer)
       print(" bytes.\n");
       halt();
     }
+
+    version(Windows) {
+      flush();
+      version(DIGITAL_MARS_STDIO) {
+        __fhnd_info[fd] = info;
+      }
+      ._setmode(fd, mode);
+    }
 }
 
-void rawWrite2(T)(in T[] buffer)
+void rawWrite2(T)(in T[] buffer) nothrow
 {
     import core.stdc.stdio;
     import core.stdc.stdlib;
@@ -147,7 +152,6 @@ void rawWrite2(T)(in T[] buffer)
         flush(); // before changing translation mode
         immutable fd = ._fileno(handle);
         immutable mode = ._setmode(fd, _O_BINARY);
-        scope(exit) ._setmode(fd, mode);
         version(DIGITAL_MARS_STDIO)
         {
             import core.atomic;
@@ -155,7 +159,6 @@ void rawWrite2(T)(in T[] buffer)
             // @@@BUG@@@ 4243
             immutable info = __fhnd_info[fd];
             atomicOp!"&="(__fhnd_info[fd], ~FHND_TEXT);
-            scope(exit) __fhnd_info[fd] = info;
         }
         scope(exit) flush(); // before restoring translation mode
     }
@@ -169,6 +172,14 @@ void rawWrite2(T)(in T[] buffer)
       print(buffer.length);
       print(" bytes.\n");
       halt();
+    }
+
+    version(Windows) {
+      flush();
+      version(DIGITAL_MARS_STDIO) {
+        __fhnd_info[fd] = info;
+      }
+      ._setmode(fd, mode);
     }
 }
 

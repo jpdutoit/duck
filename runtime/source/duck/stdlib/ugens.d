@@ -10,7 +10,7 @@ struct Value(T) {
   alias value input;
   alias value output;
 
-  auto initialize(T t) {
+  auto initialize(T t) nothrow {
     value = t;
     return &this;
   }
@@ -23,14 +23,14 @@ alias Float = Value!float;
 alias Frequency = Value!float;
 
 ///////////////////////////////////////////////////////////////////////////////
- uint bigEndian(uint value) {
+ uint bigEndian(uint value) nothrow {
         return value << 24
           | (value & 0x0000FF00) << 8
           | (value & 0x00FF0000) >> 8
           | value >> 24;
     }
 
-uint bigEndian(float fvalue) {
+uint bigEndian(float fvalue) nothrow {
   uint value = *cast(uint*)&fvalue;
         return value << 24
           | (value & 0x0000FF00) << 8
@@ -45,7 +45,7 @@ struct Pat {
   mono output = 0;
 
   string pattern;
-  auto initialize(string s) {
+  auto initialize(string s) nothrow {
     pattern = s;
     phase = pattern.length - 0.000001;
     return &this;
@@ -53,7 +53,7 @@ struct Pat {
   double phase = 1.0;
   ulong index = 0;
 
-  void tick() {
+  void tick() nothrow {
     if (input) {
       while (pattern[index] == ' ')
         index = (index + 1) % pattern.length;
@@ -66,36 +66,17 @@ struct Pat {
   mixin UGEN!Pat;
 };
 
-/*
-struct Log {
-  mono input = 0;
-  mono output = 0;
-
-  string message;
-  this(string s) {
-    message = s;
-  }
-  void tick() {
-    if (input != output) {
-      print(message, ":", input);
-      output = input;
-    }
-  }
-
-  mixin UGEN!Log;
-};*/
-
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Pan {
 
-  auto initialize() { return &this; }
+  auto initialize() nothrow { return &this; }
 
   mono input = 0;
   stereo output;
   float pan = 0;
 
-  void tick() {
+  void tick() nothrow {
     float p = (pan + 1.0) / 2.0;
     output[0] = input * cos(p * PI / 2);
     output[1] = input * sin(p * PI / 2);
@@ -107,26 +88,26 @@ struct Pan {
 
 struct ScaleQuant {
 
-  auto initialize() { return &this; }
+  auto initialize() nothrow { return &this; }
 
   short[] scale = [0, 2, 4, 5, 7, 9, 11];
   float key = 49;
   mono output = 0;
   mono input = 0;
 
-  auto initialize(Key)(Key key, short[] scale) {
+  auto initialize(Key)(Key key, short[] scale) nothrow {
     //key.output >> this.key;
     //pipe(key.output, this.key);
     scale = scale;
     return &this;
   }
-  auto initialize(int key, short[] scale) {
+  auto initialize(int key, short[] scale) nothrow {
     key = key;
     scale = scale;
     return &this;
   }
 
-  void tick() {
+  void tick() nothrow {
     int len = cast(int)scale.length;
     int index = cast(int)floorf((input - key) * len / 12);
     int mod = cast(int)((index + len*10000) % len);
@@ -145,7 +126,7 @@ struct ScaleQuant {
 struct ADSR {
   mixin UGEN!ADSR;
 
-  auto initialize() { return &this; }
+  auto initialize() nothrow { return &this; }
 
   mono attack = 1000;
   mono decay = 1000;
@@ -155,7 +136,7 @@ struct ADSR {
   mono input = 0;
   mono output = 0;
 
-  void tick() {
+  void tick() nothrow {
     //writefln("%s %s %s", elapsed, input, ©put);
     if (input > 0 && lastInput <= 0) {
       elapsed = 0;
@@ -208,7 +189,7 @@ struct ADSR {
 struct AR {
   mixin UGEN!AR;
 
-  auto initialize() { return &this; }
+  auto initialize() nothrow { return &this; }
 
   float attack = 1000;
   float release = 1000;
@@ -216,7 +197,7 @@ struct AR {
   mono input = 0;
   mono output = 0;
 
-  void tick() {
+  void tick() nothrow {
     //writefln("%s %s %s", elapsed, input, lastInput);
     if (input > 0 && lastInput <= 0) {
       elapsed = 0;
@@ -265,9 +246,9 @@ struct AR {
 struct ADC {
   mono output;
 
-  auto initialize() { return &this; }
+  auto initialize() nothrow { return &this; }
 
-  void tick() {
+  void tick() nothrow {
     if (++index == 64) {
       version(USE_PORT_AUDIO)
         audio.read(cast(void*)&buffer[0]);
@@ -286,9 +267,9 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 struct Assert {
-  auto initialize() { return &this; }
+  auto initialize() nothrow { return &this; }
 
-  auto initialize(float[] expected, string file = __FILE__, int line = __LINE__) {
+  auto initialize(float[] expected, string file = __FILE__, int line = __LINE__) nothrow {
     this.expected = expected;
     this.received.length = expected.length;
     this.file = file;
@@ -296,7 +277,7 @@ struct Assert {
     return &this;
   }
 
-  auto initialize(float expected, string file = __FILE__, int line = __LINE__) {
+  auto initialize(float expected, string file = __FILE__, int line = __LINE__) nothrow {
     this.expected = [expected];
     this.received.length = this.expected.length;
     this.file = file;
@@ -307,7 +288,7 @@ struct Assert {
   mono input;
   alias output = input;
 
-  void tick() {
+  void tick() nothrow {
     if (failed) return;
     received[index % expected.length] = input;
     index++;
@@ -352,7 +333,7 @@ struct DAC {
     stereo input;
   };
 
-  void tick() {
+  void tick() nothrow {
     buffer[index++] = input;
     if (index == 64) {
       final switch(outputMode) {

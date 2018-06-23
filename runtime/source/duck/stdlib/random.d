@@ -1,6 +1,6 @@
 module duck.stdlib.random;
 
-double uniform(double lo, double hi) {
+double uniform(double lo, double hi) nothrow {
   immutable next = randomGenerator.next();
   immutable range = hi-lo;
   return (cast(double)next / cast(double)(ulong.max) * range + lo);
@@ -13,7 +13,7 @@ struct Xoroshiro128 {
   ulong[2] state;
 
   // Initialize generator seeding with current time
-  static Xoroshiro128 withCurrentTime() {
+  static Xoroshiro128 withCurrentTime() nothrow {
     import core.time: MonoTime;
     Xoroshiro128 gen;
     gen.state[0] = MonoTime.currTime.ticks;
@@ -23,7 +23,7 @@ struct Xoroshiro128 {
   }
 
   // Get the next random number
-  ulong next() {
+  ulong next() nothrow {
     import core.bitop: rol;
 
   	immutable ulong s0 = state[0];
@@ -38,7 +38,7 @@ struct Xoroshiro128 {
   }
 }
 
-Xoroshiro128 randomGenerator;
-static this() {
+__gshared Xoroshiro128 randomGenerator;
+shared static this() {
   randomGenerator = Xoroshiro128.withCurrentTime();
 }

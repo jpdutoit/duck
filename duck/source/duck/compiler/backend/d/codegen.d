@@ -579,9 +579,8 @@ struct CodeGen {
   void visit(Library library) {
     if (context.isMain) {
       output.put(PREAMBLE);
-      output.functionDecl("void", "run");
+      output.functionDecl("extern(C) void", "run");
       output.functionBody(library.stmts);
-      output.put(POSTAMBLE_MAIN);
     } else {
       output.put(PREAMBLE);
       foreach (stmt; library.stmts)
@@ -594,12 +593,4 @@ struct CodeGen {
 
 private immutable PREAMBLE = q{
   import duck.runtime, duck.stdlib, core.stdc.stdio : printf;
-};
-
-private immutable POSTAMBLE_MAIN = q{
-      void main(string[] args) {
-        initialize(args);
-        Duck(&run);
-        Scheduler.run();
-      }
 };

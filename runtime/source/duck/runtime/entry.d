@@ -7,7 +7,7 @@ version(USE_OSC) {
   import duck.plugin.osc.server;
 }
 
-void initialize(string[] args) {
+void initialize(char*[] args) nothrow {
   version(USE_OSC) {
     oscServer = OSCServer();
     oscServer.start(8000);
@@ -22,13 +22,17 @@ void initialize(string[] args) {
 
   for (int i = 1; i < args.length; ++i) {
     if (args[i] == "--output") {
-      string mode = args[++i];
+      auto mode = args[++i];
       if (mode == "au")
         outputMode = OutputMode.AU;
       else if (mode == "pa")
         outputMode = OutputMode.PortAudio;
-      else
-        halt("Unknown output mode: " ~ mode);
+      else {
+        print("Unknown output mode: ");
+        print(mode);
+        halt();
+      }
+
     }
     else if (args[i] == "--sample-rate") {
       //FIXME: Parse sample rate
@@ -38,7 +42,9 @@ void initialize(string[] args) {
       verbose = true;
     }
     else {
-      halt("Unexpected argument: " ~ args[i]);
+      print("Unexpected argument: ");
+      print(args[i]);
+      halt();
     }
   }
 
@@ -62,9 +68,15 @@ void initialize(string[] args) {
 
 import core.memory: GC;
 
-static void Duck(T)(scope T dg)
-    if (is (T:void delegate()) || is (T:void function()))
+extern(C) void run() nothrow;
+extern(C) int rt_init();
+extern(C) int rt_term();
+
+extern(C) void main(int argc, char **argv)
 {
-  GC.disable();
-  Scheduler.start(dg);
+
+  initialize(argv[0..argc]);
+  rt_init();
+  Scheduler.start(&run);
+  rt_term();
 }

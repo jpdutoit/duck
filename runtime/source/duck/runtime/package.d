@@ -15,23 +15,23 @@ public import core.stdc.math: ceilf, floorf, roundf, powf, fabs, log2f;
 alias abs = fabs;
 alias log2 = log2f;
 
-int modulus(int i, int M) {
+int modulus(int i, int M) nothrow {
   return ((i % M) + M) % M;
 }
-float modulus(float i, float M) {
+float modulus(float i, float M) nothrow {
   return ((i % M) + M) % M;
 }
-int remainder(int i, int M) {
+int remainder(int i, int M) nothrow {
   return i % M;
 }
-float remainder(float i, float M) {
+float remainder(float i, float M) nothrow {
   return i % M;
 }
 
 
 private struct FixedSizeBufferFreeList(int size, int ChunkSize = 64, int Capacity = 1024) {
-  static void*[Capacity] available = void;
-  static size_t length = 0;
+  __gshared static void*[Capacity] available = void;
+  __gshared static size_t length = 0;
 
   static void* claim() {
     if (length == 0) {
@@ -88,22 +88,22 @@ struct TypedBuffer(T) {
   }
 
   RawBuffer!65536 _buffer;
-  auto ref opIndex(int index) {
+  auto ref opIndex(int index) nothrow {
     index = modulus(index, this.length);
     return *(cast(T*)_buffer[index * T.sizeof]);
   }
 
-  T get(int index) {
+  T get(int index) nothrow {
     index = modulus(index, this.length);
     return *(cast(T*)_buffer[index * T.sizeof]);
   }
 
-  void set(int index, T value) {
+  void set(int index, T value) nothrow {
     index = modulus(index, this.length);
     *(cast(T*)_buffer[index * T.sizeof]) = value;
   }
 
-  void resize(int newLength) {
+  void resize(int newLength) nothrow {
     auto oldLength = length;
     if (newLength < 1) newLength = 1;
     _buffer.resize(newLength * cast(int)T.sizeof);
@@ -111,15 +111,15 @@ struct TypedBuffer(T) {
       this[i] = 0;
   }
 
-  int length() {
+  int length() nothrow {
     return cast(int)(_buffer.length / T.sizeof);
   }
 
-  auto length(int newLength) {
+  auto length(int newLength) nothrow {
     resize(newLength);
   }
 
-  auto length(float floatLength) {
+  auto length(float floatLength) nothrow {
     resize(cast(int)(floatLength + 0.5));
   }
 }

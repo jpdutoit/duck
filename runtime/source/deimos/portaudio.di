@@ -45,6 +45,7 @@ module deimos.portaudio;
 import core.stdc.config;
 
 extern(C):
+nothrow:
 
 /** Retrieve the release number of the currently running PortAudio build,
  eg 1900.
