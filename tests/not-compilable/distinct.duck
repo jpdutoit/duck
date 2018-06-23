@@ -16,11 +16,14 @@ a1 = float(b1 + b2);
 a2 = float(b1);
 a1 = b1;
 
+distinct bad: 4;
+
 /*
 OUTPUT:
 ---
 tests/not-compilable/distinct.duck(14:6-7): Error: Cannot coerce a value of type float to a value of type frequency
 tests/not-compilable/distinct.duck(15:15): Error: Operation frequency + frequency is not defined.
 tests/not-compilable/distinct.duck(17:6-7): Error: Cannot coerce a value of type frequency to a value of type float
+tests/not-compilable/distinct.duck(19:15): Error: Expected a type
 ---
 */

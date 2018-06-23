@@ -465,16 +465,26 @@ struct Parser {
     return callable.withSource(sliceFrom(start));
   }
 
-  AliasDecl parseAlias(TypeDecl parent, DeclAttr attributes) {
+  Decl parseAlias(TypeDecl parent, DeclAttr attributes) {
     Token start = lexer.front;
 
     expect(Tok!"alias", "Expected 'alias'");
     auto ident = expect(Identifier, "Expected 'identifier'");
-    expect(Tok!"=", "Expected '='");
-    auto expr = expect(parseExpression(Precedence.Assignment), "Expected expression on right side of alias assignment");
+
+    Decl decl;
+    if (lexer.consume(Tok!"=")) {
+      auto expr = expect(parseExpression(Precedence.Assignment), "Expected expression on right side of alias assignment");
+      decl = new AliasDecl(ident, expr);
+    }
+    else if (lexer.consume(Tok!":")) {
+      auto expr = expect(parseExpression(Precedence.Assignment), "Expected expression on right side of alias assignment");
+      decl = new TypeAliasDecl(ident, expr);
+    }
+    else {
+      context.error(lexer.front, "Expected '=' or ':'");
+    }
     lexer.expect(Tok!";", "Expected ';'");
 
-    AliasDecl decl = new AliasDecl(ident, expr);
     decl.attributes = attributes;
     decl.parent = parent;
 

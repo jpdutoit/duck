@@ -72,6 +72,7 @@ alias NodeTypes = AliasSeq!(
   ParameterDecl,
   CallableDecl,
   BuiltinVarDecl,
+  TypeAliasDecl,
   VarDecl,
   TypeDecl,
   ArrayDecl,

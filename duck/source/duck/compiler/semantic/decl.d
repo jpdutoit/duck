@@ -18,6 +18,18 @@ struct DeclSemantic {
   Node visit(AliasDecl decl) {
     accept(decl.value);
     decl.type = decl.value.type;
+    if (decl.type.as!MetaType) {
+      error(decl.value.source, "Expected a value");
+      return decl.taint;
+    }
+    return decl;
+  }
+
+  Node visit(TypeAliasDecl decl) {
+    accept(decl.typeExpr);
+    if (auto meta = decl.typeExpr.expect!MetaType)
+      decl.type = MetaType.create(DistinctType.create(decl.name, meta.type));
+    else return decl.taint;
     return decl;
   }
 

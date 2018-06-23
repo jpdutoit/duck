@@ -1,0 +1,14 @@
+
+alias v1 = float;
+alias v2 = 3;
+
+alias t1: float;
+alias t2: int(3);
+
+/*
+OUTPUT:
+---
+tests/not-compilable/alias.duck(2:12-16): Error: Expected a value
+tests/not-compilable/alias.duck(6:11-16): Error: Expected a type
+---
+*/

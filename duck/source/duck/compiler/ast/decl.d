@@ -137,6 +137,16 @@ class AliasDecl : ValueDecl {
   }
 }
 
+class TypeAliasDecl : TypeDecl {
+  mixin NodeMixin;
+  Expr typeExpr;
+
+  this(Slice name, Expr typeExpr) {
+    super(null, name);
+    this.typeExpr = typeExpr;
+  }
+}
+
 class CallableDecl : ValueDecl {
   mixin NodeMixin;
 

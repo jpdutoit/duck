@@ -113,14 +113,14 @@ struct ExprSemantic {
 
     // Coerce bool by automatically converting it to int/float
     if (sourceExpr.type.as!BoolType && (targetType.as!IntegerType ||targetType.as!FloatType)) {
-      auto castExpr = new CastExpr(sourceExpr, targetType);
+      auto castExpr = new CastExpr(sourceExpr, targetType).withSource(sourceExpr.source);
       semantic(castExpr);
       return coerce(castExpr, targetType);
     }
 
     // Coerce int by automatically converting it to float
     if (sourceExpr.type.as!IntegerType && targetType.as!FloatType) {
-      auto castExpr = new CastExpr(sourceExpr, targetType);
+      auto castExpr = new CastExpr(sourceExpr, targetType).withSource(sourceExpr.source);
       semantic(castExpr);
       return coerce(castExpr, targetType);
     }
@@ -129,7 +129,7 @@ struct ExprSemantic {
     if (auto sourceArray = sourceExpr.type.as!StaticArrayType)
     if (auto targetArray = targetType.as!ArrayType)
     if (sourceArray.elementType.isSameType(targetArray.elementType)) {
-      auto castExpr = new CastExpr(sourceExpr, targetType);
+      auto castExpr = new CastExpr(sourceExpr, targetType).withSource(sourceExpr.source);
       semantic(castExpr);
       return coerce(castExpr, targetType);
     }
@@ -380,7 +380,7 @@ struct ExprSemantic {
       expr.callable = null;
       return expr;
     } else if (expr.arguments.length == 1 && !type.as!StructType) {
-      Expr castExpr = new CastExpr(expr.arguments[0], type);
+      Expr castExpr = new CastExpr(expr.arguments[0], type).withSource(expr.source);
       return semantic(castExpr);
     }
 
