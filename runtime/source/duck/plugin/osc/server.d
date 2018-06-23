@@ -33,7 +33,7 @@ struct OSCMessage {
   string types;
   ubyte[][] arguments;
 
-  void read(T)(int i, T* target) if (is(T:double) || is(T:float)) {
+  void read(T)(int i, T* target) nothrow if (is(T:double) || is(T:float)) {
     if (i >= types.length) {
       *target = 0;
       return;
@@ -45,11 +45,11 @@ struct OSCMessage {
     }
   }
 
-  float _getFloat(ulong i) {
+  float _getFloat(ulong i) nothrow {
     return *(cast(float*)arguments[i].ptr);
   }
 
-  double _getDouble(ulong i) {
+  double _getDouble(ulong i) nothrow {
     return *(cast(double*)arguments[i].ptr);
   }
 }
@@ -73,7 +73,7 @@ struct OSCServer {
   socklen_t addr_len;
   char[INET6_ADDRSTRLEN] s;
 
-  void start(int port) {
+  void start(int port) nothrow {
 
       char[10] portString;
       import core.stdc.stdio;
@@ -136,7 +136,7 @@ struct OSCServer {
       return &((cast(sockaddr_in6*)sa).sin6_addr);
   }
 
-  void close()
+  void close() nothrow
   {
       .close(sockfd);
   }
@@ -144,7 +144,7 @@ struct OSCServer {
   int index;
   long length;
 
-  string readString(void[] buf, ref int index) {
+  string readString(void[] buf, ref int index) nothrow{
       int start = index;
       for (; index < length; ++index) {
 
@@ -161,7 +161,7 @@ struct OSCServer {
       return s;
   }
 
-  OSCMessage *get(string target) {
+  OSCMessage *get(string target) nothrow {
     //for (int i = cast(int)messages.length-1; i >= 0; --i) {
     if (messagesLength > 0)
     for (int i = messagesLength - 1; i >= 0; --i) {
@@ -176,7 +176,7 @@ struct OSCServer {
     return null;
   }
 
-  void receiveAll()
+  void receiveAll() nothrow
   {
     int bufRemaining = MAXBUFLEN - 1;
     void *buf = buf2.ptr;

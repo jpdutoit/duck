@@ -7,11 +7,11 @@ import duck.runtime.model;
 struct OSCValue {
   float output = 0;
 
-  this(string target) {
+  this(string target) nothrow {
     this.target = target;
   }
 
-  void tick() {
+  void tick() nothrow {
     OSCMessage *msg = oscServer.get(target);
     if (msg) {
       msg.read(0, &output);
@@ -19,7 +19,7 @@ struct OSCValue {
     }
   }
   mixin UGEN!OSCValue;
-;
+
 private:
   string target;
 }

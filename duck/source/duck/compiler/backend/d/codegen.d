@@ -73,8 +73,17 @@ auto findModules(Expr expr) {
 
 RefExpr findModuleContext(Expr expr) {
   return expr.traverseFind!(
-    (RefExpr e) => e.context && e.context.type.as!ModuleType ? e.context.as!RefExpr : null
-  );
+    (RefExpr e) {
+      auto context = e.context;
+      if (context) {
+        if (context.type.as!ModuleType) return context.as!RefExpr;
+        if (auto type = context.type.as!PropertyType)
+          if (type.decl.parent.declaredType.as!ModuleType) {
+            return context.as!RefExpr;
+          }
+      }
+      return null;
+  });
 }
 
 auto findField(Expr expr) {
@@ -333,12 +342,13 @@ struct CodeGen {
   void visit(VarDecl decl) {
     if (decl.isExternal) return;
     if (!metrics.isReferenced(decl)) return;
-    if (metrics.isDynamicField(decl))
-      output.statement("_ConnDg ", name(decl), "_dg = void; ");
 
     if (auto property = decl.type.as!PropertyType) {
       visit(property.decl);
     } else {
+      if (metrics.isDynamicField(decl))
+        output.statement("_ConnDg ", name(decl), "_dg = void; ");
+
       output.statement(name(decl.type), decl.type.as!ModuleType ? "* " : " ", name(decl), " = ");
       if (decl.valueExpr && !(decl.parent && decl.parent.as!StructDecl))
         output.put(decl.valueExpr, ";");
@@ -413,6 +423,12 @@ struct CodeGen {
   }
 
   void visit(ReturnStmt returnStmt) {
+    auto modules = findModules(returnStmt.value);
+    foreach(mod; modules) {
+      auto modDecl = mod.moduleDecl;
+      if (metrics.hasDynamicFields(modDecl))
+        output.statement(mod, "._tick(); ");
+    }
     output.statement("return ", returnStmt.value, ";");
   }
 
