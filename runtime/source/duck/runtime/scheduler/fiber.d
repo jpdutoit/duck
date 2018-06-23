@@ -1,4 +1,4 @@
-module duck.runtime.scheduler;
+module duck.runtime.scheduler.fiber;
 
 private import core.thread : Fiber;
 private import duck.runtime;
@@ -8,7 +8,7 @@ version(USE_OSC) {
   import duck.plugin.osc.server;
 }
 
-import duck.stdlib.units;
+//import duck.stdlib.units;
 
 class ProcFiber : Fiber
 {
@@ -62,8 +62,6 @@ struct Scheduler {
         }
         if (alive > 0) {
           sleep(waitTime);
-          //waitTime >> now;
-          //wait(waitTime);
         }
         else
           return;
@@ -75,7 +73,6 @@ struct Scheduler {
   {
     ProcFiber fiber = cast(ProcFiber)Fiber.getThis();
     fiber.wakeTime = fiber.wakeTime + dur;
-    //writefln("Fiber %d waiting %s", fiber.uuid, dur);
     Fiber.yield();
   }
 
@@ -109,9 +106,7 @@ struct Scheduler {
   }
 
   static void run() {
-    //spawn(&lineReader, thisTid);
     sigset(SIGINT, &signalHandler);
-    //Scheduler.server.start(4000);
     ulong sampleIndex = 0;
 
     while (!finished) {
@@ -152,7 +147,6 @@ struct Scheduler {
         //return;
       }
     }
-    //Scheduler.server.stop();
   }
 }
 

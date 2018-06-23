@@ -61,9 +61,6 @@ struct OSCServer {
 
   enum MAXBUFLEN = 16384;
 
-  this() {
-  }
-
   int sockfd;
   addrinfo hints;
   addrinfo* servinfo;

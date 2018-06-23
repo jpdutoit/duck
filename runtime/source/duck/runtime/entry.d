@@ -60,8 +60,11 @@ void initialize(string[] args) {
   */
 }
 
+import core.memory: GC;
+
 static void Duck(T)(scope T dg)
     if (is (T:void delegate()) || is (T:void function()))
 {
+  GC.disable();
   Scheduler.start(dg);
 }

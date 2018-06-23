@@ -57,12 +57,12 @@ struct DCompilerOptions {
       versions: ["USE_INSTRUMENTATION"]
     },
     DuckRuntime = {
-      flags: ["-release", "-inline"],
+      flags: ["-release", "-inline", "-L-dead_strip"],
       //libraries: ["../bin/libduck.a"],
       sourceFiles: [
         "duck/runtime/package",
         "duck/runtime/model",
-        "duck/runtime/scheduler",
+        "duck/runtime/scheduler/single",
         "duck/runtime/entry",
         "duck/runtime/global",
         "duck/runtime/print",

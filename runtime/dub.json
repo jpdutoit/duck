@@ -13,7 +13,7 @@
   "sourceFiles": [
       "source/duck/runtime/package",
       "source/duck/runtime/model",
-      "source/duck/runtime/scheduler",
+      "source/duck/runtime/scheduler/single",
       "source/duck/runtime/entry",
       "source/duck/runtime/global",
       "source/duck/runtime/print",

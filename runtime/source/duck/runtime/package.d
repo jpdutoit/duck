@@ -1,5 +1,6 @@
 module duck.runtime;
-public import duck.runtime.scheduler;
+
+public import duck.runtime.scheduler.single;
 public import duck.runtime.model;
 public import duck.runtime.entry;
 public import duck.runtime.global;
