@@ -70,3 +70,7 @@ public:
     __connections ~= dg;
   }
 }
+
+nothrow void _registerEndpoint(M)(M* mod){
+  UGenRegistry.register(cast(void*)&mod, &mod._tick);
+}

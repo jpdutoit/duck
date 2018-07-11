@@ -516,6 +516,11 @@ struct Parser {
           expect(!base.external, lexer.front, "Duplicate extern attribute");
           base.external = true;
         }
+        else if (lexer.front.type == Tok!"@output") {
+          lexer.consume();
+          expect(!base.output, lexer.front, "Duplicate @output attribute");
+          base.output = true;
+        }
         else if (lexer.front.isVisibilityAttribute) {
           expect(!foundVisibilityAttr, lexer.front, "Duplicate visibility attribute");
           foundVisibilityAttr = true;

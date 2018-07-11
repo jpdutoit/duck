@@ -92,14 +92,27 @@ extern module ADC {
 
 //extern function registerEndpoint(DAC);
 
-extern module DAC {
-  constructor();
+@private extern function outputAudioBuffer(mono[2][64]);
 
+@output
+module DAC {
   input: mono;
-  left: mono;
-  right: mono;
-}
 
+  function tick() {
+    buffer[index][0] = input;
+    buffer[index][1] = input;
+    index = index + 1;
+
+    if index == 64 {
+      outputAudioBuffer(buffer);
+      index = 0;
+    }
+  }
+
+@private:
+  buffer: mono[2][64];
+  index: int = 0;
+}
 
 module Mono {
   input: mono;

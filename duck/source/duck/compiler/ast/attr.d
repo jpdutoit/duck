@@ -54,11 +54,12 @@ struct DeclAttr {
     struct {
       import std.bitmanip;
       mixin(bitfields!(
-        int,  "_filler", 2,
+        int,  "_filler", 1,
         StorageClass, "storage", 2,
         Visibility, "visibility", 2,
         MethodBinding, "binding", 1,
-        bool, "external", 1));
+        bool, "external", 1,
+        bool, "output", 1));
     }
   }
 }

@@ -39,8 +39,6 @@ void initialize(char*[] args) nothrow {
     }
     else if (strcmp(args[i], "--sample-rate") == 0) {
       SAMPLE_RATE = atoi(args[++i]);
-      //FIXME: Parse sample rate
-      //SAMPLE_RATE = hz(args[++i].to!int());
     }
     else if (strcmp(args[i], "--verbose") == 0 || strcmp(args[i], "-v") == 0) {
       verbose = true;

@@ -8,7 +8,7 @@ enum TokenSpecial  = AliasSeq!(
   "__Number", "__String", "__Identifier", "__EOF", "__Comment", "__Unknown", "__Bool"
 );
 enum TokenReservedWords = AliasSeq!(
-  "function", "module", "extern", "import", "struct", "distinct", "return", "constructor", "if", "else", "@private", "@public", "@const", "@static", "true", "false", "alias"
+  "function", "module", "extern", "import", "struct", "distinct", "return", "constructor", "if", "else", "@private", "@public", "@const", "@static", "@output", "true", "false", "alias"
 );
 enum TokenSymbols = AliasSeq!(
   " ", "\n",
@@ -65,6 +65,7 @@ shared static this()
     "@public": Tok!"@public",
     "@const": Tok!"@const",
     "@static": Tok!"@static",
+    "@output": Tok!"@output",
     "alias": Tok!"alias",
     "distinct": Tok!"distinct",
     "true": BoolLiteral,
@@ -93,5 +94,5 @@ bool isMethodBindingAttribute(Token token) {
 
 @property
 bool isAttribute(Token token) {
-  return token.isVisibilityAttribute || token.isStorageClassAttribute || token.isMethodBindingAttribute || token.type == Tok!"extern";
+  return token.isVisibilityAttribute || token.isStorageClassAttribute || token.isMethodBindingAttribute || token.type == Tok!"extern" || token.type == Tok!"@output";
 }

@@ -567,6 +567,8 @@ struct CodeGen {
 
           output.functionDecl("auto", "initialize");
           output.functionBody((){
+            if (moduleDecl.attributes.output)
+              output.statement("_registerEndpoint(&this);");
             this.emitInitializers(moduleDecl);
             output.statement("return &this;");
           });

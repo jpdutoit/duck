@@ -320,49 +320,23 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct DAC {
-  @disable this(this);
-
-  auto initialize() { return &this; }
-
-  union {
-    struct {
-      mono left = 0;
-      mono right = 0;
-    }
-    stereo input;
-  };
-
-  void tick() nothrow {
-    buffer[index++] = input;
-    if (index == 64) {
-      final switch(outputMode) {
-        case OutputMode.AU: {
-          for (int i = 0; i < 64; ++i) {
-            writeBuffer[i*2] = buffer[i][0].bigEndian;
-            writeBuffer[i*2+1] = buffer[i][1].bigEndian;
-          }
-          rawWrite2(writeBuffer);
-          break;
-        }
-        case OutputMode.PortAudio: {
-          version(USE_PORT_AUDIO)
-            audio.write(cast(void*)buffer);
-          break;
-        }
-        case OutputMode.None:
-          break;
+nothrow void outputAudioBuffer(stereo[64] buffer) {
+  final switch(outputMode) {
+    case OutputMode.AU: {
+      uint[64*2] writeBuffer;
+      for (int i = 0; i < 64; ++i) {
+        writeBuffer[i*2] = buffer[i][0].bigEndian;
+        writeBuffer[i*2+1] = buffer[i][1].bigEndian;
       }
-
-      index = 0;
+      rawWrite2(writeBuffer);
+      break;
     }
+    case OutputMode.PortAudio: {
+      version(USE_PORT_AUDIO)
+        audio.write(cast(void*)buffer);
+      break;
+    }
+    case OutputMode.None:
+      break;
   }
-  mixin UGEN!DAC;
-
-  static enum isEndPoint = true;
-private:
-  uint[64*2] writeBuffer;
-  stereo[64] buffer;
-  int index;
-
-};
+}

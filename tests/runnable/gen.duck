@@ -47,9 +47,11 @@ c2.input = 0;
 wait(5 samples);
 
 
-extern module DAC {
+module DAC {
   input: mono;
-  constructor();
+  constructor() {
+    input = 0;
+  }
 }
 
 module D {
