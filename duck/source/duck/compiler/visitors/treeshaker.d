@@ -47,6 +47,7 @@ struct TreeShaker {
         // will only mark them as referenced
         // if they are used by some actual code somewhere
       },
+      (ImportDecl decl) { },
       (TypeDecl decl) { }
     );
   }
@@ -55,10 +56,13 @@ struct TreeShaker {
     if (!context.options.treeshake) return;
     if (!root) return;
     root.traverse!(
-      (RefExpr r) => this.addRoot(r.decl),
-      (DeclStmt stmt) {
-        if (cast(VarDecl)(stmt.decl))
-          this.addRoot(stmt.decl);
+      (RefExpr r) {
+        this.addRoot(r.decl);
+        return Traverse.proceed;
+      },
+      (Decl decl) {
+        this.addRoot(decl);
+        return Traverse.skip;
       }
     );
   }

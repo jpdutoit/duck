@@ -62,7 +62,8 @@ public:
     }
   }
 
-  void _add(scope void delegate() nothrow @system dg) nothrow {
+
+  void _add(void delegate() nothrow @system dg) nothrow {
     //UGenRegistry.register(&this);
     if (this.isEndPoint)
       UGenRegistry.register(cast(void*)&this, &this._tick);

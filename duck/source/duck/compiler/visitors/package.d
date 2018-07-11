@@ -154,6 +154,18 @@ mixin template RecursiveAccept() {
 
   void recurse(Decl decl) {}
 
+  void recurse(StructDecl decl) {
+    if (decl.structBody)
+      accept(decl.structBody);
+  }
+
+  void recurse(CallableDecl decl) {
+    if (decl.callableBody)
+      accept(decl.callableBody);
+    else if (decl.returnExpr)
+      accept(decl.returnExpr);
+  }
+
   void recurse(Library library) {
     accept(library.stmts);
   }

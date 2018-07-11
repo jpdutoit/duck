@@ -204,7 +204,10 @@ module Echo {
 }*/
 
 module WhiteNoise {
-  alias output = uniform(0-1.0, 1.0);
+  output: mono = 0;
+  function tick() {
+    output = uniform(0-1.0, 1.0);
+  }
 }
 
 module PairwiseAvg {

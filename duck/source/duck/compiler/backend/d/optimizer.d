@@ -14,8 +14,8 @@ class Optimizer {
 
   this(Library main, Context context) {
     treeShaker = TreeShaker(context);
-    findFieldDependencies(main.stmts);
     treeShaker.addRoot(main.stmts);
+    findFieldDependencies(main.stmts);
   }
 
   CallableDecl hasTick(ModuleDecl mod) {
@@ -27,8 +27,8 @@ class Optimizer {
   }
 
   bool isDynamicField(VarDecl field) {
-    //TODO: Reenable this at a later stage once it works correctly.
-    return field && field.parent && field.parent.declaredType.as!ModuleType && !field.type.as!ModuleType && !field.type.as!PropertyType;
+    if (!treeShaker.isReferenced(field)) return false;
+    return field && field.parent && field.parent.declaredType.as!ModuleType && !field.type.as!ModuleType && !field.type.as!PropertyType && (field in fieldDependencyCount) !is null;
     //return field && field.parentDecl.declaredType.as!ModuleType && !field.type.as!ModuleType && (field in fieldDependencyCount) !is null;
   }
 
@@ -47,7 +47,12 @@ class Optimizer {
 
   auto findField(Node node) {
     return node.traverseFind!(
-      (RefExpr e) => e.decl.parent.as!ModuleDecl ? e.decl.as!VarDecl : null
+      (RefExpr e) {
+        if (e.decl.parent.as!ModuleDecl)
+          return e.decl.as!VarDecl;
+
+        return null;
+      }
     );
   }
 
@@ -70,6 +75,10 @@ class Optimizer {
   final void findFieldDependencies(Node node) {
     import std.algorithm: max;
     node.traverse!(
+      (Decl decl) {
+        if (!treeShaker.isReferenced(decl)) return Traverse.skip;
+        return Traverse.proceed;
+      },
       (PipeExpr e) {
         if (auto field = findField(e.right)) {
           int dependencies = cast(int)findContextModules(e.left).length;
@@ -79,6 +88,7 @@ class Optimizer {
             else fieldDependencyCount[field] = dependencies;
           }
         }
+        return Traverse.proceed;
     });
   }
 }
