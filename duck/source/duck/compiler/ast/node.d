@@ -8,7 +8,7 @@ abstract class Node {
   NodeType nodeType();
 
   final override size_t toHash() @trusted const { return cast(size_t)cast(void*)this; }
-  final override bool opEquals(Object other) const {
+  override bool opEquals(Object other) const {
       return this is other;
   }
 
@@ -25,9 +25,9 @@ N withSource(N: Node)(N node, Slice source) {
   return node;
 }
 
-N as(N : Node)(Node node) { return cast(N) node; }
-T as(T : Type)(Type type) { return cast(T) type; }
-D as(D : Decl)(Decl decl) { return cast(D) decl; }
+N as(N : Node)(inout Node node) { return cast(N) node; }
+T as(T : Type)(inout Type type) { return cast(T) type; }
+D as(D : Decl)(inout Decl decl) { return cast(D) decl; }
 
 import std.range.primitives;
 auto as(N: Node, R)(R range) if (isInputRange!R && is(ElementType!R: Node)) {

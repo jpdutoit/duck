@@ -54,9 +54,14 @@ class Optimizer {
   auto findContextModules(Node node) {
     return node.traverseCollect!(
       (RefExpr e) {
-        if (e.context)
-        if (auto moduleType = e.context.type.as!ModuleType) {
-          return moduleType.decl;
+        if (e.context) {
+          if (auto moduleType = e.context.type.as!ModuleType) {
+            return moduleType.decl;
+          }
+          if (auto propertyType = e.type.as!PropertyType)
+            if (auto moduleType = propertyType.decl.parent.declaredType.as!ModuleType) {
+              return moduleType.decl;
+            }
         }
         return null;
     });

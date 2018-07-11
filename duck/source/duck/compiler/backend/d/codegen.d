@@ -67,7 +67,12 @@ ModuleDecl moduleDecl(RefExpr expr) {
 
 auto findModules(Expr expr) {
   return expr.traverseCollect!(
-    (RefExpr r) => r.context && r.context.type.as!ModuleType ? r.context.as!RefExpr : null
+    (RefExpr r) {
+      if (r.context && r.context.type.as!ModuleType) {
+        return r.context.as!RefExpr;
+      }
+      return null;
+    }
   );
 }
 
@@ -187,8 +192,8 @@ struct CodeGen {
   }
 
   void visit(PipeExpr expr) {
-    auto targetModule = expr.right.findModuleContext();
-    auto modules = findModules(expr.left);
+    RefExpr targetModule = expr.right.findModuleContext();
+    RefExpr[] modules = findModules(expr.left);
 
     if (modules.length == 0) {
       debug(CodeGen) log("=> Rewrite as:");
@@ -197,7 +202,7 @@ struct CodeGen {
     }
 
     ModuleDecl typeDecl = targetModule.moduleDecl;
-    debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name);
+    debug(CodeGen) if (typeDecl) log("=> Property Owner:", typeDecl.name, expr.right);
 
     if (!metrics.isDynamicField(expr.right.findField())) {
       output.statement(expr.right, " = ", expr.left);
@@ -211,7 +216,7 @@ struct CodeGen {
 
     output.block(() {
       foreach(mod; modules) {
-        if (targetModule.decl != mod.decl && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
+        if (targetModule != mod && metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
           output.statement(mod, "._tick();");
       }
 
@@ -224,8 +229,8 @@ struct CodeGen {
   }
 
   void visit(AssignExpr expr) {
+    auto targetModule = expr.left.findModuleContext();
     auto ownerDecl = expr.left.findModuleContext().moduleDecl;
-    ModuleDecl thisDecl = stack.find!ModuleDecl;
 
     auto modules = findModules(expr.right);
 
@@ -237,8 +242,7 @@ struct CodeGen {
       }
     }
     foreach(mod; modules) {
-      auto modDecl = mod.moduleDecl;
-      if ((thisDecl !is modDecl) && (ownerDecl != modDecl) && metrics.hasDynamicFields(modDecl))
+      if (targetModule != mod && metrics.hasDynamicFields(mod.moduleDecl))
         output.statement(mod, "._tick(); ");
     }
 
@@ -371,7 +375,7 @@ struct CodeGen {
     foreach(mod; modules) {
       //if (mod == "this") continue;
       if (metrics.hasDynamicFields(mod.type.as!ModuleType.decl))
-      output.statement(mod, "._tick(); ");
+        output.statement(mod, "._tick(); ");
     }
 
     output.ifStatement(stmt.condition, stmt.trueBody);

@@ -176,18 +176,6 @@ class DeclTable {
     return symbols.byValue().joiner;
   }
 
-  final void replace(Decl old, Decl decl) {
-    if (auto existing = old.name in symbols) {
-      import std.algorithm.searching: countUntil;
-      auto index = (*existing).countUntil(old);
-      if (index >= 0) {
-        (*existing)[index] = decl;
-        return;
-      }
-    }
-    //define(old.name, decl);
-  }
-
   final void define(Decl decl) {
     define(decl.name, decl);
   }

@@ -93,6 +93,28 @@ class RefExpr : Expr {
     this.context = context;
     this.source = source;
   }
+
+  final override bool opEquals(Object other) const {
+    if (auto refExpr = cast(RefExpr)other)
+      return isSameReference(this, refExpr);
+    return false;
+  }
+}
+
+bool isSameReference(const RefExpr a, const RefExpr b) {
+  if (a.decl is b.decl) {
+    if (a.context is null) {
+      return b.context is null;
+    }
+    else {
+      if (auto aContextRef = a.context.as!RefExpr)
+      if (auto bContextRef = b.context.as!RefExpr) {
+        return isSameReference(aContextRef, bContextRef);
+      }
+      return false;
+    }
+  }
+  return false;
 }
 
 class FloatValue : LiteralExpr {

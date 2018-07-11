@@ -8,7 +8,7 @@ Note: Currently only supports Mac OS.
 ## Prerequisites
 
 ### Compiler:
-- [DMD](https://dlang.org/download.html) v2.068.2 or newer
+- [DMD](https://dlang.org/download.html) v2.077.1 or newer
 - [DUB](https://code.dlang.org)
 
 ### Editor:
