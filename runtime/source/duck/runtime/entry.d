@@ -8,6 +8,9 @@ version(USE_OSC) {
 }
 
 void initialize(char*[] args) nothrow {
+  import core.stdc.string: strcmp, strlen;
+  import core.stdc.stdlib: atoi;
+
   version(USE_OSC) {
     oscServer = OSCServer();
     oscServer.start(8000);
@@ -21,11 +24,11 @@ void initialize(char*[] args) nothrow {
   }
 
   for (int i = 1; i < args.length; ++i) {
-    if (args[i] == "--output") {
+    if (strcmp(args[i], "--output") == 0) {
       auto mode = args[++i];
-      if (mode == "au")
+      if (strcmp(mode, "au") == 0)
         outputMode = OutputMode.AU;
-      else if (mode == "pa")
+      else if (strcmp(mode, "pa") == 0)
         outputMode = OutputMode.PortAudio;
       else {
         print("Unknown output mode: ");
@@ -34,11 +37,12 @@ void initialize(char*[] args) nothrow {
       }
 
     }
-    else if (args[i] == "--sample-rate") {
+    else if (strcmp(args[i], "--sample-rate") == 0) {
+      SAMPLE_RATE = atoi(args[++i]);
       //FIXME: Parse sample rate
       //SAMPLE_RATE = hz(args[++i].to!int());
     }
-    else if (args[i] == "--verbose" || args[i] == "-v") {
+    else if (strcmp(args[i], "--verbose") == 0 || strcmp(args[i], "-v") == 0) {
       verbose = true;
     }
     else {
@@ -49,8 +53,10 @@ void initialize(char*[] args) nothrow {
   }
 
   if (outputMode == OutputMode.AU) {
+    static header = [cast(uint)24.bigEndian, 0xffffffff, 6.bigEndian, 0, 2.bigEndian];
+    header[3] = (cast(uint)SAMPLE_RATE).bigEndian;
     rawWrite2(".snd");
-    rawWrite2([cast(uint)24.bigEndian, 0xffffffff, 6.bigEndian, (cast(uint)SAMPLE_RATE).bigEndian, 2.bigEndian]);
+    rawWrite2(header);
   }
   else if (outputMode ==  OutputMode.PortAudio) {
     version(USE_PORT_AUDIO) {
