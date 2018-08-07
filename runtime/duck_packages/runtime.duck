@@ -38,6 +38,8 @@ extern function operator%(duration, duration) -> duration;
 
 extern function operator!=(bool, bool) -> bool;
 extern function operator==(bool, bool) -> bool;
+extern function operator and(bool, bool) -> bool;
+extern function operator or(bool, bool) -> bool;
 
 extern function operator!=(int, int) -> bool;
 extern function operator==(int, int) -> bool;

@@ -325,7 +325,16 @@ struct CodeGen {
       if (re.decl.name == "[]" && re.context) {
         output.expression(re.context, "[", expr.arguments, "]");
       } else if (expr.arguments.length == 2) {
-        output.expression(expr.arguments[0], expr.callable, expr.arguments[1]);
+        switch (re.decl.name) {
+          case "and":
+            output.expression(expr.arguments[0], "&&", expr.arguments[1]);
+            break;
+          case "or":
+            output.expression(expr.arguments[0], "||", expr.arguments[1]);
+            break;
+          default:
+            output.expression(expr.arguments[0], expr.callable, expr.arguments[1]);
+          }
       } else if (expr.arguments.length == 1) {
         output.expression(expr.callable, expr.arguments[0]);
       } else {
@@ -427,13 +436,17 @@ struct CodeGen {
   }
 
   void visit(ReturnStmt returnStmt) {
-    auto modules = findModules(returnStmt.value);
-    foreach(mod; modules) {
-      auto modDecl = mod.moduleDecl;
-      if (metrics.hasDynamicFields(modDecl))
-        output.statement(mod, "._tick(); ");
+    if (returnStmt.value) {
+      auto modules = findModules(returnStmt.value);
+      foreach(mod; modules) {
+        auto modDecl = mod.moduleDecl;
+        if (metrics.hasDynamicFields(modDecl))
+          output.statement(mod, "._tick(); ");
+      }
+      output.statement("return ", returnStmt.value, ";");
+    } else {
+      output.statement("return;");
     }
-    output.statement("return ", returnStmt.value, ";");
   }
 
   void visit(CallableDecl funcDecl) {

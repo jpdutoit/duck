@@ -16,6 +16,8 @@ enum Precedence {
   Multiplicative = 110,
   Additive = 100,
   Comparison = 60,
+  ShortCircuitAnd = 50,
+  ShortCircuitOr = 40,
   Assignment = 30,
   Pipe  = 20
 }
@@ -64,6 +66,9 @@ struct Parser {
       case Tok!"<=":
       case Tok!">":
       case Tok!"<": return Precedence.Comparison;
+
+      case Tok!"and": return Precedence.ShortCircuitAnd;
+      case Tok!"or": return Precedence.ShortCircuitOr;
       default:
       return -1;
     }
@@ -256,6 +261,8 @@ struct Parser {
       case Tok!">>":
         lexer.consume;
         return new PipeExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of pipe operator."));
+      case Tok!"and":
+      case Tok!"or":
       case Tok!"==":
       case Tok!"!=":
       case Tok!">=":
@@ -321,6 +328,8 @@ struct Parser {
         case Tok!"/":
         case Tok!"%":
         case Tok!"!":
+        case Tok!"and":
+        case Tok!"or":
         case Tok!"==":
         case Tok!"!=":
         case Tok!">=":
@@ -370,7 +379,7 @@ struct Parser {
   void parseCallableReturnValue(CallableDecl callable) {
     if (lexer.consume(Tok!"->")) {
       expect(!callable.isConstructor, lexer.last, "Constructors may not have a return value.");
-      callable.returnExpr = expect(parseExpression(Precedence.Comparison), "Expected expression.");
+      callable.returnExpr = expect(parseExpression(Precedence.ShortCircuitOr), "Expected expression.");
     }
   }
 
@@ -606,7 +615,7 @@ struct Parser {
   Stmt parseIf() {
     auto start = lexer.front;
     lexer.expect(Tok!"if", "Expected 'if'");
-    auto condition = expect(parseExpression(Precedence.Comparison-1), "Expected expression.");
+    auto condition = expect(parseExpression(Precedence.ShortCircuitOr-1), "Expected expression.");
     Stmt trueBody = expect(parseStatement(null), "Expected statement after 'if'");
     Stmt falseBody;
     if (lexer.consume(Tok!"else")) {

@@ -145,7 +145,8 @@ mixin template RecursiveAccept() {
     }
 
   void recurse(ReturnStmt stmt) {
-    accept(stmt.value);
+    if (stmt.value)
+      accept(stmt.value);
   }
 
   void recurse(ExprStmt stmt) {
