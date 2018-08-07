@@ -186,63 +186,6 @@ struct ADSR {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-struct AR {
-  mixin UGEN!AR;
-
-  auto initialize() nothrow { return &this; }
-
-  float attack = 1000;
-  float release = 1000;
-
-  mono input = 0;
-  mono output = 0;
-
-  void tick() nothrow {
-    //writefln("%s %s %s", elapsed, input, lastInput);
-    if (input > 0 && lastInput <= 0) {
-      elapsed = 0;
-      att = attack;
-      rel = release;
-      lastInput = input;
-    }
-    if (input <= 0 && lastInput > 0) {
-      if (elapsed >= att) {
-        elapsed = 0;
-        lastInput = input;
-      }
-    }
-
-
-    if (lastInput > 0) {
-      // ADS
-      if (elapsed < att) {
-        float tmp = ((1 - output) * 1);
-        output += tmp / (att - elapsed);
-      } else {
-        output = 1.0;
-        return;
-      }
-    } else {
-      // R
-      if (elapsed < rel) {
-        output += (0 - output) * 1 / (rel - elapsed);
-      }
-      else {
-        output = 0;
-        return;
-      }
-    }
-    elapsed = elapsed + 1;
-  }
-
-//private:
-  float att = 0, rel = 0;
-  mono lastInput = 0;
-  float elapsed = 0;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
 struct ADC {
   mono output;
 

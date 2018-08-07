@@ -165,13 +165,54 @@ module Square {
   }
 }
 
-extern module AR {
-  constructor();
+module AR {
+  attack := 1000 ms;
+  release := 1000 ms;
 
-  attack: duration;
-  release: duration;
   input: mono;
   output: mono;
+
+  function tick() {
+    if input > 0 and lastInput <= 0 {
+      elapsed = 0 samples;
+      att = attack;
+      rel = release;
+      lastInput = input;
+    }
+    if input <= 0 and lastInput > 0 {
+      if elapsed >= att {
+        elapsed = 0 samples;
+        lastInput = input;
+      }
+    }
+
+    if lastInput > 0 {
+      // ADS
+      if elapsed < att {
+        tmp := 1 - output;
+        output = output + tmp / float(att - elapsed);
+      } else {
+        output = 1.0;
+        return;
+      }
+    } else {
+      // R
+      if elapsed < rel {
+        output += (0 - output) * 1 / float(rel - elapsed);
+      }
+      else {
+        output = 0;
+        return;
+      }
+    }
+    elapsed = elapsed + 1 samples;
+  }
+
+@private:
+  att := 0 samples;
+  rel := 0 samples;
+  elapsed := 0 samples;
+  lastInput : mono = 0;
 }
 
 module Delay {
