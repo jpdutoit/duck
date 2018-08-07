@@ -44,14 +44,21 @@ extern function operator==(int, int) -> bool;
 extern function operator>(int, int) -> bool;
 extern function operator>=(int, int) -> bool;
 extern function operator<(int, int) -> bool;
+extern function operator<=(int, int) -> bool;
 
 extern function operator!=(float, float) -> bool;
 extern function operator==(float, float) -> bool;
 extern function operator>(float, float) -> bool;
 extern function operator>=(float, float) -> bool;
 extern function operator<(float, float) -> bool;
+extern function operator<=(float, float) -> bool;
 
+extern function operator!=(duration, duration) -> bool;
+extern function operator==(duration, duration) -> bool;
 extern function operator>(duration, duration) -> bool;
+extern function operator>=(duration, duration) -> bool;
+extern function operator<(duration, duration) -> bool;
+extern function operator<=(duration, duration) -> bool;
 
 extern function operator*(duration, float) -> duration;
 extern function operator*(frequency, float) -> frequency;
