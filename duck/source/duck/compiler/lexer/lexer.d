@@ -212,7 +212,7 @@ struct Lexer {
         while ((input.front >= 'a' && input.front <= 'z') ||
           (input.front >= 'A' && input.front <= 'Z') ||
           (input.front >= '0' && input.front <= '9') ||
-          (input.front == '_'))
+          (input.front == '_') || (input.front >= 128))
           input.consume();
         tokenType = Identifier;
         break;
