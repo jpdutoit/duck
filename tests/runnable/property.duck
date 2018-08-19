@@ -21,6 +21,10 @@ struct A {
       return outer.bb;
     }
   }
+
+  dd: float {
+    get -> 2;
+  }
 }
 
 
@@ -31,6 +35,7 @@ a.bb = 4;
 assertEquals(a.bb, 4);
 a.bb = 6;
 assertEquals(a.cc, 6);
+assertEquals(a.dd, 2);
 
 /*
 //TODO: Free standing properties

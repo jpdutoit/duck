@@ -93,7 +93,8 @@ struct ExprSemantic {
     if (auto property = sourceType.as!PropertyType) {
       auto getters = lookup(sourceExpr, "get");
       if (auto resolved = getters.resolve) {
-        return coerce(semantic(resolved.call().withSource(sourceExpr)), targetType);
+        Expr expr = resolved.call();
+        return coerce(semantic(expr), targetType);
       }
     }
 
@@ -282,7 +283,8 @@ struct ExprSemantic {
 
   Expr resolveValue(ref Expr expr) {
     if (auto propertyType = expr.type.as!PropertyType) {
-      expr = semantic(new MemberExpr(expr, "get", expr.source).call());
+      expr = new MemberExpr(expr, "get", expr.source).call();
+      expr = semantic(expr);
       return resolveValue(expr);
     }
 
