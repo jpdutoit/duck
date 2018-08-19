@@ -258,11 +258,14 @@ struct CodeGen {
     if (auto distinctType = targetType.as!DistinctType)
       targetType = distinctType.baseType;
 
+    /*
+    //This is commented out, because D array lengths are ulongs, while we only support ints.
+    To be able to add this again, need to properly cast size when accessing. 
     if ((sourceType == targetType) ||
         (sourceType.as!IntegerType && targetType.as!FloatType) ||
         (sourceType.as!BoolType && (targetType.as!IntegerType || targetType.as!FloatType)))
       output.expression(expr.expr);
-    else
+    else*/
       output.expression("cast(", name(targetType), ")", expr.expr);
   }
 
