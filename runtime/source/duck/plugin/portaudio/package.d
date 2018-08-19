@@ -56,7 +56,7 @@ struct Audio
     PaError err;
     if ((err = Pa_Initialize()) != paNoError
       || (err = Pa_OpenDefaultStream(&stream,
-                                    1,
+                                    0,
                                     2,
                                     paFloat32,
                                     SAMPLE_RATE,
