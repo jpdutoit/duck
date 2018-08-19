@@ -100,4 +100,12 @@ struct StmtSemantic {
       accept(stmt.falseBody);
     return stmt;
   }
+
+  Node visit(WithStmt stmt) {
+    accept(stmt.valueExpr);
+    semantic.symbolTable.pushScope(new WithScope(stmt.valueExpr));
+    accept(stmt.withBody);
+    semantic.symbolTable.popScope();
+    return stmt;
+  }
 }

@@ -66,6 +66,7 @@ alias NodeTypes = AliasSeq!(
   ScopeStmt,
   ReturnStmt,
   IfStmt,
+  WithStmt,
 
   DistinctDecl,
   BasicTypeDecl,

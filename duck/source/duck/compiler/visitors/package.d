@@ -139,6 +139,11 @@ mixin template RecursiveAccept() {
       accept(stmt.falseBody);
   }
 
+  void recurse(WithStmt stmt) {
+    accept(stmt.valueExpr);
+    accept(stmt.withBody);
+  }
+
   void recurse(BlockStmt block) {
     foreach(stmt; block)
       accept(stmt);

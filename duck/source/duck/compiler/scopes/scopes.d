@@ -147,19 +147,17 @@ class StructScope : Scope {
 
 class WithScope : Scope {
   Expr target;
-  DeclTable table;
 
-  this(Expr context, DeclTable table) {
+  this(Expr context) {
     this.target = context;
-    this.table = table;
   }
 
   final override void define(string identifier, Decl decl) {
-    table.define(identifier, decl);
   }
 
   final override ScopeLookup lookup(string identifier) {
-    return ScopeLookup(this, table.lookup(identifier));
+    import duck.compiler.scopes.lookup: lookup;
+    return lookup(this.target, identifier);
   }
 
   final Expr createMemberReference(Decl member) {

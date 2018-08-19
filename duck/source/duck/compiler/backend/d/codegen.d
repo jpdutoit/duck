@@ -391,6 +391,10 @@ struct CodeGen {
     output.elseStatement(stmt.falseBody);
   }
 
+  void visit(WithStmt stmt) {
+      accept(stmt.withBody);
+  }
+
   void line(Node node) {
     auto slice = node.source;
     if (cast(FileBuffer)slice.buffer) {

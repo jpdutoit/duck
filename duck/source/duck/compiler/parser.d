@@ -624,12 +624,21 @@ struct Parser {
     return new IfStmt(condition, trueBody, falseBody).withSource(sliceFrom(start));
   }
 
+  Stmt parseWith() {
+    auto start = lexer.front;
+    lexer.expect(Tok!"with", "Expected 'with'");
+    auto valueExpr = expect(parseExpression(Precedence.Assignment-1), "Expected expression.");
+    Stmt withBody = expect(parseStatement(null), "Expected statement after 'if'");
+    return new WithStmt(valueExpr, withBody);
+  }
+
   Stmt parseStatement(TypeDecl parent, DeclAttr attributes = DeclAttr.init) {
     switch (lexer.front.type) {
       case Tok!";":        return null;
       case Tok!"import":   return new DeclStmt(parseImport(parent, attributes));
       case Tok!"return":   return parseReturnStmt();
       case Tok!"if":       return parseIf();
+      case Tok!"with":     return parseWith();
       case Tok!"{":        return expect(parseBlock(new ScopeStmt()), "Block expected");
       case Tok!"struct":   return new DeclStmt(parseStruct(parent, attributes));
       case Tok!"module":   return new DeclStmt(parseModule(parent, attributes));

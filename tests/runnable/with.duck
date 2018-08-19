@@ -1,0 +1,30 @@
+
+extern function assertEquals(int, int);
+
+struct A {
+  a := 1;
+  b : int {
+    get {
+      return 2;
+    }
+  }
+
+  @static
+  c := 3;
+  @static
+  d : int {
+    get {
+      return 4;
+    }
+  }
+}
+
+with A() {
+  assertEquals(a, 1);
+  assertEquals(b, 2);
+}
+
+with A {
+  assertEquals(c, 3);
+  assertEquals(d, 4);
+}

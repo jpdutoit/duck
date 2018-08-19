@@ -78,3 +78,15 @@ class IfStmt: Stmt {
     this.falseBody = falseBody;
   }
 }
+
+class WithStmt: Stmt {
+  mixin NodeMixin;
+
+  Expr valueExpr;
+  Stmt withBody;
+
+  this(Expr valueExpr, Stmt withBody) {
+    this.valueExpr = valueExpr;
+    this.withBody = withBody;
+  }
+}
