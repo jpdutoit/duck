@@ -92,7 +92,9 @@ Expr errorResolvingConstructorCall(R)(ConstructExpr expr, R ctors, CallableDecl[
 
 Expr memberNotFoundError(MemberExpr expr) {
   return expr.context.type.visit!(
-    (StructType type) => expr.error("No member " ~ expr.name ~ " in " ~ type.decl.name),
+    (MetaType type) =>
+      expr.error("No static member " ~ expr.name ~ " in " ~ type.type.mangled()),
+    (StructType type) => expr.error("No member " ~ expr.name ~ " in object with type " ~ type.decl.name),
     (PropertyType type) {
       switch (expr.name) {
         case "get": return expr.error("Property " ~ type.decl.name ~ " does not have a getter");

@@ -1,0 +1,27 @@
+
+
+struct A {
+  b0: int = 1;
+
+  @static b1: int {
+    get {
+      return 5;
+    }
+  }
+
+}
+
+
+t1 := A().b0;
+t2 := A().b1;
+
+t3 := A.b0;
+t4 := A.b1;
+
+/**
+OUTPUT:
+---
+tests/not-compilable/static.duck(16:7-12): Error: No member b1 in object with type A
+tests/not-compilable/static.duck(18:7-10): Error: No static member b0 in A
+---
+*/

@@ -631,6 +631,18 @@ struct ExprSemantic {
         }
         return expr.memberNotFoundError();
       },
+      (MetaType type) {
+        if (auto structType = type.type.as!StructType)
+        if (auto lookup = lookup(expr.context, expr.name, this.accessLevel(structType))) {
+          semantic(lookup);
+          if (auto resolved = lookup.resolve())
+            return semantic(resolved.withSource(expr));
+
+          expr.type = UnresolvedType.create(lookup);
+          return expr;
+        }
+        return expr.memberNotFoundError();
+      },
       (Type t) => expr.memberNotFoundError()
     );
   }

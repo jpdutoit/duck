@@ -1,0 +1,29 @@
+
+extern function assertEquals(int, int);
+
+struct A {
+  pd: int {
+    get {
+      return 10;
+    }
+  }
+  vd : int = 11;
+
+  @static :
+
+  ps: int {
+    psb: int = 20;
+    get {
+      return psb;
+    }
+  }
+
+  vs: int = 21;
+
+}
+
+assertEquals(A().pd, 10);
+assertEquals(A().vd, 11);
+
+assertEquals(A.ps, 20);
+assertEquals(A.vs, 21);

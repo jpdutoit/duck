@@ -401,6 +401,8 @@ struct Parser {
     parseCallableArgumentList(callable);
     parseCallableReturnValue(callable);
     callable.headerSource = sliceFrom(start);
+    if (callable.isConstructor)
+      callable.attributes.binding = MethodBinding.staticBinding;
     parseCallableBody(callable);
 
     return callable.withSource(sliceFrom(start));
@@ -666,6 +668,7 @@ struct Parser {
 
             if (lexer.front.type == Tok!"{") {
               StructDecl propertyDecl = new PropertyDecl(varDecl.typeExpr, varDecl.name);
+              propertyDecl.attributes = varDecl.attributes;
               propertyDecl.parent = parent;
               varDecl.typeExpr = new RefExpr(propertyDecl);
               propertyDecl.structBody = new BlockStmt();

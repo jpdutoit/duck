@@ -25,7 +25,7 @@ OUTPUT:
 tests/not-compilable/array.duck(9:1-11): Error: No member 'something' in float[]
 tests/not-compilable/array.duck(11:1-11): Error: No member 'something' in float[3]
 tests/not-compilable/array.duck(13:1-6): Error: Cannot access members of float
-tests/not-compilable/array.duck(14:1-6): Error: No member size in M
+tests/not-compilable/array.duck(14:1-6): Error: No member size in object with type M
 tests/not-compilable/array.duck(18:13-18): Error: Cannot coerce a value of type int to a value of type string
 tests/not-compilable/array.duck(19:5-10): Error: Cannot coerce a value of type int to a value of type string
 tests/not-compilable/array.duck(20:15-23): Error: Cannot coerce a value of type int[3] to a value of type float[2]

@@ -95,14 +95,12 @@ auto filtered(alias predicate, T)(Lookup!T lookup)
   return _lookup(lookup.parent, lookup.decls.filter!predicate);
 }
 
-
 // Returns a range of overload sets containing declarations with name `identifier`
 auto stagedLookup(SymbolTable symbolTable, Slice identifier) {
   return symbolTable.scopes
     .map!(next => next.lookup(identifier))
     .filter!(a => !a.empty);
 }
-
 
 auto lookup(Type type, string identifier, Visibility vis = Visibility.public_) {
     Lookup!(Decl[]) lookup;
@@ -111,7 +109,9 @@ auto lookup(Type type, string identifier, Visibility vis = Visibility.public_) {
       if (auto structType = metaType.type.as!StructType) {
         return _lookup(
           null,
-          structType.decl.members.lookup(identifier));
+          vis == Visibility.public_
+            ? structType.decl.members.lookup(identifier).filter!(d => d.visibility == Visibility.public_ && d.attributes.binding == MethodBinding.staticBinding).array
+            : structType.decl.members.lookup(identifier).filter!(d => d.attributes.binding == MethodBinding.staticBinding).array);
       }
     }
     else if (auto structType = type.as!StructType) {
@@ -132,16 +132,20 @@ auto lookup(alias predicate = null)(Expr expr, string identifier, Visibility vis
     if (auto structType = metaType.type.as!StructType) {
       lookup = _lookup(
         expr,
-        structType.decl.members.lookup(identifier));
+        vis == Visibility.public_
+          ? structType.decl.members.lookup(identifier).filter!(d => d.visibility == Visibility.public_ && d.attributes.binding == MethodBinding.staticBinding).array
+          : structType.decl.members.lookup(identifier).filter!(d => d.attributes.binding == MethodBinding.staticBinding).array
+        );
+//
     }
   }
   else if (auto structType = expr.type.as!StructType) {
     lookup = Lookup!(Decl[])(
       expr,
       vis == Visibility.public_
-        ? structType.decl.members.lookup(identifier).filter!(d => d.visibility == Visibility.public_).array
-        : structType.decl.members.lookup(identifier)
-    );
+        ? structType.decl.members.lookup(identifier).filter!(d => d.visibility == Visibility.public_ && d.attributes.binding == MethodBinding.dynamicBinding).array
+        : structType.decl.members.lookup(identifier).filter!(d => d.attributes.binding == MethodBinding.dynamicBinding).array
+      );
   }
   else lookup = _lookup(cast(Expr)null, (cast(Decl[])[]));
   static if (is(predicate: typeof(null))) {

@@ -141,6 +141,7 @@ struct DeclSemantic {
       callable.parent = structDecl;
       callable.isConstructor = true;
       callable.callableBody = new ScopeStmt();
+      callable.attributes.binding = MethodBinding.staticBinding;
       return callable;
   }
 

@@ -365,8 +365,14 @@ struct CodeGen {
       if (metrics.isDynamicField(decl))
         output.statement("_ConnDg ", name(decl), "_dg = void; ");
 
+      bool isStatic = false;
+      if (decl.attributes.binding == MethodBinding.staticBinding || (decl.parent.as!PropertyDecl && decl.parent.attributes.binding == MethodBinding.staticBinding)) {
+        isStatic = true;
+        output.statement("static");
+      }
+
       output.statement(name(decl.type), decl.type.as!ModuleType ? "* " : " ", name(decl), " = ");
-      if (decl.valueExpr && !(decl.parent && decl.parent.as!StructDecl))
+      if (decl.valueExpr && (!(decl.parent && decl.parent.as!StructDecl) || isStatic))
         output.put(decl.valueExpr, ";");
       else
         output.put("void;");
@@ -458,10 +464,13 @@ struct CodeGen {
 
   void visit(CallableDecl funcDecl) {
     if (funcDecl.type.as!MacroType) return;
+    if (!metrics.isReferenced(funcDecl)) return;
 
     if (!funcDecl.isExternal) {
 
-      if (!funcDecl.parent) {
+      auto parent = funcDecl.parent;
+
+      if ((!funcDecl.parent || funcDecl.attributes.binding == MethodBinding.staticBinding || (funcDecl.parent.as!PropertyDecl && funcDecl.parent.attributes.binding == MethodBinding.staticBinding)) && !funcDecl.isConstructor) {
         output.statement("static");
       }
 
@@ -550,7 +559,9 @@ struct CodeGen {
       (VarDecl decl) {
         if (metrics.isDynamicField(decl))
           output.statement("this.", name(decl), "_dg = null;");
+
         if (auto value = decl.valueExpr)
+        if (decl.attributes.binding != MethodBinding.staticBinding && !(decl.parent.as!PropertyDecl && decl.parent.attributes.binding == MethodBinding.staticBinding))
           output.statement("this.", name(decl), " = ", value, ";");
 
         if (decl.typeExpr)

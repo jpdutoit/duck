@@ -35,11 +35,11 @@ a.a2.b4;
 OUTPUT:
 ---
 tests/not-compilable/vis.duck(4:12-19): Error: Duplicate visibility attribute
-tests/not-compilable/vis.duck(20:1-4): Error: No member b3 in B
-tests/not-compilable/vis.duck(26:1-7): Error: No member b3 in B
-tests/not-compilable/vis.duck(29:1-4): Error: No member a2 in A
-tests/not-compilable/vis.duck(31:1-4): Error: No member a2 in A
-tests/not-compilable/vis.duck(32:1-4): Error: No member a2 in A
+tests/not-compilable/vis.duck(20:1-4): Error: No member b3 in object with type B
+tests/not-compilable/vis.duck(26:1-7): Error: No member b3 in object with type B
+tests/not-compilable/vis.duck(29:1-4): Error: No member a2 in object with type A
+tests/not-compilable/vis.duck(31:1-4): Error: No member a2 in object with type A
+tests/not-compilable/vis.duck(32:1-4): Error: No member a2 in object with type A
 ---
 */
 
