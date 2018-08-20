@@ -1,5 +1,141 @@
 import "runtime";
 
+distinct semitones : float;
+
+extern function operator*(float, semitones) -> semitones;
+extern function operator*(semitones, float) -> semitones;
+extern function operator+(semitones, semitones) -> semitones;
+extern function operator-(semitones, semitones) -> semitones;
+function toFrequency(key: semitones) -> 440 hz * powf(2, (float(key) - 49)/ 12);
+
+@private struct Name {
+  @static:
+  alias a = 0;
+  alias b = 1;
+  alias c = 2;
+  alias d = 3;
+  alias e = 4;
+  alias f = 5;
+  alias g = 6;
+}
+
+struct Key {
+  @static:
+
+  a♭ := [0-1, Name.a];
+  a := [0, Name.a];
+  a♯ := [1, Name.a];
+
+  b♭ := [1, Name.b];
+  b := [2, Name.b];
+  b♯:= [3, Name.b];
+
+  c♭:= [2, Name.c];
+  c:= [3, Name.c];
+  c♯ := [4, Name.c];
+
+  d♭ := [4, Name.d];
+  d := [5, Name.d];
+  d♯ := [6, Name.d];
+
+  e♭ := [6, Name.e];
+  e := [7, Name.e];
+  e♯ := [8, Name.e];
+
+  f♭ := [7, Name.f];
+  f := [8, Name.f];
+  f♯ := [9, Name.f];
+
+  g♭ := [9, Name.g];
+  g := [10, Name.g];
+  g♯ := [11, Name.g];
+}
+
+
+struct Scale {
+  noteNumber: int;
+  mode: int;
+  key: int;
+
+  @private alias octave = 2 * 12 + 1;
+  @static majorScale := [0, 2, 4, 5, 7, 9, 11];
+
+  constructor(key: int[2], mode: int) {
+    this.mode = mode;
+    this.key = key[0];
+    this.noteNumber = key[1];
+  }
+
+  function pianoKey(index: int, bend: float) -> semitones {
+    scalePosition := (7 - noteNumber + index + mode);
+    return semitones(octave + key + majorScale[scalePosition % 7] + (scalePosition / 7) * 12  + bend - majorScale[mode]);
+  }
+
+  alias a♭ = pianoKey(Name.a, 0-1);
+  alias a = pianoKey(Name.a, 0);
+  alias a♯ =  pianoKey(Name.a, 1);
+
+  alias b♭ = pianoKey(Name.b, 0-1);
+  alias b = pianoKey(Name.b, 0);
+  alias b♯ = pianoKey(Name.b, 1);
+
+  alias c♭ = pianoKey(Name.c, 0-1);
+  alias c = pianoKey(Name.c, 0);
+  alias c♯ = pianoKey(Name.c, 1);
+
+  alias d♭ = pianoKey(Name.d, 0-1);
+  alias d = pianoKey(Name.d, 0);
+  alias d♯ = pianoKey(Name.d, 1);
+
+  alias e♭ = pianoKey(Name.e, 0-1);
+  alias e = pianoKey(Name.e, 0);
+  alias e♯ = pianoKey(Name.e, 1);
+
+  alias f♭ = pianoKey(Name.f, 0-1);
+  alias f = pianoKey(Name.f, 0);
+  alias f♯ = pianoKey(Name.f, 1);
+
+  alias g♭ = pianoKey(Name.g, 0-1);
+  alias g = pianoKey(Name.g, 0);
+  alias g♯ = pianoKey(Name.g,1);
+}
+
+struct Mode {
+  @static:
+
+  ionian := 0;
+  dorian := 1;
+  phrygian := 2;
+  lydian := 3;
+  mixolydian := 4;
+  aeolian := 5;
+  locrian := 6;
+
+  //major: int { get { return 0; }
+  alias major = ionian;
+  alias minor = aeolian;
+}
+
+struct CircleOf5ths {
+  @static:
+
+  alias C = Scale(Key.c, Mode.major);
+  alias G = Scale(Key.g, Mode.major);
+  alias D = Scale(Key.d, Mode.major);
+  alias A = Scale(Key.a, Mode.major);
+  alias E = Scale(Key.e, Mode.major);
+  alias B = Scale(Key.b, Mode.major);
+  alias C♭ = Scale(Key.c♭, Mode.major);
+  alias F♯ = Scale(Key.f♯, Mode.major);
+  alias G♭ = Scale(Key.g♭, Mode.major);
+  alias D♭ = Scale(Key.d♭, Mode.major);
+  alias C♯ = Scale(Key.c♯, Mode.major);
+  alias A♭ = Scale(Key.a♭, Mode.major);
+  alias E♭ = Scale(Key.e♭, Mode.major);
+  alias B♭ = Scale(Key.b♭, Mode.major);
+  alias F = Scale(Key.f, Mode.major);
+}
+
 module Phasor {
   freq: frequency = 440 hz;
   phase: mono = 0;
@@ -33,12 +169,14 @@ module Clock {
   }
 }
 
+//function pitch(key: float) -> 440 hz * powf(2, (input - 49)/ 12);
+
 module Pitch {
   input: mono;
   alias output = frequency(440 * powf(2, (input - 49)/ 12));
 }
 
-extern function log2(float) -> float;
+
 extern function log2(frequency) -> float;
 extern function sum(buffer: float[]) -> float;
 extern function max(float, float) -> float;
