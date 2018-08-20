@@ -5,12 +5,18 @@ const childProcess = require("child_process")
 
 const SERVER_PORT = process.env.DUCK_SERVER_PORT || 80;
 const DUCK_EXECUTABLE = "../../bin/duck";
+const CODE_STORAGE = "../../storage";
 const FFMPEG_EXECUTABLE = "sox";
 const FFMPEG_ARGUMENTS = "-t au -";
 
 const MEMORY_CACHE_TIMEOUT = 10 * 60 * 1000;
 const DISK_CACHE_TIMEOUT = 3 * 24 * 60 * 60 * 1000;
-const PROCESSING_TIMEOUT = 4000
+const PROCESSING_TIMEOUT = 4000;
+
+fs.mkdir(CODE_STORAGE, (error) => {
+  if (error && error.code != "EEXIST")
+    console.log("Error creating folder" + CODE_STORAGE, error)
+  });
 
 function spawn(cmd, args, callback) {
   const child = childProcess.spawn(cmd, args || []);
@@ -27,32 +33,33 @@ function spawn(cmd, args, callback) {
 
 function checkSyntax(code) {
   return new Promise((resolve, reject) => {
-    spawn(DUCK_EXECUTABLE, ["-t", "check", "--", code], (code, stdout, stderr) => {
+    spawn(DUCK_EXECUTABLE, ["-t", "check", code], (code, stdout, stderr) => {
       if (code == 0) {
         resolve();
       } else {
-        reject({ message: stderr.toString() || "Internal compiler error" });
+        reject({ message: stderr.toString().replace(/^[^(]*/mg, "") || "Internal compiler error" });
       }
     })
   });
 }
 
-function generateMp3(filename, code) {
-  var exeFilename = filename;
-  var mp3Filename = filename + ".mp3";
+function generateMp3(exeFilename, mp3Filename, code) {
+  console.log("Generate mp3:", code, "=>", mp3Filename);
   return new Promise((resolve, reject) => {
-    spawn(DUCK_EXECUTABLE, ["-t", "exe", "-o", exeFilename, "-e", "null", "--", code], (code, stdout, stderr) => {
+    spawn(DUCK_EXECUTABLE, ["-t", "exe", "-o", exeFilename, "-e", "null", code], (code, stdout, stderr) => {
       if (code == 0) {
         fs.chmodSync(exeFilename, 0700);
-        childProcess.exec(`${filename} --output au | ${FFMPEG_EXECUTABLE} ${FFMPEG_ARGUMENTS} ${mp3Filename}`, {
+        childProcess.exec(`${exeFilename} --output au | ${FFMPEG_EXECUTABLE} ${FFMPEG_ARGUMENTS} ${mp3Filename}`, {
           encoding: "buffer",
           timeout: PROCESSING_TIMEOUT
         }, (error, stdout, stderr) => {
-            fs.unlink(exeFilename);
+            fs.unlink(exeFilename, () => {});
             if (!error)
               resolve(mp3Filename);
-            else
+            else {
+              console.log(error);
               reject({ message: error.killed ? "Timeout" : "Encoding failed"});
+            }
           });
       } else {
         reject({ message: stderr.toString() || "Internal compiler error" });
@@ -62,17 +69,29 @@ function generateMp3(filename, code) {
 }
 
 class Cache {
-  static id(code, format) {
+  static id(code) {
     var shasum = require('crypto').createHash('sha1');
     shasum.update(code);
-    return format + "_" + shasum.digest('hex');
+    return shasum.digest('hex');
   }
 
-  static get(code, format) {
-    let id = Cache.id(code, format)
+  static getWithCode(code) {
+    let id = Cache.id(code)
     let cached = Cache.entries[id]
-    if (!cached)
-      Cache.entries[id] = cached = new CacheEntry(id, code, format)
+    if (!cached) {
+      Cache.entries[id] = cached = new CacheEntry(id, code)
+      cached.saveCode(code)
+    }
+    return cached
+  }
+
+  static getByHash(id) {
+    if (!id.match(/^[0-9a-f]+$/)) return undefined;
+
+    let cached = Cache.entries[id]
+    if (!cached) {
+      Cache.entries[id] = cached = new CacheEntry(id)
+    }
     return cached
   }
 
@@ -84,33 +103,103 @@ Cache.entries = {}
 
 
 class CacheEntry {
-  constructor(id, code, format) {
+  constructor(id, code) {
     this.id = id
-    this.generateMp3(code)
     this.autoRemove()
   }
 
-  baseFilename() {
+  get tmp() {
     return "/tmp/duck_tmp_" + this.id
   }
 
-  generateMp3(code) {
-    console.log("Generating:", this.id, "\n  ", code)
-    this._promise = generateMp3(this.baseFilename(), code).then(filename => {
-      this.filename = filename;
-      return filename;
-    })
+  get codeFilename() {
+    return `${CODE_STORAGE}/${this.id}.duck`
   }
 
-  get promise() {
-    if (!this._promise) {
-      console.log("Reloading from disk:", this.id)
-      this._promise = Promise.resolve(this.filename)
+  loadCode() {
+    console.log("Load duck:", this.codeFilename);
+    this._codePromise = new Promise((resolve, reject) => {
+      fs.exists(this.codeFilename, (exists) => {
+        if (exists)
+          resolve(this.codeFilename)
+        else
+          reject({ message: "Not found"})
+      })
+    });
+    this._codePromise.catch(e => {
+      console.log("Error loading code: ", e);
+      this._codePromise = undefined;
+    });
+    return this._codePromise
+  }
+
+  saveCode(code) {
+    console.log("Write duck:", this.codeFilename);
+    this._codePromise = new Promise((resolve, reject) => {
+        fs.writeFile(this.codeFilename, code, (error) => {
+          if (!error)
+            resolve(this.codeFilename);
+          else {
+            reject({ message: "Could not write file" });
+          }
+        })
+      })
+    this._codePromise.catch(e => console.log("Error saving code: ", e));
+  }
+
+  generateMp3() {
+    this._mp3Promise =
+      (this._codePromise || this.loadCode())
+      .then(codeFilename => {
+        return generateMp3(this.tmp, this.tmp + ".mp3", codeFilename)
+          .catch(e => {
+            console.log("Error generating mp3: ", e)
+            throw e;
+          });
+        })
+      .then(filename => {
+        this.mp3Filename = filename
+        return filename
+      })
+    this._codePromise.catch(e => {
+      this._mp3Promise = undefined;
+    });
+  }
+
+  get mp3() {
+    if (!this._mp3Promise) {
+      if (this.mp3Filename) {
+        console.log("Reloading from disk:", this.id)
+        this._mp3Promise = Promise.resolve(this.mp3Filename)
+      } else {
+        this.generateMp3();
+      }
     } else {
       console.log("Reusing from cache:", this.id)
     }
     this.autoRemove()
-    return this._promise
+    return this._mp3Promise
+  }
+
+  checkSyntax() {
+    this._checkPromise =
+      (this._codePromise || this.loadCode())
+      .then(codeFilename => checkSyntax(codeFilename))
+    this._checkPromise.catch(e => "");
+  }
+
+  get check() {
+    if (!this._checkPromise) {
+      this.checkSyntax();
+    } else {
+      console.log("Checking from cache:", this.id)
+    }
+    this.autoRemove()
+    return this._checkPromise
+  }
+
+  get code() {
+    return (this._codePromise || this.loadCode())
   }
 
   autoRemove() {
@@ -118,14 +207,16 @@ class CacheEntry {
     clearTimeout(this.timeout);
     this.timeout = setTimeout(() => {
       console.log("Clearing from memory:", this.id)
-      this._promise = null;
+      this._mp3Promise = null;
+      this._checkPromise = null;
 
       // After clearing from memory, add timeout to remove from disk
-      if (this.filename) {
+      if (this.mp3Filename) {
         this.timeout = setTimeout(() => {
           console.log("Clearing from disk:", this.id)
           Cache.remove(this.id)
-          fs.unlink(this.filename);
+          fs.unlink(this.mp3Filename);
+          this.mp3Filename = null;
         }, DISK_CACHE_TIMEOUT)
       } else {
         Cache.remove(this.id)
@@ -164,11 +255,30 @@ const requestHandler = (request, response) => {
       stream.pipe(response);
       return;
 
+    case "/code":
+      if (method != "GET" && method != "POST") break;
+      var cacheItem = Cache.getByHash(url.query.hash);
+      if (cacheItem)
+      cacheItem.code.then((filename) => {
+          response.writeHead(200, {
+            'Content-Type': 'text/duck'
+          })
+          var stream = fs.createReadStream(filename);
+          stream.pipe(response);
+        })
+        .catch((error) => {
+          response.writeHead(400, {
+            'Content-Type': 'text/plain'
+          })
+          response.write(error.message);
+          response.end();
+        });
+    return;
     case "/run":
       if (method != "GET" && method != "POST") break;
-      var code = url.query.code || body || "";
-      var cacheItem = Cache.get(code, "mp3")
-      cacheItem.promise.then((filename) => {
+      var cacheItem = Cache.getByHash(url.query.hash);
+      if (cacheItem)
+      cacheItem.mp3.then((filename) => {
           response.writeHead(200, {
             'Content-Type': 'audio/mpeg'
           })
@@ -186,19 +296,21 @@ const requestHandler = (request, response) => {
 
     case "/check":
       if (method != "GET" && method != "POST") break;
-      var code = url.query.code || body || "";
-      checkSyntax(code).then(() => {
+      var code = url.query.code || body;
+      var cacheItem = Cache.getWithCode(code);
+      if (cacheItem)
+      cacheItem.check.then(() => {
           response.writeHead(200, {
             'Content-Type': 'text/plain'
           })
-          response.write("OK");
+          response.write(JSON.stringify({ "hash": cacheItem.id, "mp3": `/run?hash=${cacheItem.id}` }));
           response.end();
         })
         .catch((error) => {
           response.writeHead(400, {
             'Content-Type': 'text/plain'
           })
-          response.write(error.message);
+          response.write(JSON.stringify({ "hash": cacheItem.id, "message": error.message }));
           response.end();
         });
       return;

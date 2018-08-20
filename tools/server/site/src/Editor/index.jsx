@@ -39,6 +39,7 @@ export default class Editor extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      containsErrors: true
     };
   }
 
@@ -48,7 +49,6 @@ export default class Editor extends Component {
 
   validateCode(text, callback) {
     var encoded = encodeURIComponent(text);
-    window.browserHistory.replace("/edit?code=" + encoded);
 
     request({
         method: "POST",
@@ -57,20 +57,42 @@ export default class Editor extends Component {
       },
       (error, response, body) => {
         let containsErrors = response.statusCode >= 300
+        let result = JSON.parse(body);
         this.setState(Object.assign(this.state,  {
-          containsErrors
+          containsErrors: false,
+          playbackUrl: result.mp3
         }));
-        callback(body);
+        window.browserHistory.replace("/edit?hash=" + result.hash);
+        callback(result.message);
+      }
+    )
+  }
+
+
+  loadCode(hash, callback) {
+    if (!hash) return callback("");
+
+    request({
+        method: "GET",
+        url: "/code?hash=" + hash,
+      },
+      (error, response, body) => {
+        let containsErrors = response.statusCode >= 300
+        if (!containsErrors) {
+          callback(body)
+        } else {
+          callback("");
+        }
       }
     )
   }
 
   executeCode(code) {
-    if (this.state.containsErrors) return;
+    if (this.state.containsErrors || !this.state.playbackUrl) return;
 
     //console.log("Play", code);
     var encoded = encodeURIComponent(code);
-    let url = "/run?code=" + encoded;
+    let url = this.state.playbackUrl;
     //document.getElementById('player-source').src = url;
     //document.getElementById('player').load();
     //document.getElementById('player').play();
@@ -90,41 +112,35 @@ export default class Editor extends Component {
   }
 
   componentDidMount() {
-    setTimeout(() => {
-      var query = parseQueryString(document.location.search);
-      console.log(this.node);
-      this.state.editor = CodeMirror.initialize(this.node, {
-        value: query.code || "",
-        validateCode: (code, callback) => { this.validateCode(code, callback); },
-        executeCode: (code) => {
-          this.executeCode(code);
+    var query = parseQueryString(document.location.search);
+    this.loadCode(query.hash, (initialCode) => {
+      setTimeout(() => {
+        this.state.editor = CodeMirror.initialize(this.node, {
+          value: initialCode || "",
+          validateCode: (code, callback) => { if (code) this.validateCode(code, callback); },
+          executeCode: (code) => {
+            this.executeCode(code);
+          }
+        });
+
+        this.state.waveSurfer = new WaveSurfer({
+          container: this.waveSurferElement,
+          backend: 'MediaElement',
+          normalize: true,
+          pixelRatio: 1,
+          fillParent: true,
+          plugins: [
+          ]
+        });
+
+        this.state.waveSurfer.init();
+        if (this.state.document) {
+          this.state.editor.swapDoc(this.state.document);
+        } else {
+          this.state.document = this.state.editor.getDoc();
         }
-      });
-
-      this.state.waveSurfer = new WaveSurfer({
-        container: this.waveSurferElement,
-        backend: 'MediaElement',
-        normalize: true,
-        pixelRatio: 2,
-        fillParent: true,
-        plugins: [
-        ]
-      });
-
-      this.state.waveSurfer.init();
-      if (this.state.document) {
-        this.state.editor.swapDoc(this.state.document);
-      } else {
-        this.state.document = this.state.editor.getDoc();
-      }
-
-      if (query.code) {
-        this.play();
-
-      //var player = document.getElementById('player');
-      //player.addEventListener('canplaythrough', () => { player.play(); }, false);
-      }
-    }, 100);
+      }, 100);
+    });
   }
 
   componentWillUnmount() {

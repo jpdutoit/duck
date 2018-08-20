@@ -52,12 +52,13 @@ function initialize(node, options) {
     theme: 'monokai',
     gutter: true,
     gutters: ['CodeMirror-lint-markers'],
+    autofocus: true,
     //singleLineStringErrors: false,
     //lineNumberFormatter: a => '',
     lint: {
       getAnnotations: getAnnotations(options.validateCode),
       async: true,
-      delay: 250,
+      delay: 500,
     },
   });
 

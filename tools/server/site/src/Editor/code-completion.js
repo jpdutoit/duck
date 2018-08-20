@@ -5,11 +5,13 @@ import 'codemirror/addon/lint/lint';
 import 'codemirror/mode/d/d';
 
 const symbols = {
+  CircleOf5ths: 'CircleOf5ths',
+  Mode: 'Mode',
   SinOsc: 'SinOsc',
   Clock: 'Clock',
   Square: 'Square',
   Triangle: 'Triangle',
-  SawTooth: 'SawTooth',
+  SawOsc: 'SawOsc',
   Pat: 'Pat',
   Pitch: 'Pitch',
   AR: 'AR',
@@ -19,7 +21,7 @@ const symbols = {
   Echo: 'Echo',
   ADC: 'ADC',
   DAC: 'DAC',
-  Osc: ['SinOsc', 'Square', 'Triangle', 'SawTooth'],
+  Osc: ['SinOsc', 'Square', 'Triangle', 'SawOsc'],
   UGen: ['Clock', 'SinOsc'],
   WhiteNoise: 'WhiteNoise',
 };
