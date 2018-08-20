@@ -14,22 +14,15 @@ auto haltOnException(T)(lazy T t) nothrow {
     assert(0);
   }
 }
-void log(lazy string s) nothrow {
+void log(string s) nothrow {
   if (verbose) {
     import duck.runtime;
-    haltOnException(print(s));
+    print(s);
   }
 }
 
-void warn(lazy string s) nothrow {
-  try {
-    import duck.runtime;
-    print(s);
-    //stderr.writeln(s);
-  }
-  catch (Exception e) {
-    exit(1);
-  }
+void warn(string s) nothrow {
+  print(s);
 }
 
 void _halt(string s) nothrow {
@@ -40,8 +33,8 @@ void _halt(string s) nothrow {
 void halt() nothrow {
   exit(1);
 }
-void halt(lazy string s) nothrow {
-  _halt(haltOnException(s));
+void halt(string s) nothrow {
+  _halt(s);
 }
 
 void print(long i) nothrow {

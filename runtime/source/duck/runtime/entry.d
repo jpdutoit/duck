@@ -2,6 +2,7 @@ module duck.runtime.entry;
 import duck.runtime;
 import duck.stdlib;
 import duck.stdlib.ugens : bigEndian;
+import duck.stdlib.random;
 
 version(USE_OSC) {
   import duck.plugin.osc.server;
@@ -81,6 +82,8 @@ extern(C) void main(int argc, char **argv)
 
   initialize(argv[0..argc]);
   rt_init();
+  //Workaround for module constructors not getting called anymore for unknown reasons
+  randomGenerator = Xoroshiro128.withCurrentTime();
   Scheduler.start(&run);
   rt_term();
 }

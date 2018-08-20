@@ -6,8 +6,6 @@ double uniform(double lo, double hi) nothrow {
   return (cast(double)next / cast(double)(ulong.max) * range + lo);
 }
 
-private:
-
 // Algorithm from: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 struct Xoroshiro128 {
   ulong[2] state;

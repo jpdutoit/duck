@@ -10,4 +10,4 @@ enum OutputMode {
 
 __gshared OutputMode outputMode;
 
-__gshared float SAMPLE_RATE = 44100;
+__gshared float SAMPLE_RATE = 48000;
