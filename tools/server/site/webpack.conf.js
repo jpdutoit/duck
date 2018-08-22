@@ -1,40 +1,30 @@
 const webpack = require('webpack');
+const path = require('path');
 
 module.exports = {
-	entry: './src/index.js',
-	output: {
-		path: __dirname + '/../built',
-		filename: 'bundle.js',
-		publicPath: '/'
+  output: {
+		path: path.join(__dirname, "/../built"),
+		filename: "bundle.js"
 	},
-	resolve: {
-	  extensions: ['.js', '.jsx']
-	},
-	//devtool: 'source-map',
-	module: {
-		loaders: [{
-			test: /\.jsx?$/,
-			loader: 'babel-loader'
-		}, {
-			test: /\.css$/,
-			loader: "style-loader!css-loader"
-		}]
-	},
-	devServer: {
-		contentBase: './',
-		port: 8080,
-		noInfo: false,
-		hot: true,
-		inline: true,
-		proxy: {
-			'/': {
-				bypass: function (req, res, proxyOptions) {
-					return '/public/index.html';
-				}
-			}
-		}
-	},
-	plugins: [
-		new webpack.HotModuleReplacementPlugin()
-	]
+
+  module: {
+         rules: [
+             {
+                 test: /\.jsx?$/,
+                 loader: 'babel-loader',
+                 options: {
+                   babelrc: path.join(__dirname, './babelrc')
+                 },
+                 //include: path.join(__dirname, './src')
+             }, {
+          			test: /\.css$/,
+          			loader: "style-loader!css-loader"
+          	 }
+         ]
+     },
+
+     resolve: {
+         extensions: ['.web.js', '.mjs', '.js', '.json', '.web.jsx', '.jsx', '.css'],
+         modules: [ 'node_modules' ]
+     },
 };

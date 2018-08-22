@@ -4,3 +4,4 @@ editor
 reports
 tests
 debug
+**/node_modules

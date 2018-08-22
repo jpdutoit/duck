@@ -24,8 +24,7 @@
 }
 
 #wavesurfer-container {
-  transform: scaleX(2);
-  padding-left: 200px;
+  
 }
 
 #wavesurfer-container > wave {

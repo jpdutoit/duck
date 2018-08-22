@@ -3,6 +3,8 @@ const URL = require('url')
 const fs = require('fs')
 const childProcess = require("child_process")
 
+const AUDIO_FORMAT = "flac"
+const AUDIO_FORMAT_MIME = "audio/flac"
 const SERVER_PORT = process.env.DUCK_SERVER_PORT || 80;
 const DUCK_EXECUTABLE = "../../bin/duck";
 const CODE_STORAGE = "../../storage";
@@ -31,31 +33,31 @@ function spawn(cmd, args, callback) {
   return child;
 }
 
-function checkSyntax(code) {
+function checkSyntax(hash, code) {
   return new Promise((resolve, reject) => {
     spawn(DUCK_EXECUTABLE, ["-t", "check", code], (code, stdout, stderr) => {
-      if (code == 0) {
-        resolve();
-      } else {
-        reject({ message: stderr.toString().replace(/^[^(]*/mg, "") || "Internal compiler error" });
-      }
+      resolve({
+        "hash": hash,
+        "audio": `/audio?hash=${hash}`,
+        "errors": code == 0 ? undefined :stderr.toString().replace(/^[^(]*/mg, "") || "Internal compiler error"
+      });
     })
   });
 }
 
-function generateMp3(exeFilename, mp3Filename, code) {
-  console.log("Generate mp3:", code, "=>", mp3Filename);
+function generateAudio(exeFilename, audioFilename, code) {
+  console.log("Generate audio:", code, "=>", audioFilename);
   return new Promise((resolve, reject) => {
     spawn(DUCK_EXECUTABLE, ["-t", "exe", "-o", exeFilename, "-e", "null", code], (code, stdout, stderr) => {
       if (code == 0) {
         fs.chmodSync(exeFilename, 0700);
-        childProcess.exec(`${exeFilename} --output au | ${FFMPEG_EXECUTABLE} ${FFMPEG_ARGUMENTS} ${mp3Filename}`, {
+        childProcess.exec(`${exeFilename} --output au | ${FFMPEG_EXECUTABLE} ${FFMPEG_ARGUMENTS} ${audioFilename} remix 1,2`, {
           encoding: "buffer",
           timeout: PROCESSING_TIMEOUT
         }, (error, stdout, stderr) => {
             fs.unlink(exeFilename, () => {});
             if (!error)
-              resolve(mp3Filename);
+              resolve(audioFilename);
             else {
               console.log(error);
               reject({ message: error.killed ? "Timeout" : "Encoding failed"});
@@ -82,17 +84,17 @@ class Cache {
       Cache.entries[id] = cached = new CacheEntry(id, code)
       cached.saveCode(code)
     }
-    return cached
+    return Promise.resolve(cached)
   }
 
   static getByHash(id) {
-    if (!id.match(/^[0-9a-f]+$/)) return undefined;
+    if (!id.match(/^[0-9a-f]+$/)) return Promise.reject(404)
 
     let cached = Cache.entries[id]
     if (!cached) {
       Cache.entries[id] = cached = new CacheEntry(id)
     }
-    return cached
+    return Promise.resolve(cached)
   }
 
   static remove(id) {
@@ -147,44 +149,81 @@ class CacheEntry {
     this._codePromise.catch(e => console.log("Error saving code: ", e));
   }
 
-  generateMp3() {
-    this._mp3Promise =
+  generateAudio() {
+    this._audioPromise =
       (this._codePromise || this.loadCode())
       .then(codeFilename => {
-        return generateMp3(this.tmp, this.tmp + ".mp3", codeFilename)
+        return generateAudio(this.tmp, this.tmp + "." + AUDIO_FORMAT, codeFilename)
           .catch(e => {
-            console.log("Error generating mp3: ", e)
+            console.log("Error generating audio: ", e)
             throw e;
           });
         })
       .then(filename => {
-        this.mp3Filename = filename
+        this.audioFilename = filename
         return filename
       })
-    this._codePromise.catch(e => {
-      this._mp3Promise = undefined;
+    this._audioPromise.catch(e => {
+      this._audioPromise = undefined;
     });
   }
 
-  get mp3() {
-    if (!this._mp3Promise) {
-      if (this.mp3Filename) {
-        console.log("Reloading from disk:", this.id)
-        this._mp3Promise = Promise.resolve(this.mp3Filename)
+  get audio() {
+    if (!this._audioPromise) {
+      if (this.audioFilename) {
+        console.log("Reloading audio from disk:", this.id)
+        this._audioPromise = Promise.resolve(this.audioFilename)
       } else {
-        this.generateMp3();
+        this.generateAudio();
       }
     } else {
       console.log("Reusing from cache:", this.id)
     }
     this.autoRemove()
-    return this._mp3Promise
+    return this._audioPromise
+  }
+
+  generateImage() {
+    let imageFilename = this.tmp + ".png"
+    console.log("Generate image:", this.id, "=>", imageFilename);
+    return this.audio
+      .then(audio => new Promise((resolve, reject) => {
+        childProcess.exec(`audiowaveform -i ${audio} -o ${imageFilename} --no-axis-labels -w 1600 -h 256 --waveform-color cccccc --background-color 272822`, {
+          encoding: "buffer",
+          timeout: PROCESSING_TIMEOUT
+        }, (error, stdout, stderr) => {
+            if (!error) {
+              this.imageFilename = imageFilename;
+              resolve(imageFilename);
+            }
+            else {
+              console.log(error);
+              reject({ message: error.killed ? "Timeout" : "Image generation failed"});
+            }
+          });
+        })
+      )
+  }
+
+  get image() {
+    if (!this._imagePromise) {
+      if (this.imageFilename) {
+        console.log("Reloading image from disk:", this.id)
+        this._imagePromise = Promise.resolve(this.imageFilename)
+      } else {
+        this._imagePromise = this.generateImage();
+      }
+    } else {
+      console.log("Reusing from cache:", this.id)
+    }
+    this.autoRemove()
+    return this._imagePromise
   }
 
   checkSyntax() {
     this._checkPromise =
       (this._codePromise || this.loadCode())
-      .then(codeFilename => checkSyntax(codeFilename))
+      .then(codeFilename => checkSyntax(this.id, codeFilename))
     this._checkPromise.catch(e => "");
   }
 
@@ -207,16 +246,19 @@ class CacheEntry {
     clearTimeout(this.timeout);
     this.timeout = setTimeout(() => {
       console.log("Clearing from memory:", this.id)
-      this._mp3Promise = null;
+      this._audioPromise = null;
       this._checkPromise = null;
+      this._imagePromise = null;
 
       // After clearing from memory, add timeout to remove from disk
-      if (this.mp3Filename) {
+      if (this.audioFilename) {
         this.timeout = setTimeout(() => {
           console.log("Clearing from disk:", this.id)
           Cache.remove(this.id)
-          fs.unlink(this.mp3Filename);
-          this.mp3Filename = null;
+          fs.unlink(this.audioFilename);
+          this.audioFilename = null;
+          fs.unlink(this.imageFilename);
+          this.imageFilename = null;
         }, DISK_CACHE_TIMEOUT)
       } else {
         Cache.remove(this.id)
@@ -239,11 +281,27 @@ const requestHandler = (request, response) => {
 
     case "/edit":
       if (method != "GET") break;
+      let hash = url.query.hash || ""
       response.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8'
       })
-      var stream = fs.createReadStream("built/index.html");
-      stream.pipe(response);
+      response.write(`<html>
+      <head>
+      	<title>Duck - ${hash}</title>
+        <meta property="og:title" content="Duck"/>
+        <meta property="og:description" content="${hash}"/>
+        <meta property="og:type" content="music.song"/>
+        ${ process.env.DUCK_OG_BASE ? `<meta property="og:url" content="${process.env.DUCK_OG_BASE}/edit?hash=${hash}"/>` : ""}
+        ${ process.env.DUCK_OG_BASE ? `<meta property="og:image" content="${process.env.DUCK_OG_BASE}/image?hash=${hash}"/>` : ""}
+        ${ process.env.DUCK_OG_BASE ? `<meta property="og:audio" content="${process.env.DUCK_OG_BASE}/audio?hash=${hash}"/>` : ""}
+      </head>
+      <body>
+      	<div id="app"></div>
+      	<script src="bundle.js"></script>
+      </body>
+      </html>`)
+      response.end();
+      //fs.createReadStream("built/index.html").pipe(response);
       return;
 
     case "/bundle.js":
@@ -251,68 +309,84 @@ const requestHandler = (request, response) => {
       response.writeHead(200, {
         'Content-Type': 'application/javascript'
       })
-      var stream = fs.createReadStream("built/bundle.js");
-      stream.pipe(response);
+      fs.createReadStream("built/bundle.js").pipe(response);
       return;
 
     case "/code":
-      if (method != "GET" && method != "POST") break;
-      var cacheItem = Cache.getByHash(url.query.hash);
-      if (cacheItem)
-      cacheItem.code.then((filename) => {
-          response.writeHead(200, {
-            'Content-Type': 'text/duck'
+      if (method != "GET") break;
+      Cache
+        .getByHash(url.query.hash)
+        .then(item => item.code)
+        .then((filename) => {
+            response.writeHead(200, {
+              'Content-Type': 'text/duck'
+            })
+            var stream = fs.createReadStream(filename);
+            stream.pipe(response);
           })
-          var stream = fs.createReadStream(filename);
-          stream.pipe(response);
-        })
-        .catch((error) => {
-          response.writeHead(400, {
-            'Content-Type': 'text/plain'
+          .catch((error) => {
+            response.writeHead(400, {
+              'Content-Type': 'text/plain'
+            })
+            response.write(error.message);
+            response.end();
+          });
+      return;
+
+    case "/audio":
+      if (method != "GET") break;
+      Cache
+        .getByHash(url.query.hash)
+        .then(item => item.audio)
+        .then((filename) => {
+            response.writeHead(200, {
+              'Content-Type': AUDIO_FORMAT_MIME
+            })
+            var stream = fs.createReadStream(filename);
+            stream.pipe(response);
           })
-          response.write(error.message);
-          response.end();
-        });
-    return;
-    case "/run":
-      if (method != "GET" && method != "POST") break;
-      var cacheItem = Cache.getByHash(url.query.hash);
-      if (cacheItem)
-      cacheItem.mp3.then((filename) => {
-          response.writeHead(200, {
-            'Content-Type': 'audio/mpeg'
+          .catch((error) => {
+            response.writeHead(400, {
+              'Content-Type': 'text/plain'
+            })
+            response.write(error.message);
+            response.end();
+          });
+      return;
+
+    case "/image":
+      if (method != "GET") break;
+      Cache
+        .getByHash(url.query.hash)
+        .then(item => item.image)
+        .then((filename) => {
+            response.writeHead(200, {
+              'Content-Type': "image/png"
+            })
+            var stream = fs.createReadStream(filename);
+            stream.pipe(response);
           })
-          var stream = fs.createReadStream(filename);
-          stream.pipe(response);
-        })
-        .catch((error) => {
-          response.writeHead(400, {
-            'Content-Type': 'text/plain'
-          })
-          response.write(error.message);
-          response.end();
-        });
+          .catch((error) => {
+            response.writeHead(400, {
+              'Content-Type': 'text/plain'
+            })
+            response.write(error.message);
+            response.end();
+          });
       return;
 
     case "/check":
-      if (method != "GET" && method != "POST") break;
-      var code = url.query.code || body;
-      var cacheItem = Cache.getWithCode(code);
-      if (cacheItem)
-      cacheItem.check.then(() => {
-          response.writeHead(200, {
-            'Content-Type': 'text/plain'
+      if (method != "POST") break;
+      Cache
+        .getWithCode(url.query.code || body)
+        .then(item => item.check)
+        .then((result) => {
+            response.writeHead(200, {
+              'Content-Type': 'text/plain'
+            })
+            response.write(JSON.stringify(result));
+            response.end();
           })
-          response.write(JSON.stringify({ "hash": cacheItem.id, "mp3": `/run?hash=${cacheItem.id}` }));
-          response.end();
-        })
-        .catch((error) => {
-          response.writeHead(400, {
-            'Content-Type': 'text/plain'
-          })
-          response.write(JSON.stringify({ "hash": cacheItem.id, "message": error.message }));
-          response.end();
-        });
       return;
 
     default:

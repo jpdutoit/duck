@@ -58,7 +58,7 @@ function initialize(node, options) {
     lint: {
       getAnnotations: getAnnotations(options.validateCode),
       async: true,
-      delay: 500,
+      delay: 125,
     },
   });
 

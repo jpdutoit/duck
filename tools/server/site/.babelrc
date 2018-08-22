@@ -1,10 +1,28 @@
 {
-    "env": {
-        "development": {
+
             "presets": [
-                ["es2015", {"loose": true, "modules": false}], "stage-0"
+              ["env", {
+                  "debug": true,
+                  "useBuiltIns": true,
+                  "modules": false,
+                  "targets": {
+                    "browsers": [
+                      "last 2 chrome versions",
+                      "last 2 safari versions",
+                      "last 2 edge versions",
+                      "last 2 firefox versions",
+                      "last 1 ios_saf versions",
+                      "not dead"]
+                   },
+                   "uglify": "false"
+
+                }]
+
+            ],
+            "plugins": [
+              ["transform-class-properties", { "spec": true }],
+              ["inferno", { "imports": true }]
             ]
-        }
-    },
-    "plugins": ["babel-plugin-syntax-jsx", ["babel-plugin-inferno", {"imports": true}]]
+
+
 }
