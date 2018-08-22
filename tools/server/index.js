@@ -3,6 +3,7 @@ const URL = require('url')
 const fs = require('fs')
 const childProcess = require("child_process")
 
+const ETAG = '"' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + '"';
 const AUDIO_FORMAT = "flac"
 const AUDIO_FORMAT_MIME = "audio/flac"
 const SERVER_PORT = process.env.DUCK_SERVER_PORT || 80;
@@ -38,7 +39,6 @@ function checkSyntax(hash, code) {
     spawn(DUCK_EXECUTABLE, ["-t", "check", code], (code, stdout, stderr) => {
       resolve({
         "hash": hash,
-        "audio": `/audio?hash=${hash}`,
         "errors": code == 0 ? undefined :stderr.toString().replace(/^[^(]*/mg, "") || "Internal compiler error"
       });
     })
@@ -277,37 +277,55 @@ const requestHandler = (request, response) => {
   .on('data', (chunk) => { body.push(chunk);})
   .on('end', () => {
     body = Buffer.concat(body).toString();
+
+    // Poor man's etag
+    if (request.headers["if-none-match"] == ETAG) {
+      response.writeHead(304)
+      response.end()
+      return
+    }
+
     switch(url.pathname) {
 
     case "/edit":
       if (method != "GET") break;
       let hash = url.query.hash || ""
-      response.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8'
-      })
-      response.write(`<html>
-      <head>
-      	<title>Duck - ${hash}</title>
-        <meta property="og:title" content="Duck"/>
-        <meta property="og:description" content="${hash}"/>
-        <meta property="og:type" content="music.song"/>
-        ${ process.env.DUCK_OG_BASE ? `<meta property="og:url" content="${process.env.DUCK_OG_BASE}/edit?hash=${hash}"/>` : ""}
-        ${ process.env.DUCK_OG_BASE ? `<meta property="og:image" content="${process.env.DUCK_OG_BASE}/image?hash=${hash}"/>` : ""}
-        ${ process.env.DUCK_OG_BASE ? `<meta property="og:audio" content="${process.env.DUCK_OG_BASE}/audio?hash=${hash}"/>` : ""}
-      </head>
-      <body>
-      	<div id="app"></div>
-      	<script src="bundle.js"></script>
-      </body>
-      </html>`)
-      response.end();
-      //fs.createReadStream("built/index.html").pipe(response);
+      Cache
+        .getByHash(url.query.hash)
+        .then(item => item.code)
+        .then(filename => new Promise((resolve, reject) => {
+          fs.readFile(filename, "utf8", (err, data) => resolve(data || ""))
+        }))
+        .catch(error => "")
+        .then(code => {
+          response.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            ...(hash && {'ETag': ETAG})
+          })
+          response.write(`<html>
+          <head>
+            <title>Duck - ${hash}</title>
+            <meta property="og:title" content="Duck"/>
+            <meta property="og:description" content="${hash}"/>
+            <meta property="og:type" content="music.song"/>
+            ${ process.env.DUCK_OG_BASE ? `<meta property="og:url" content="${process.env.DUCK_OG_BASE}/edit?hash=${hash}"/>` : ""}
+            ${ process.env.DUCK_OG_BASE ? `<meta property="og:image" content="${process.env.DUCK_OG_BASE}/image?hash=${hash}"/>` : ""}
+            ${ process.env.DUCK_OG_BASE ? `<meta property="og:audio" content="${process.env.DUCK_OG_BASE}/audio?hash=${hash}"/>` : ""}
+          </head>
+          <body>
+            <div id="app" data-hash="${hash}" data-code="${escape(code)}" ></div>
+            <script src="bundle.js"></script>
+          </body>
+          </html>`)
+          response.end();
+        })
       return;
 
     case "/bundle.js":
       if (method != "GET") break;
       response.writeHead(200, {
-        'Content-Type': 'application/javascript'
+        'Content-Type': 'application/javascript',
+        'ETag': ETAG
       })
       fs.createReadStream("built/bundle.js").pipe(response);
       return;
@@ -319,7 +337,8 @@ const requestHandler = (request, response) => {
         .then(item => item.code)
         .then((filename) => {
             response.writeHead(200, {
-              'Content-Type': 'text/duck'
+              'Content-Type': 'text/duck',
+              'ETag': ETAG
             })
             var stream = fs.createReadStream(filename);
             stream.pipe(response);
@@ -340,7 +359,8 @@ const requestHandler = (request, response) => {
         .then(item => item.audio)
         .then((filename) => {
             response.writeHead(200, {
-              'Content-Type': AUDIO_FORMAT_MIME
+              'Content-Type': AUDIO_FORMAT_MIME,
+              'ETag': ETAG
             })
             var stream = fs.createReadStream(filename);
             stream.pipe(response);
@@ -361,7 +381,8 @@ const requestHandler = (request, response) => {
         .then(item => item.image)
         .then((filename) => {
             response.writeHead(200, {
-              'Content-Type': "image/png"
+              'Content-Type': "image/png",
+              'ETag': ETAG
             })
             var stream = fs.createReadStream(filename);
             stream.pipe(response);

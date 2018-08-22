@@ -18,19 +18,21 @@
   min-height: 100px;
 }
 
-#wavesurfer-outer-container {
-  width:800px;
+#waveform-container {
+  width:100%;
+  height: 168px;
   overflow:hidden;
+  padding: 20px 0;
 }
 
-#wavesurfer-container {
-  
+#waveform {
+  width:100%;
+  height: 128px;
+  display: inline-block;
 }
 
-#wavesurfer-container > wave {
-  background-color: #323232;
-  width:800px;
-  overlflow:hidden;
+.hidden {
+  display:none !important;
 }
 
 .codemirror-container {
@@ -58,14 +60,7 @@ body, #app, .Editor {
   height: 48px;;
 }
 
-#footer-container {
-  bottom: 0px;
-  left: 0px;
-  right: 0px;
-  height: 26px;
-}
-
- .bar-button {
+.bar-button {
   display:inline-block;
   font-size: 20pt;
   background-color: #fff;
@@ -74,17 +69,6 @@ body, #app, .Editor {
   width: 48px;
   height: 48px;
   border-left: 2px solid #ddd;
-}
-
-audio {
-  opacity: 0;
-  background-color: transparent;
-  display:inline-block;
-  position: absolute;;
-  left: 0;
-  right:0;
-  top:0;
-  vertical-align: middle;
 }
 
 .CodeMirror-hints {

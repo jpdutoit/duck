@@ -1,25 +1,13 @@
 import "babel-polyfill";
 import * as Inferno from 'inferno';
-import { linkEvent, Component } from 'inferno';
+import { Component } from 'inferno';
 import 'codemirror/mode/d/d.js';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/addon/hint/show-hint.css'
 import 'codemirror/addon/lint/lint.css'
 import 'codemirror/theme/monokai.css'
-import WaveSurfer from 'wavesurfer.js/src/wavesurfer'
 import CodeMirror from './codemirror';
 import './style.css';
-
-function parseQueryString(query) {
-  query = (query || "").slice(1);
-  var settings = query.split("&");
-  var object = {};
-  for (var i = 0; i < settings.length; ++i) {
-    var parts = settings[i].split("=");
-    object[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
-  }
-  return object;
-}
 
 function Window({ className, children }) {
   return (
@@ -38,19 +26,8 @@ class API {
       })
       .then(async response => {
         if (!response.ok) throw new Error("Unexpected failure");
-        let result = await response.json()
-        return {
-          hash: result.hash,
-          errors: result.errors,
-          audio: result.audio
-        }
+        return response.json()
       })
-  }
-  static load(hash) {
-    if (!hash) return Promise.resolve("");
-    return fetch("/code?hash=" + hash, { method: "GET" })
-      .then(async response => response.text())
-      .catch(e => "");
   }
 }
 
@@ -58,7 +35,9 @@ export default class Editor extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      containsErrors: true
+      containsErrors: true,
+      hash: window.app.dataset.hash,
+      imageHash: window.app.dataset.hash
     };
   }
 
@@ -67,11 +46,18 @@ export default class Editor extends Component {
   }
 
   play() {
-    if (this.state.containsErrors || !this.state.playbackUrl) return;
+    if (this.state.containsErrors || !this.state.hash) return;
 
-    this.state.waveSurfer.empty();
-    this.state.waveSurfer.load(this.state.playbackUrl);
-    this.state.waveSurfer.play();
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement = null;
+    }
+    this.audioElement = new Audio("/audio?hash=" + this.state.hash);
+    this.audioElement.play();
+
+    this.setState(Object.assign(this.state,  {
+      imageHash: this.state.hash
+    }));
   }
 
   share() {
@@ -79,10 +65,7 @@ export default class Editor extends Component {
   }
 
   componentDidMount() {
-    var query = parseQueryString(document.location.search);
-    API.load(query.hash).then(code => {
-        setTimeout(() => this.createEditor(code), 100);
-      });
+    this.createEditor(unescape(window.app.dataset.code));
   }
 
   componentWillUnmount() {
@@ -93,7 +76,7 @@ export default class Editor extends Component {
       .then(result => {
         this.setState(Object.assign(this.state,  {
           containsErrors: !!result.errors,
-          playbackUrl: result.audio
+          hash: result.hash
         }))
         this.context.router.history.replace("/edit?hash=" + result.hash)
         return result.errors
@@ -114,27 +97,17 @@ export default class Editor extends Component {
       executeCode: (code) => this.play()
     });
 
-    this.state.waveSurfer = new WaveSurfer({
-      container: this.waveSurferElement,
-      backend: 'MediaElement',
-      normalize: true,
-      //pixelRatio: 1,
-      cursorColor: "#ffaa",
-      cursorWidth: 3,
-      interact: true,
-      fillParent: true,
-      scrollParent: true,
-      progressColor: "#999",
-      plugins: [
-      ]
-    });
-
-    this.state.waveSurfer.init();
     if (this.state.document) {
       this.state.editor.swapDoc(this.state.document);
     } else {
       this.state.document = this.state.editor.getDoc();
     }
+  }
+
+  handleImageError() {
+    this.setState(Object.assign(this.state, {
+      imageHash: undefined
+    }))
   }
 
   render() {
@@ -147,14 +120,11 @@ export default class Editor extends Component {
           </div>
         </div>
         <div className="codemirror-container container" ref={(node) => { this.node = node; }} />
-        <div id="footer-container" class="container">
-          <audio id="player" controls >
-            <source id="player-source" src="" type="audio/mpeg"/>
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-        <div id="wavesurfer-outer-container" class="container">
-          <div id="wavesurfer-container" ref={(node) => { this.waveSurferElement = node; }} ></div>
+        <div id="waveform-container" class="container">
+          <img id="waveform"
+               class={this.state.containsErrors || !this.state.imageHash ? "hidden" : ""}
+               src={this.state.containsErrors && this.state.imageHash ? "" : "/image?hash=" + this.state.imageHash}
+               onError={() => this.handleImageError()}/>
         </div>
       </div>
     );

@@ -53,6 +53,7 @@ function initialize(node, options) {
     gutter: true,
     gutters: ['CodeMirror-lint-markers'],
     autofocus: true,
+    viewportMargin: Infinity,
     //singleLineStringErrors: false,
     //lineNumberFormatter: a => '',
     lint: {

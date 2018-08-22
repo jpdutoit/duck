@@ -29,9 +29,7 @@
   "dependencies": {
     "babel-polyfill": "^6.26",
     "codemirror": "^5.39",
-    "debounce": "^1.2.0",
     "inferno": "^5.0",
-    "inferno-router": "^5.0",
-    "wavesurfer.js": "github:katspaugh/wavesurfer.js#cd5e3f2974032486d27c7ce6a605b708ce1c4d13"
+    "inferno-router": "^5.4"
   }
 }
