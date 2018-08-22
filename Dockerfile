@@ -8,7 +8,7 @@ RUN apt-get update && \
     apt-get install -y software-properties-common && \
     add-apt-repository -y ppa:chris-needham/ppa && apt-get update && \
     apt-get install -y curl libsox-fmt-mp3 sox git audiowaveform && \
-    curl -sL https://deb.nodesource.com/setup_6.x | bash && \
+    curl -sL https://deb.nodesource.com/setup_9.x | bash && \
     apt-get install -y nodejs && \
     dub --quiet build duck:duck --build=release && \
     dub --quiet build duck:runtime --build=release && \
