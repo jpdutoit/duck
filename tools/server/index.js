@@ -188,7 +188,7 @@ class CacheEntry {
     console.log("Generate image:", this.id, "=>", imageFilename);
     return this.audio
       .then(audio => new Promise((resolve, reject) => {
-        childProcess.exec(`audiowaveform -i ${audio} -o ${imageFilename} --no-axis-labels -w 1600 -h 256 --waveform-color cccccc --background-color 272822`, {
+        childProcess.exec(`audiowaveform -i ${audio} -o ${imageFilename} --no-axis-labels -z auto -w 1600 -h 256 --waveform-color cccccc --background-color 272822`, {
           encoding: "buffer",
           timeout: PROCESSING_TIMEOUT
         }, (error, stdout, stderr) => {
