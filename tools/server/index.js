@@ -16,6 +16,13 @@ const MEMORY_CACHE_TIMEOUT = 10 * 60 * 1000;
 const DISK_CACHE_TIMEOUT = 3 * 24 * 60 * 60 * 1000;
 const PROCESSING_TIMEOUT = 4000;
 
+function serverError(status, message) {
+  let error = new Error()
+  error.status = status
+  error.message = message || "Internal server error"
+  return error
+}
+
 fs.mkdir(CODE_STORAGE, (error) => {
   if (error && error.code != "EEXIST")
     console.log("Error creating folder" + CODE_STORAGE, error)
@@ -37,9 +44,17 @@ function spawn(cmd, args, callback) {
 function checkSyntax(hash, code) {
   return new Promise((resolve, reject) => {
     spawn(DUCK_EXECUTABLE, ["-t", "check", code], (code, stdout, stderr) => {
+      let errors
+      if (code != 0) {
+        errors = stderr.toString().replace(/^[^(]*/mg, "")
+        if (!errors) {
+          console.error("Internal compiler error:", hash);
+          errors = "Internal compiler error";
+        }
+      }
       resolve({
         "hash": hash,
-        "errors": code == 0 ? undefined :stderr.toString().replace(/^[^(]*/mg, "") || "Internal compiler error"
+        "errors": errors
       });
     })
   });
@@ -60,11 +75,11 @@ function generateAudio(exeFilename, audioFilename, code) {
               resolve(audioFilename);
             else {
               console.log(error);
-              reject({ message: error.killed ? "Timeout" : "Encoding failed"});
+              reject(serverError(500, error.killed ? "Timeout" : "Encoding failed"));
             }
           });
       } else {
-        reject({ message: stderr.toString() || "Internal compiler error" });
+        reject(serverError(500, stderr.toString()));
       }
     })
   });
@@ -88,7 +103,7 @@ class Cache {
   }
 
   static getByHash(id) {
-    if (!id.match(/^[0-9a-f]+$/)) return Promise.reject(404)
+    if (!id || !id.match(/^[0-9a-f]+$/)) return Promise.reject(serverError(404, "Not found"))
 
     let cached = Cache.entries[id]
     if (!cached) {
@@ -125,7 +140,7 @@ class CacheEntry {
         if (exists)
           resolve(this.codeFilename)
         else
-          reject({ message: "Not found"})
+          reject(serverError(404, "Not found"))
       })
     });
     this._codePromise.catch(e => {
@@ -142,7 +157,7 @@ class CacheEntry {
           if (!error)
             resolve(this.codeFilename);
           else {
-            reject({ message: "Could not write file" });
+            reject(serverError(500, "Could not write file"));
           }
         })
       })
@@ -197,8 +212,7 @@ class CacheEntry {
               resolve(imageFilename);
             }
             else {
-              console.log(error);
-              reject({ message: error.killed ? "Timeout" : "Image generation failed"});
+              reject(serverError(500, error.killed ? "Timeout" : "Image generation failed"));
             }
           });
         })
@@ -285,13 +299,21 @@ const requestHandler = (request, response) => {
       return
     }
 
+    function sendError(error) {
+      response.writeHead(error.status || 500, {
+        'Content-Type': 'text/plain'
+      })
+      response.write(error.message);
+      response.end();
+    }
+
     switch(url.pathname) {
 
     case "/edit":
       if (method != "GET") break;
       let hash = url.query.hash || ""
       Cache
-        .getByHash(url.query.hash)
+        .getByHash(hash)
         .then(item => item.code)
         .then(filename => new Promise((resolve, reject) => {
           fs.readFile(filename, "utf8", (err, data) => resolve(data || ""))
@@ -319,6 +341,7 @@ const requestHandler = (request, response) => {
           </html>`)
           response.end();
         })
+        .catch(e => logError)
       return;
 
     case "/bundle.js":
@@ -343,13 +366,7 @@ const requestHandler = (request, response) => {
             var stream = fs.createReadStream(filename);
             stream.pipe(response);
           })
-          .catch((error) => {
-            response.writeHead(400, {
-              'Content-Type': 'text/plain'
-            })
-            response.write(error.message);
-            response.end();
-          });
+        .catch(e => sendError(e))
       return;
 
     case "/audio":
@@ -365,13 +382,7 @@ const requestHandler = (request, response) => {
             var stream = fs.createReadStream(filename);
             stream.pipe(response);
           })
-          .catch((error) => {
-            response.writeHead(400, {
-              'Content-Type': 'text/plain'
-            })
-            response.write(error.message);
-            response.end();
-          });
+        .catch(e => sendError(e))
       return;
 
     case "/image":
@@ -380,20 +391,14 @@ const requestHandler = (request, response) => {
         .getByHash(url.query.hash)
         .then(item => item.image)
         .then((filename) => {
+            var stream = fs.createReadStream(filename);
             response.writeHead(200, {
               'Content-Type': "image/png",
               'ETag': ETAG
             })
-            var stream = fs.createReadStream(filename);
             stream.pipe(response);
           })
-          .catch((error) => {
-            response.writeHead(400, {
-              'Content-Type': 'text/plain'
-            })
-            response.write(error.message);
-            response.end();
-          });
+        .catch(e => sendError(e))
       return;
 
     case "/check":
@@ -408,6 +413,7 @@ const requestHandler = (request, response) => {
             response.write(JSON.stringify(result));
             response.end();
           })
+        .catch(e => sendError(e))
       return;
 
     default:
