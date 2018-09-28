@@ -7,3 +7,5 @@ reports/coverage/
 *.obj
 coverage/
 tools/server/built/
+storage
+**/.DS_Store
