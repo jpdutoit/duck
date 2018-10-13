@@ -1,5 +1,6 @@
 import CodeMirror from 'codemirror';
 import './code-completion';
+import 'codemirror/mode/d/d.js';
 
 function parseErrors(text) {
   const found = [];
@@ -54,8 +55,6 @@ function initialize(node, options) {
     gutters: ['CodeMirror-lint-markers'],
     autofocus: true,
     viewportMargin: Infinity,
-    //singleLineStringErrors: false,
-    //lineNumberFormatter: a => '',
     lint: {
       getAnnotations: getAnnotations(options.validateCode),
       async: true,
@@ -118,6 +117,9 @@ function initialize(node, options) {
   });
 
   editor.addKeyMap({
+    'Ctrl-B': (cm) => {
+      options.executeCode(cm.getDoc().getValue());
+    },
     'Cmd-B': (cm) => {
       options.executeCode(cm.getDoc().getValue());
     },
@@ -146,12 +148,9 @@ function initialize(node, options) {
     if (handle === currentHandle && line === currentLine) return;
     if (currentHandle) {
       cm.removeLineClass(currentHandle, 'background', 'cm-active-line');
-      //cm.clearMarker(currentHandle);
     }
     currentHandle = handle; currentLine = line;
-    //cm.setLineClass(currentHandle, null, 'cm-active-line');
     cm.addLineClass(currentHandle, 'background', 'cm-active-line');
-    //cm.setMarker(currentHandle, String(line + 1));
   }
   editor.on('cursorActivity', () => {
     updateLineInfo(editor);

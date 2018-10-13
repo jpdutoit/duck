@@ -98,17 +98,6 @@ function showHint(editor) {
     };
   }
 
-  /*if ((match = line.match(ctor))) {
-    return {
-      list: [{
-        hint() {},
-        displayText: help[match[1]],
-      }],
-      from: cursor,
-      to: cursor,
-    };
-  }*/
-
   if (line[cursor.ch - 1] === ' ' && line[cursor.ch - 1] === '\t') {
     return {};
   }

@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <title>Duck - {{hash}}</title>
+  <meta property="og:title" content="Duck" />
+  <meta property="og:description" content="{{hash}}" />
+  <meta property="og:type" content="music.song" />
+  <script src="bundle.js"></script>
+  {{ baseUrl && '<meta property="og:url" content="{{baseUrl}}/edit?hash={{hash}}"/>'}}
+  {{ baseUrl && '<meta property="og:image" content="{{baseUrl}}/image?hash={{hash}}"/>'}}
+  {{ baseUrl && '<meta property="og:audio" content="{{baseUrl}}/audio?hash={{hash}}"/>'}}
+</head>
+<body>
+  <article>
+    <div class="duck-editor">
+      <div class="button-bar">
+        <button id="play-button" class="bar-button"}>▶</button>
+      </div>
+      <div class="editor CodeMirror cm-s-monokai" data-lang="duck" data-hash="{{hash}}">
+        <pre>{{code}}</pre>
+      </div>
+      <div class="duck-waveform"><img src="{{baseUrl}}/image?hash={{hash}}" /></div>
+    </div>
+  </article>
+  <script>
+    DuckEditor.create({
+      element: document.querySelector(".editor"),
+      waveform: document.querySelector(".duck-waveform > img"),
+      onCreate: function(editor) {
+        document.querySelector("#play-button").onclick = function() {
+          editor.play()
+        }
+      },
+      onChangeHash: function(hash) {
+        history.replaceState({}, "", "/edit?hash=" + hash);
+      }
+    })
+  </script>
+</body>
+</html>

@@ -23,6 +23,37 @@ function serverError(status, message) {
   return error
 }
 
+function escapeHTML(s) {
+    return s.replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+}
+
+function replaceVariables(input, variables) {
+  let changes;
+  do {
+    changes = 0;
+    input = input.replace(/{{([^{}]*)}}/g, (_substring, ...args) => {
+      changes++;
+      let keys = Object.keys(variables)
+      let repl = new Function(
+        "escapeHTML",
+        "vars",
+        ...keys,
+        `let result = (() => {
+          let tmp = (${args[0]});
+          return tmp === undefined ? "" : tmp;
+        })()
+        return result;`
+      );
+      let result = repl(escapeHTML, variables, ...Object.values(variables));
+      return result.toString();
+    })
+  } while (changes > 0)
+  return input;
+}
+
 fs.mkdir(CODE_STORAGE, (error) => {
   if (error && error.code != "EEXIST")
     console.log("Error creating folder" + CODE_STORAGE, error)
@@ -281,6 +312,8 @@ class CacheEntry {
   }
 }
 
+const editTemplate = fs.readFileSync(__dirname + "/template/edit.html", "utf8")
+
 const requestHandler = (request, response) => {
   const { headers, method } = request;
   const url = URL.parse(request.url, true);
@@ -324,24 +357,15 @@ const requestHandler = (request, response) => {
             'Content-Type': 'text/html; charset=utf-8',
             ...(hash && {'ETag': ETAG})
           })
-          response.write(`<html>
-          <head>
-            <title>Duck - ${hash}</title>
-            <meta property="og:title" content="Duck"/>
-            <meta property="og:description" content="${hash}"/>
-            <meta property="og:type" content="music.song"/>
-            ${ process.env.DUCK_OG_BASE ? `<meta property="og:url" content="${process.env.DUCK_OG_BASE}/edit?hash=${hash}"/>` : ""}
-            ${ process.env.DUCK_OG_BASE ? `<meta property="og:image" content="${process.env.DUCK_OG_BASE}/image?hash=${hash}"/>` : ""}
-            ${ process.env.DUCK_OG_BASE ? `<meta property="og:audio" content="${process.env.DUCK_OG_BASE}/audio?hash=${hash}"/>` : ""}
-          </head>
-          <body>
-            <div id="app" data-hash="${hash}" data-code="${escape(code)}" ></div>
-            <script src="bundle.js"></script>
-          </body>
-          </html>`)
+          response.write(
+            replaceVariables(editTemplate, {
+              hash: escapeHTML(hash),
+              code: escapeHTML(code || ""),
+              baseUrl: process.env.DUCK_OG_BASE || undefined
+            }))
           response.end();
         })
-        .catch(e => logError)
+        .catch(e => console.log(e))
       return;
 
     case "/bundle.js":

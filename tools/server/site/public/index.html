@@ -1,9 +1,27 @@
+<!doctype html>
 <html>
+
 <head>
-	<title>Duck</title>
+  <title>Duck</title>
+  <script src="../built/bundle.js"></script>
 </head>
-<body>
-	<div id="app"></div>
-	<script src="bundle.js"></script>
+
+<body class="cm-s-monokai">
+  <article>
+    <div class="CodeMirror" data-lang="duck">
+      <pre>
+SinOsc >> DAC;
+
+////
+wait(2 seconds);</pre>
+    </div>
+    <div class="duck-waveform">
+      <img src="https://duck.asteroid.farm/image?hash=bd39f30897112872b2dc65bbe76a418e4b7613c6" />
+    </div>
+  </article>
+  <script>
+    DuckEditor.replaceAll()
+  </script>
 </body>
+
 </html>

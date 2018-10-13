@@ -2,26 +2,23 @@
 
             "presets": [
               ["env", {
-                  "debug": true,
+                  "debug": false,
                   "useBuiltIns": true,
                   "modules": false,
                   "targets": {
                     "browsers": [
-                      "last 2 chrome versions",
-                      "last 2 safari versions",
-                      "last 2 edge versions",
-                      "last 2 firefox versions",
+                      "last 1 chrome versions",
+                      "last 1 safari versions",
+                      "last 1 edge versions",
+                      "last 1 firefox versions",
                       "last 1 ios_saf versions",
                       "not dead"]
                    },
                    "uglify": "false"
-
                 }]
-
             ],
             "plugins": [
-              ["transform-class-properties", { "spec": true }],
-              ["inferno", { "imports": true }]
+              ["transform-class-properties", { "spec": true }]
             ]
 
 
