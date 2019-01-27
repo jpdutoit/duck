@@ -296,14 +296,18 @@ class CacheEntry {
       this._imagePromise = null;
 
       // After clearing from memory, add timeout to remove from disk
-      if (this.audioFilename) {
+      if (this.audioFilename || this.imageFilename) {
         this.timeout = setTimeout(() => {
           console.log("Clearing from disk:", this.id)
           Cache.remove(this.id)
-          fs.unlink(this.audioFilename);
-          this.audioFilename = null;
-          fs.unlink(this.imageFilename);
-          this.imageFilename = null;
+          if (this.audioFilename) {
+            fs.unlink(this.audioFilename, () => {});
+            this.audioFilename = null;
+          }
+          if (this.imageFilename) {
+            fs.unlink(this.imageFilename, () => {});
+            this.imageFilename = null;
+          }
         }, DISK_CACHE_TIMEOUT)
       } else {
         Cache.remove(this.id)
