@@ -1,9 +1,9 @@
 extern module Assert {
-  input: mono;
-  output: mono;
+  input: mono
+  output: mono
 
-  constructor(float);
-  constructor(float[]);
+  constructor(float)
+  constructor(float[])
 
 }
 

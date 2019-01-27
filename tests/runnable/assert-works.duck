@@ -1,29 +1,29 @@
-import "./assert";
-distinct duration: float;
-distinct time: float;
-extern function operator+(float, float) -> float;
-function samples(amount: float) -> duration(amount);
-extern function wait(duration);
+import "./assert"
+distinct duration: float
+distinct time: float
+extern function operator+(float, float) -> float
+function samples(amount: float) -> duration(amount)
+extern function wait(duration)
 
 module A {
-  output: mono = 10;
+  output: mono = 10
 }
 
-A >> Assert(10);
-A >> Assert(20);
+A >> Assert(10)
+A >> Assert(20)
 
 
 module B {
-  output: mono = 0;
+  output: mono = 0
   function tick() {
-    output = output + 1;
+    output = output + 1
   }
 }
 
-B >> Assert([1.0,2,3,4,5]);
-B >> Assert([1.0,2,3,4,0]);
+B >> Assert([1.0,2,3,4,5])
+B >> Assert([1.0,2,3,4,0])
 
-wait(10 samples);
+wait(10 samples)
 
 /*
 OPTIONS: --engine=null

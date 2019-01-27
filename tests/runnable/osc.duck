@@ -1,34 +1,34 @@
-distinct frequency: float;
-extern SAMPLE_RATE: frequency;
+distinct frequency: float
+extern SAMPLE_RATE: frequency
 
-function hz(amount: float) -> frequency(amount);
-extern function operator+(float, float) -> float;
-extern function sin(float) -> float;
-extern function operator/(frequency, frequency) -> float;
-extern function operator%(float, float) -> float;
-extern function operator*(float, float) -> float;
+function hz(amount: float) -> frequency(amount)
+extern function operator+(float, float) -> float
+extern function sin(float) -> float
+extern function operator/(frequency, frequency) -> float
+extern function operator%(float, float) -> float
+extern function operator*(float, float) -> float
 
 module Phasor {
-  freq: frequency = 440 hz;
-  phase: mono = 0;
-  output: mono = 0;
-  alias input = freq;
+  freq: frequency = 440 hz
+  phase: mono = 0
+  output: mono = 0
+  alias input = freq
 
   function tick() {
-    output = phase;
-    phase = (phase + (input / SAMPLE_RATE)) % 1.0;
+    output = phase
+    phase = (phase + (input / SAMPLE_RATE)) % 1.0
   }
 }
 
 module SinOsc {
-  phasor: Phasor;
-  alias freq = this.phasor.freq;
-  alias input = this.phasor.input;
-  output: mono;
+  phasor: Phasor
+  alias freq = this.phasor.freq
+  alias input = this.phasor.input
+  output: mono
 
   function tick() {
-    output = sin(phasor * 2 * 3.141592);
+    output = sin(phasor * 2 * 3.141592)
   }
 }
 
-s: SinOsc;
+s: SinOsc

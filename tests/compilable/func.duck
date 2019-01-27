@@ -1,36 +1,39 @@
-distinct duration: float;
-distinct frequency: float;
+distinct duration: float
+distinct frequency: float
 
 extern function test1() -> float;
 extern function test2(float, duration) -> frequency;
 extern function seconds(float) -> duration;
-extern function hz(float) -> frequency;
-extern function hz(duration) -> frequency;
+extern function hz(float) -> frequency
+extern function hz(duration) -> frequency
 
 extern function operator+(frequency, frequency) -> frequency;
-extern function operator+(float, float) -> frequency;
+extern function operator+(float, float) -> frequency
 
 test3: frequency;
 
-f : frequency = 1 hz + test3;
+f : frequency = 1 hz + test3
 
-a:frequency = test2(1, 1 seconds);
+a:frequency = test2(1, 1 seconds)
 
 module A {
-  input: float;
-  output: float;
+  input: float
+  output: float
 }
 
 
-function testfn1() {}
+function testfn1()
+{}
+
 // TODO: Must check that a float is actually returned
 function testfn2(f: float) -> float {}
-function testfn2(a: float, b: float) {
-	tmp : float = a;
+function testfn2(a: float, b: float)
+{
+	tmp : float = b
 }
 
 function testfn2(a: float, b: float) -> float {
-	return a:A >> b:A >> c:A;
+	return a:A >> b:A >> c:A
 }
 
-c:frequency = hz(A);
+c:frequency = hz(A)

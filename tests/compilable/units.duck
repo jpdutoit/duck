@@ -1,14 +1,14 @@
-distinct frequency: float;
+distinct frequency: float
 
-extern function hz(float) -> frequency;
+extern function hz(float) -> frequency
 
 module AA {
-  output: float;
+  output: float
 }
-aa: AA;
-hz(aa);
-hz(AA);
+aa: AA
+hz(aa)
+hz(AA)
 
-f1: frequency = 10 hz;
-f2: frequency = hz(10);
-f1 = f2;
+f1: frequency = 10 hz
+f2: frequency = hz(10)
+f1 = f2

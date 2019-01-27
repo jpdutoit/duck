@@ -1,21 +1,21 @@
-import "./assert";
+import "./assert"
 
-extern function operator+(float, float) -> float;
-extern struct duration { constructor(float); }
-extern function wait(float);
+extern function operator+(float, float) -> float
+extern struct duration { constructor(float) }
+extern function wait(float)
 
 module A {
-  input: float;
-  output: float;
+  input: float
+  output: float
   function tick() {
-    output = input + 1;
+    output = input + 1
   }
 }
 
-extern function a(val: mono) -> val + 10;
+extern function a(val: mono) -> val + 10
 
-0 >> A >> a >> A >> Assert([12.0]);
-0 >> A >> a >> a >> A >> a >> a >> A >> a >> Assert([53.0]);
-0 >> A >> a >> a >> a >> A >> a >> A >> Assert([43.0]);
+0 >> A >> a >> A >> Assert([12.0])
+0 >> A >> a >> a >> A >> a >> a >> A >> a >> Assert([53.0])
+0 >> A >> a >> a >> a >> A >> a >> A >> Assert([43.0])
 
-wait(16);
+wait(16)

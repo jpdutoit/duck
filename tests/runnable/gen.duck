@@ -1,65 +1,65 @@
-import "./assert";
+import "./assert"
 
-distinct duration: float;
-function samples(amount: float) -> duration(amount);
-extern function wait(duration);
+distinct duration: float
+function samples(amount: float) -> duration(amount)
+extern function wait(duration)
 
 
-extern function operator+(float, float) -> float;
-extern function operator*(float, float) -> float;
-extern function sin(float) -> float;
+extern function operator+(float, float) -> float
+extern function operator*(float, float) -> float
+extern function sin(float) -> float
 
 module A {
-  output: mono = 0;
+  output: mono = 0
   function tick() {
-    output = output + 1;
+    output = output + 1
   }
 }
 
 module B {
-  input: mono = 0;
-  output: mono = 0;
+  input: mono = 0
+  output: mono = 0
   function tick() {
-    output = input * 2;
+    output = input * 2
   }
 }
 
 module C {
-  input: mono = 0;
-  output: mono = 0;
+  input: mono = 0
+  output: mono = 0
   function tick() {
-    output = input + 1;
+    output = input + 1
   }
 }
 
 
 
-A >> B >> C >> Assert([3.0, 5, 7, 9, 11]);
-A.output >> B >> Assert([2.0, 4, 6, 8, 10]);
-A >> C >> Assert([2.0, 3, 4, 5, 6]).input;
+A >> B >> C >> Assert([3.0, 5, 7, 9, 11])
+A.output >> B >> Assert([2.0, 4, 6, 8, 10])
+A >> C >> Assert([2.0, 3, 4, 5, 6]).input
 
-A >> c1: C >> Assert([1.0, 1, 1, 1, 1]).input;
-0 >> c1.input;
+A >> c1: C >> Assert([1.0, 1, 1, 1, 1]).input
+0 >> c1.input
 
-A >> c2: C >> Assert([1.0, 1, 1, 1, 1]).input;
-c2.input = 0;
+A >> c2: C >> Assert([1.0, 1, 1, 1, 1]).input
+c2.input = 0
 
-wait(5 samples);
+wait(5 samples)
 
 
 module DAC {
-  input: mono;
+  input: mono
   constructor() {
-    input = 0;
+    input = 0
   }
 }
 
 module D {
-  input: mono;
-  dac: DAC;
+  input: mono
+  dac: DAC
   function tick() {
-    dac.input = input;
+    dac.input = input
   }
 }
 
-0 >> D;
+0 >> D

@@ -1,12 +1,12 @@
-extern struct something;
+extern struct something
 
-extern function operator+(something, something) -> float;
-extern function operator+(float, float) -> float;
+extern function operator+(something, something) -> float
+extern function operator+(float, float) -> float
 
-a:something;
-b:something;
-a + b;
-1 + 2;
+a:something
+b:something
+a + b
+1 + 2
 
-extern struct Now;
-extern now: Now;
+extern struct Now
+extern now: Now

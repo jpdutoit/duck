@@ -1,35 +1,35 @@
-extern function operator+(float, float) -> float;
+extern function operator+(float, float) -> float
 
 module A {
-  input: float;
-  output: float;
+  input: float
+  output: float
 }
 
-v: A;
-float >> v;
-v >> float;
-v >> v;
-v >> v + 20;
-"hello" >> v;
+v: A
+float >> v
+v >> float
+v >> v
+v >> v + 20
+"hello" >> v
 
-extern function a(mono) -> mono;
+extern function a(mono) -> mono
 
-extern function b(mono) -> mono;
-extern function b(mono) -> mono;
+extern function b(mono) -> mono
+extern function b(mono) -> mono
 
-extern function c(mono, mono) -> mono;
+extern function c(mono, mono) -> mono
 
-extern function d(mono, mono) -> mono;
-extern function d(mono, mono, mono) -> mono;
+extern function d(mono, mono) -> mono
+extern function d(mono, mono, mono) -> mono
 
 
-A >> a >> A;
-A >> b >> A;
-A >> c >> A;
-A >> d >> A;
+A >> a >> A
+A >> b >> A
+A >> c >> A
+A >> d >> A
 
-A >> a >> a >> A >> a >> a >> A;
-A >> a >> a >> a >> A >> a >> A;
+A >> a >> a >> A >> a >> a >> A
+A >> a >> a >> a >> A >> a >> A
 
 /*
 OUTPUT:

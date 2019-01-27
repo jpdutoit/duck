@@ -44,10 +44,7 @@ abstract class Buffer {
     if (!buffer) return false;
     return buffer.hashOf == hashOf;
   }
-
-  final auto opSlice(uint from, uint to) {
-    return Slice(this, from, to);
-  }
+  
   string contents;
   size_t _hash;
 }

@@ -1,35 +1,35 @@
 struct B {
-  b1: float;
+  b1: float
   function b4() { }
   @private @private:
-  @private b3: float;
-  function b4() { this.b3 = 2;}
+  @private b3: float
+  function b4() { this.b3 = 2 }
 }
 
 struct A {
   @private {
-    a2: B;
+    a2: B
   }
-  a1: B;
+  a1: B
 }
 
-b: B;
+b: B
 
-b.b1;
-//b.b2;
-b.b3;
-b.b4;
+b.b1
+//b.b2
+b.b3
+b.b4
 
-a: A;
+a: A
 
-a.a1.b1;
-a.a1.b3;
-a.a1.b4;
+a.a1.b1
+a.a1.b3
+a.a1.b4
 
-a.a2.b1;
-//a.a2.b2;
-a.a2.b3;
-a.a2.b4;
+a.a2.b1
+//a.a2.b2
+a.a2.b3
+a.a2.b4
 
 /*
 OUTPUT:

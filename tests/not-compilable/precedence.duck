@@ -2,16 +2,16 @@
 extern struct A;
 extern struct B;
 
-extern function operator+(A, A) -> B;
-extern function operator-(A, A) -> B;
-extern function operator*(A, A) -> B;
-extern function operator/(A, A) -> B;
-extern function operator%(A, A) -> B;
+extern function operator+(A, A) -> B
+extern function operator-(A, A) -> B
+extern function operator*(A, A) -> B
+extern function operator/(A, A) -> B
+extern function operator%(A, A) -> B
 
-extern function operator==(A, A) -> B;
-extern function operator>=(A, A) -> B;
-extern function operator!(A) -> B;
-extern function operator+(A) -> B;
+extern function operator==(A, A) -> B
+extern function operator>=(A, A) -> B
+extern function operator!(A) -> B
+extern function operator+(A) -> B
 /*
 
 
@@ -23,50 +23,53 @@ extern function operator<(T, T) -> B;
 extern function operator!(T) -> B;
 */
 
-a: A;
+a: A
 
-a + a + a;
+a + a + a
 
-a + a - a;
-a - a + a;
+a + a - a
+a - a + a
 
-a * a * a;
-a / a / a;
-a % a % a;
+a * a * a
+a / a / a
+a % a % a
 
-a * a / a;
-a / a * a;
-a % a * a;
-a * a % a;
+a * a / a
+a / a * a
+a % a * a
+a * a % a
 
-a + a * a;
-a * a / a;
+a + a * a
+a * a / a
 
-a == a == a;
-a >= a >= a;
-a == a >= a;
-a >= a == a;
+a == a == a
+a >= a >= a
+a == a >= a
+a >= a == a
 
-a + a == a;
-a * a == a;
-a == a + a;
-a == a * a;
+a + a == a
+a * a == a
+a == a + a
+a == a * a
 
-!!a;
-++a;
-+!a;
-!+a;
-a + !a;
-!a + a;
-a * !a;
-! * a;
-a == !a;
-!a == a;
+!!a
+++a
++!a
+!+a
+a + !a
+!a + a
+a * !a
+!* a
+a == !a
+!a == a
+
+
+dd := (- a)
 
 /*
 OUTPUT:
 ---
-tests/not-compilable/precedence.duck(62:3): Error: Expected expression.
+tests/not-compilable/precedence.duck(62:2): Error: Expected expression.
 tests/not-compilable/precedence.duck(28:7): Error: Operation B + A is not defined.
 tests/not-compilable/precedence.duck(30:7): Error: Operation B - A is not defined.
 tests/not-compilable/precedence.duck(31:7): Error: Operation B + A is not defined.
@@ -96,5 +99,6 @@ tests/not-compilable/precedence.duck(60:4): Error: Operation B + A is not define
 tests/not-compilable/precedence.duck(61:3): Error: Operation A * B is not defined.
 tests/not-compilable/precedence.duck(63:3-4): Error: Operation A == B is not defined.
 tests/not-compilable/precedence.duck(64:4-5): Error: Operation B == A is not defined.
+tests/not-compilable/precedence.duck(67:10): Error: Operation - A is not defined.
 ---
 */

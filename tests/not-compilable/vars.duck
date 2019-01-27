@@ -1,10 +1,10 @@
-a: no_such_type;
-b: float;
-b.c;
+a: no_such_type
+b: float
+b.c
 
-b();
-2: float;
-g: 2;
+b()
+2: float
+g: 2
 /*
 OUTPUT:
 ---

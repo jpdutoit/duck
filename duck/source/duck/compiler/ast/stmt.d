@@ -54,6 +54,7 @@ class ExprStmt : Stmt {
   Expr expr;
   this(Expr expr) {
     this.expr = expr;
+    this.source = expr.source;
   }
 }
 

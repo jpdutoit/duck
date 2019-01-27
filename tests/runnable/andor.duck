@@ -1,61 +1,61 @@
-extern function assertEquals(float, float);
-extern function assertEquals(bool, bool);
-extern function operator and(bool, bool) -> bool;
-extern function operator or(bool, bool) -> bool;
+extern function assertEquals(float, float)
+extern function assertEquals(bool, bool)
+extern function operator and(bool, bool) -> bool
+extern function operator or(bool, bool) -> bool
 
 //TODO: only using sample rate here because it is a global and can be changed from inside functions,
 // cannot define such globals in duck yet.
-extern SAMPLE_RATE : float;
+extern SAMPLE_RATE : float
 
 function f1() -> bool {
-  SAMPLE_RATE = 1;
-  return false;
+  SAMPLE_RATE = 1
+  return false
 }
 
 function f2() -> bool {
-  SAMPLE_RATE = 2;
-  return false;
+  SAMPLE_RATE = 2
+  return false
 }
 
 function t1() -> bool {
-  SAMPLE_RATE = 1;
-  return true;
+  SAMPLE_RATE = 1
+  return true
 }
 
 function t2() -> bool {
-  SAMPLE_RATE = 2;
-  return true;
+  SAMPLE_RATE = 2
+  return true
 }
 
-SAMPLE_RATE = 0;
-assertEquals(f1() and f2(), false);
-assertEquals(SAMPLE_RATE, 1);
+SAMPLE_RATE = 0
+assertEquals(f1() and f2(), false)
+assertEquals(SAMPLE_RATE, 1)
 
-SAMPLE_RATE = 0;
-assertEquals(f1() and t2(), false);
-assertEquals(SAMPLE_RATE, 1);
+SAMPLE_RATE = 0
+assertEquals(f1() and t2(), false)
+assertEquals(SAMPLE_RATE, 1)
 
-SAMPLE_RATE = 0;
-assertEquals(t1() and f2(), false);
-assertEquals(SAMPLE_RATE, 2);
+SAMPLE_RATE = 0
+assertEquals(t1() and f2(), false)
+assertEquals(SAMPLE_RATE, 2)
 
-SAMPLE_RATE = 0;
-assertEquals(t1() and t2(), true);
-assertEquals(SAMPLE_RATE, 2);
+SAMPLE_RATE = 0
+assertEquals(t1() and t2(), true)
+assertEquals(SAMPLE_RATE, 2)
 
 
 SAMPLE_RATE = 0;
 assertEquals(f1() or f2(), false);
 assertEquals(SAMPLE_RATE, 2);
 
-SAMPLE_RATE = 0;
-assertEquals(f1() or t2(), true);
-assertEquals(SAMPLE_RATE, 2);
+SAMPLE_RATE = 0
+assertEquals(f1() or t2(), true)
+assertEquals(SAMPLE_RATE, 2)
 
-SAMPLE_RATE = 0;
-assertEquals(t1() or f2(), true);
-assertEquals(SAMPLE_RATE, 1);
+SAMPLE_RATE = 0
+assertEquals(t1() or f2(), true)
+assertEquals(SAMPLE_RATE, 1)
 
-SAMPLE_RATE = 0;
-assertEquals(t1() or t2(), true);
-assertEquals(SAMPLE_RATE, 1);
+SAMPLE_RATE = 0
+assertEquals(t1() or t2(), true)
+assertEquals(SAMPLE_RATE, 1)

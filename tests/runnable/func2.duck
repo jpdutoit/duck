@@ -1,22 +1,22 @@
-extern function operator+(float, float) -> float;
+extern function operator+(float, float) -> float
 
 function a(b: float, c: float) -> float {
-  return b + c;
+  return b + c
 }
 
-function b(b: float, c: float, d: float) -> b + c + d;
+function b(b: float, c: float, d: float) -> b + c + d
 
 module A {
   function f() {
-    output = a(input, input);
+    output = a(input, input)
   }
-  input: float;
-  alias output = input;
+  input: float
+  alias output = input
 }
 
 module B {
-  input: float;
-  alias output = input;
+  input: float
+  alias output = input
 }
 
-A + A >> A;
+A + A >> A

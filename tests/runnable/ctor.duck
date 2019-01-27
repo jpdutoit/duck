@@ -1,62 +1,62 @@
-extern function assertEquals(float, float);
+extern function assertEquals(float, float)
 
-distinct frequency: float;
+distinct frequency: float
 
-function hz(amount: float) -> frequency(amount);
+function hz(amount: float) -> frequency(amount)
 
-a: frequency = 2hz;
+a: frequency = 2hz
 
 module A {
-  value: mono;
+  value: mono
   constructor() {
-    value = 1.0;
+    value = 1.0
   }
   constructor(f: float) {
-    value = 2.0;
+    value = 2.0
   }
 }
 
 module B { }
 
 module S {
-  a1: A;
-  a2: A();
-  a3: A(100);
-  b1: B;
-  b2: B();
-  c1: frequency = hz(1);
-  c2: frequency(2);
+  a1: A
+  a2: A()
+  a3: A(100)
+  b1: B
+  b2: B()
+  c1: frequency = hz(1)
+  c2: frequency(2)
 
 }
 
-s: S;
-assertEquals(s.a1.value, 1);
-assertEquals(s.a2.value, 1);
-assertEquals(s.a3.value, 2);
-assertEquals(float(s.c1), 1);
-assertEquals(float(s.c2), 2);
+s: S
+assertEquals(s.a1.value, 1)
+assertEquals(s.a2.value, 1)
+assertEquals(s.a3.value, 2)
+assertEquals(float(s.c1), 1)
+assertEquals(float(s.c2), 2)
 
-a1: A;
-a2: A();
-a3: A(100);
-assertEquals(a1.value, 1);
-assertEquals(a2.value, 1);
-assertEquals(a3.value, 2);
+a1: A
+a2: A()
+a3: A(100)
+assertEquals(a1.value, 1)
+assertEquals(a2.value, 1)
+assertEquals(a3.value, 2)
 
-b1: frequency;
-b2: frequency();
-b3: frequency(3);
-b4: frequency = 4 hz;
+b1: frequency
+b2: frequency()
+b3: frequency(3)
+b4: frequency = 4 hz
 
-//assertEquals(float(b1), 0);
-//assertEquals(float(b2), 0);
-assertEquals(float(b3), 3);
-assertEquals(float(b4), 4);
+//assertEquals(float(b1), 0)
+//assertEquals(float(b2), 0)
+assertEquals(float(b3), 3)
+assertEquals(float(b4), 4)
 
-c1: mono;
-c2: mono = 2;
-c3: mono(3);
+c1: mono
+c2: mono = 2
+c3: mono(3)
 
-assertEquals(c1, 0);
-assertEquals(c2, 2);
-assertEquals(c3, 3);
+assertEquals(c1, 0)
+assertEquals(c2, 2)
+assertEquals(c3, 3)

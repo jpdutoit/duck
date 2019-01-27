@@ -1,11 +1,15 @@
-import "notexist";
-import "./notexist";
-import notexist;
+import "notexist"
+import "./notexist"
+import
+import notexist
 /*
 OUTPUT:
 ---
-tests/not-compilable/import.duck(3:8-15): Error: Expected library name not 'notexist'
 tests/not-compilable/import.duck(1:9-16): Error: Cannot find file at 'tests/not-compilable/duck_packages/notexist.duck'
 tests/not-compilable/import.duck(2:9-18): Error: Cannot find file at 'tests/not-compilable/notexist.duck'
+tests/not-compilable/import.duck(4:1-6): Error: Expected library name not 'import'
+tests/not-compilable/import.duck(4:8-15): Error: Expected library name not 'notexist'
+tests/not-compilable/import.duck(4:8-15): Error: Expected ';' not 'notexist'
+tests/not-compilable/import.duck(4:8-15): Error: Undefined identifier notexist
 ---
 */

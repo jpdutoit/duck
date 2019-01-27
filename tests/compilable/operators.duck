@@ -1,25 +1,25 @@
-extern struct T;
-extern struct B;
+extern struct T
+extern struct B
 extern function operator+(T, T) -> T;
-extern function operator-(T, T) -> T;
+extern function operator-(T, T) -> T
 extern function operator*(T, T) -> T;
-extern function operator/(T, T) -> T;
+extern function operator/(T, T) -> T
 extern function operator%(T, T) -> T;
 
-extern function operator==(T, T) -> B;
-extern function operator!=(T, T) -> B;
-extern function operator>=(T, T) -> B;
+extern function operator==(T, T) -> B
+extern function operator!=(T, T) -> B
+extern function operator>=(T, T) -> B
 extern function operator<=(T, T) -> B;
 extern function operator>(T, T) -> B;
 extern function operator<(T, T) -> B;
 extern function operator!(T) -> B;
 
 
-a: T;
+a: T
 
 a + a > a;
 a * a == a;
-a <= a / a;
-a != a -a;
-(a > a % a);
-!(a * a);
+a <= a / a
+a != a -a
+(a > a % a)
+!(a * a)

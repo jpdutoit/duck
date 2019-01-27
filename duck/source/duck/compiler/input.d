@@ -4,6 +4,10 @@ import duck.compiler.lexer, duck.compiler.buffer;
 
 struct Input {
   Buffer buffer;
+  int line = 1;
+  int column = 1;
+  int indent = 0;
+
   string text;
   int index = 0;
   char front;
@@ -12,20 +16,40 @@ struct Input {
     import std.stdio;
     this.buffer = buffer;
     this.text = this.buffer.contents;
-    consume(0);
+    this.front = this.text[0];
   }
 
   void consume() {
     if (front < 128) {
-      consume(1);
+      switch (front) {
+        case '\n':
+          line++;
+          column = 1;
+          indent = 0;
+          break;
+
+        case ' ', '\t':
+          if (indent + 1 == column)
+            ++indent;
+          goto default;
+
+        default:
+          ++column;
+          break;
+      }
+      ++index;
+      front = text[index];
     }
     else {
       import std.uni;
-      consume(cast(int)graphemeStride(text[index..$], 0));
+      auto length = cast(int)graphemeStride(text[index..$], 0);
+      index += length;
+      front = text[index];
+      ++column;
     }
   }
 
-  string consume(int howMuch) {
+  private string consume(int howMuch) {
     string a = text[index..index+howMuch];
     index += howMuch;
     front = text[index];
@@ -34,7 +58,7 @@ struct Input {
 
   bool consume(char character) {
     if (front == character) {
-      consume(1);
+      consume();
       return true;
     }
 
@@ -42,14 +66,17 @@ struct Input {
   }
 
   Token tokenSince(Token.Type type, ref Input input) {
-    auto t = Token(type, this.buffer[input.index .. index]);
-    import std.stdio;
-    return t;
+    return Token(type, Slice(this.buffer, input.index, index, input.line));
   }
 
   Slice slice(Slice from, Slice to) {
     if (!from) return Slice();
-    return this.buffer[from.start .. to.end];
+    return Slice(this.buffer, from.start, to.end, from.line);
+  }
+
+  Slice sliceUntil(Slice from, Slice end) {
+    if (!from) return Slice();
+    return Slice(this.buffer, from.start, end.start, from.line);
   }
 
   auto save() {
@@ -58,6 +85,7 @@ struct Input {
     input.text = text;
     input.index = index;
     input.front = front;
+    input.line = line;
     return input;
   }
 };

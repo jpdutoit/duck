@@ -1,31 +1,31 @@
-distinct frequency: float;
-extern SAMPLE_RATE: frequency;
+distinct frequency: float
+extern SAMPLE_RATE: frequency
 
-function hz(amount: float) -> frequency(amount);
-extern function operator+(float, float) -> float;
-extern function operator/(frequency, frequency) -> float;
-extern function operator%(float, float) -> float;
+function hz(amount: float) -> frequency(amount)
+extern function operator+(float, float) -> float
+extern function operator/(frequency, frequency) -> float
+extern function operator%(float, float) -> float
 
 module Phasor {
-  freq: frequency = 440 hz;
-  phase: mono = 0;
-  output: mono = 0;
-  alias input = freq;
+  freq: frequency = 440 hz
+  phase: mono = 0
+  output: mono = 0
+  alias input = freq
 
   function tick() {
-    output = phase;
-    phase = (phase + (freq / SAMPLE_RATE)) % 1.0;
+    output = phase
+    phase = (phase + (freq / SAMPLE_RATE)) % 1.0
   }
 
   function reset() {
-    phase = 0;
+    phase = 0
   }
 }
 
 
-p1: Phasor;
-p1.freq >> Phasor;
-p1.freq >> Phasor.freq;
+p1: Phasor
+p1.freq >> Phasor
+p1.freq >> Phasor.freq
 
-p1.reset();
-p1.reset();
+p1.reset()
+p1.reset()

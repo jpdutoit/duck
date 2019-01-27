@@ -1,7 +1,7 @@
 
-a: float;
-b: int;
-c: bool;
+a: float
+b: int
+c: bool
 
 if a { }
 if b { }

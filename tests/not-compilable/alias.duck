@@ -1,9 +1,9 @@
 
-alias v1 = float;
-alias v2 = 3;
+alias v1 = float
+alias v2 = 3
 
-alias t1: float;
-alias t2: int(3);
+alias t1: float
+alias t2: int(3)
 
 /*
 OUTPUT:

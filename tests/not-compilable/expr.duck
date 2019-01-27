@@ -1,14 +1,13 @@
 "hello
-0 + "0"; "0" + 0;
-0 - "0"; "0" - 0;
-0 * "0"; "0" * 0;
-0 / "0"; "0" / 0;
-0 % "0"; "0" % 0;
+0 + "0"; "0" + 0
+0 - "0"; "0" - 0
+0 * "0"; "0" * 0
+0 / "0"; "0" / 0
+0 % "0"; "0" % 0
 /*
 OUTPUT:
 ---
 tests/not-compilable/expr.duck(1:1-6): Error: Unterminated string
-tests/not-compilable/expr.duck(2:1): Error: Expected ';' not '0'
 tests/not-compilable/expr.duck(2:3): Error: Operation int + string is not defined.
 tests/not-compilable/expr.duck(2:14): Error: Operation string + int is not defined.
 tests/not-compilable/expr.duck(3:3): Error: Operation int - string is not defined.

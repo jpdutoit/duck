@@ -1,36 +1,37 @@
-extern function operator>(float, float) -> bool;
-extern function operator+(float, float) -> bool;
-extern function assertEquals(float, float);
+extern function operator>(float, float) -> bool
+extern function operator+(float, float) -> bool
+extern function assertEquals(float, float)
 
-a: float = 2;
-b: float = 3;
-c: float = a + 2;
+a: float = 2
+b: float = 3
+c: float = a + 2
 
 if a > b
-  c = 1;
+  c = 1
 else
-  c = 2;
+  c = 2
 
-assertEquals(c, 2);
+
+assertEquals(c, 2)
 
 if b > a
-  c = 3;
+  c = 3
 else
-  c = 4;
+  c = 4
 
-assertEquals(c, 3);
+assertEquals(c, 3)
 
 if a > 100 {
-  c = 5;
+  c = 5
 }
 
-assertEquals(c, 3);
+assertEquals(c, 3)
 
 if a > 1 {
-  c = 6;
+  c = 6
 }
 
-assertEquals(c, 6);
+assertEquals(c, 6)
 
 
 /*

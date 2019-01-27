@@ -1,6 +1,6 @@
 extern module test {
-  b: float;
+  b: float
   alias a = b;
-  function tick();
+  function tick()
   constructor();
 }

@@ -1,23 +1,23 @@
 
 module M {}
 
-a: float[];
-b: float[3];
-c: float;
-d: M;
+a: float[]
+b: float[3]
+c: float
+d: M
 
-a.something;
-a.size;
-b.something;
-b.size;
-c.size;
-d.size;
+a.something
+a.size
+b.something
+b.size
+c.size
+d.size
 
-e: int = a.size;
-e = b.size;
-f: string = a.size;
-f = b.size;
-g: float[2] = [1, 2, 3];
+e: int = a.size
+e = b.size
+f: string = a.size
+f = b.size
+g: float[2] = [1, 2, 3]
 
 /*
 OUTPUT:

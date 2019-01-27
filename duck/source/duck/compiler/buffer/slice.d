@@ -18,16 +18,19 @@ struct Slice {
       uint end;
     }
   }
+  uint line;
 
-  this(Buffer buffer, uint start, uint end) {
+  this(Buffer buffer, uint start, uint end, uint line) {
     this.buffer = buffer;
     this.start = start;
     this.end = end;
+    this.line = line;
   }
 
   this(string value) {
     this.buffer = null;
     this._value = value;
+    this.line = 1;
   }
 
   alias toString this;
@@ -37,20 +40,37 @@ struct Slice {
     return buffer ? start < uint.max && end < uint.max : false;
   }
 
-  LineColumn getStartLocation() const {
-    LineColumn r = LineColumn(1, 1);
-    if (!(cast(bool)this)) return r;
-    for (int i = 0; i < start; ++i) {
+  int indent() const {
+    int indent = 0;
+    if (!(cast(bool)this)) return indent;
+    for (int i = start - 1; i >= 0; --i) {
       if (buffer.contents[i] == '\n') {
-        r.col = 0;
-        r.line++;
+        return indent;
       }
-      r.col++;
+      if (buffer.contents[i] == ' ' || buffer.contents[i] == '\t') {
+        indent++;
+        continue;
+      }
+      indent = 0;
     }
-    return r;
+    return indent;
   }
 
+  int column() const {
+    int column = 1;
+    if (!(cast(bool)this)) return column;
+    for (int i = start - 1; i >= 0; --i) {
+      if (buffer.contents[i] == '\n') {
+        return column;
+      }
+      column++;
+    }
+    return column;
+  }
 
+  LineColumn getStartLocation() const {
+    return LineColumn(line, column);
+  }
 
   LineColumn[2] getLocation() const {
     LineColumn[2] r = getStartLocation();
@@ -74,7 +94,10 @@ struct Slice {
   Slice opSlice(uint x, uint y) {
     if (!buffer)
       return Slice(_value[x..y]);
-    return Slice(buffer, start + x, start + y);
+    int line = this.line;
+    for (int i = start; i <= start+x; ++i)
+      if (buffer.contents[i] == '\n') ++line;
+    return Slice(buffer, start + x, start + y, line);
   }
 
   @property int opDollar(size_t dim : 0)() {
@@ -93,11 +116,11 @@ struct Slice {
 
     uint aa = start < other.start ? start : other.start;
     uint bb = end > other.end ? end : other.end;
-    return Slice(buffer, aa, bb);
+    return Slice(buffer, aa, bb, start < other.start ? line : other.line);
   }
 
   auto lineNumber() const {
-    return getStartLocation().line;
+    return this.line;
   }
 
   auto toLocationString() const {

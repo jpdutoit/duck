@@ -206,9 +206,6 @@ struct DeclSemantic {
       return decl.taint;
     }
 
-    if (!decl.targetContext)
-      decl.targetContext = context.createImportContext(decl.identifier[1..$-1]);
-
     if (decl.targetContext) {
       auto importee = stack.find!Library;
       if (auto library = decl.targetContext.library) {

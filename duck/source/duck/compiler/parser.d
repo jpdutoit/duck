@@ -76,11 +76,11 @@ struct Parser {
 
   Lexer lexer;
 
-  Token expect(Token.Type tokenType, string message) {
+  Token expect(Token.Type tokenType, string message, WhitespaceFilter filter = multiline) {
     //writefln("Expected %s found %s", tokenType, lexer.front.type);
-    Token token = lexer.consume(tokenType);
+    Token token = lexer.consume(tokenType, filter);
     if (!token) {
-      context.error(lexer.front, "%s not '%s'", message, lexer.front.value);
+      context.error(lexer.front(filter), "%s not '%s'", message, lexer.front(filter).value);
 
       return None;
     }
@@ -93,9 +93,12 @@ struct Parser {
   }
 
   Expr expect(Expr expr, string message) {
+    return this.expect(expr, message, lexer.front);
+  }
+  Expr expect(Expr expr, string message, Slice location) {
       if (!expr) {
-        context.error(lexer.front, message);
-        return new ErrorExpr(lexer.front);
+        context.error(location, message);
+        return new ErrorExpr(location);
       }
       return expr;
   }
@@ -129,17 +132,17 @@ struct Parser {
     return null;
   }
 
-  Expr parsePrefix() {
-    Token token = lexer.front;
+  Expr parsePrefix(WhitespaceFilter filter = multiline) {
+    Token token = lexer.front(filter);
     switch(token.type) {
       case Tok!"[":
         return expect(parseArrayLiteral(), "Expected array literal.");
       case Number: {
-        lexer.consume;
+        lexer.consume();
         Expr literal = LiteralExpr.create(token);
         // Unit parsing
-        if (lexer.front.type == Identifier) {
-          auto unit = new IdentifierExpr(lexer.consume);
+        if (lexer.front(singleline).type == Identifier) {
+          auto unit = new IdentifierExpr(lexer.consume(singleline));
           return new CallExpr(unit, new TupleExpr([literal]), token + unit.source);
         }
         return literal;
@@ -159,8 +162,7 @@ struct Parser {
         return expr;
       }
       case Tok!"!":
-      case Tok!"+":
-      case Tok!"-":
+      case Tok!"+", Tok!"-":
         lexer.consume;
         auto right = expect(parseExpression(Precedence.Unary - 1), "Expected expression.");
         return new UnaryExpr(token, right, token + right.source);
@@ -196,21 +198,30 @@ struct Parser {
   }
 
   ParameterDecl parseParameterDecl(Decl parent) {
-    if (lexer.front.type == Identifier && lexer.peek(1).type == Tok!":") {
-      auto identifier = lexer.consume;
-      lexer.expect(Tok!":", "Expected ':'");
-      auto typeExpr = parseExpression(Precedence.Unary);
-      return new ParameterDecl(typeExpr, identifier).withSource(sliceFrom(identifier));
+    auto expr = parseExpression(Precedence.Declare);
+    if (lexer.consume(Tok!":")) {
+      auto identifier = cast(IdentifierExpr)expr;
+      expect(identifier !is null, identifier.source, "Expected identifier");
+      auto typeExpr = parseExpression(Precedence.Declare);
+      return new ParameterDecl(typeExpr, identifier.identifier).withSource(sliceFrom(identifier.identifier));
     }
-    return null;
+
+    if (!parent.isExternal) {
+      context.error(expr.source, "Expected parameter name and type");
+    }
+    return new ParameterDecl(expr, Slice());
   }
 
   Expr parsePostfix(Expr left) {
     if (cast(InlineDeclExpr)left && lexer.front.type == Identifier) {
       return null;
     }
-    Token token = lexer.front;
+    Token token = lexer.front(multiline);
     int prec = precedence(token) + (rightAssociative(token) ? -1 : 0);
+
+    if (token.line > statementStartToken.line && token.indent <= statementStartToken.indent)
+          return null;
+
     switch (token.type) {
       case Tok!":":
         IdentifierExpr identifier = cast(IdentifierExpr)left;
@@ -218,15 +229,16 @@ struct Parser {
         lexer.consume(Tok!":");
         if (!identifier) return null;
 
-        Expr ctor = expect(parseExpression(prec), "Expected constructor expression on right side of declaration opertaor");
+        Expr ctor = expect(parseExpression(singleline, prec), "Expected constructor expression on right side of declaration operator", token);
         Expr typeExpr;
         if (auto call = ctor.as!CallExpr) {
           typeExpr = call.callable;
         } else {
           typeExpr = ctor;
           ctor = null;
-          if (lexer.consume(Tok!"=")) {
-            ctor = expect(parseExpression(Precedence.Assignment), "Expected expression on right side of assignment operator.");
+          auto equals = lexer.consume(Tok!"=");
+          if (equals) {
+            ctor = expect(parseExpression(Precedence.Assignment), "Expected expression on right side of assignment operator.", equals);
           }
         }
 
@@ -234,7 +246,6 @@ struct Parser {
         varDecl.source = left.source + sliceFrom(token);
         return new InlineDeclExpr(new DeclStmt(varDecl));
       case Tok!"(":
-        // Call parenthesis
         return parseCall(left);
       case Tok!"[":
         return parseIndex(left);
@@ -254,28 +265,18 @@ struct Parser {
         varDecl.source = left.source +  sliceFrom(token);
         return new InlineDeclExpr(new DeclStmt(varDecl));
       }
-      case Tok!"=":
-      case Tok!"+=":
+      case Tok!"=", Tok!"+=":
         lexer.consume;
-        return new AssignExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of assignment operator."));
+        return new AssignExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of assignment operator.", token));
       case Tok!">>":
         lexer.consume;
-        return new PipeExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of pipe operator."));
-      case Tok!"and":
-      case Tok!"or":
-      case Tok!"==":
-      case Tok!"!=":
-      case Tok!">=":
-      case Tok!"<=":
-      case Tok!">":
-      case Tok!"<":
-      case Tok!"+":
-      case Tok!"-":
-      case Tok!"*":
-      case Tok!"/":
-      case Tok!"%":
+        return new PipeExpr(token, left, expect(parseExpression(prec), "Expected expression on right side of pipe operator.", token));
+      case Tok!"and", Tok!"or":
+      case Tok!"==", Tok!"!=":
+      case Tok!">=", Tok!"<=", Tok!">", Tok!"<":
+      case Tok!"+", Tok!"-", Tok!"*", Tok!"/", Tok!"%":
         lexer.consume;
-        auto right = expect(parseExpression(prec), "Expected expression on right side of binary operator.");
+        auto right = expect(parseExpression(prec), "Expected expression on right side of binary operator.", token);
         return new BinaryExpr(token, left, right, left.source + right.source);
       default: break;
     }
@@ -283,20 +284,25 @@ struct Parser {
     return null;
   }
 
-  Expr parseExpression(int minPrecedence = 0) {
-    //writefln("parseExpression: %s %s", lexer.front, minPrecedence);
-    auto start = lexer.front;
-    Expr left = parsePrefix();
-    if (!left) return left;
-    //writefln("Left: %s %s", left, lexer.front);
-
+  Expr continueExpression(Expr left, int minPrecedence = 0) {
     while (precedence(lexer.front) > minPrecedence) {
       auto newLeft = parsePostfix(left);
       if (!newLeft) return left;
       left = newLeft;
-      //writefln("Left: %s %s", left, lexer.front);
     }
     return left;
+  }
+
+  Expr parseExpression(int minPrecedence = 0) {
+    return this.parseExpression(multiline, minPrecedence);
+  }
+
+  Expr parseExpression(WhitespaceFilter filter, int minPrecedence = 0) {
+    auto start = lexer.front(filter);
+    Expr left = parsePrefix(filter);
+    if (!left) return left;
+
+    return continueExpression(left, minPrecedence).withSource(sliceFrom(start));
   }
 
   BlockStmt parseBlock(BlockStmt blockStmt, TypeDecl parent = null) {
@@ -322,20 +328,11 @@ struct Parser {
     if (ident.value == "operator") {
       callable.isOperator = true;
       switch (lexer.front.type) {
-        case Tok!"-":
-        case Tok!"+":
-        case Tok!"*":
-        case Tok!"/":
-        case Tok!"%":
+        case Tok!"-", Tok!"+", Tok!"*", Tok!"/", Tok!"%":
         case Tok!"!":
-        case Tok!"and":
-        case Tok!"or":
-        case Tok!"==":
-        case Tok!"!=":
-        case Tok!">=":
-        case Tok!"<=":
-        case Tok!">":
-        case Tok!"<":
+        case Tok!"and", Tok!"or":
+        case Tok!"==", Tok!"!=":
+        case Tok!">=", Tok!"<=", Tok!">", Tok!"<":
           ident = lexer.consume();
           break;
         case Tok!"[":
@@ -361,16 +358,7 @@ struct Parser {
     if (lexer.front.type != Tok!")") {
       do {
         ParameterDecl decl = parseParameterDecl(callable);
-        if (decl) {
-          callable.parameters.add(decl);
-        }
-        else {
-          if (!callable.isExternal) {
-            context.error(lexer.front, "Expected parameter name");
-          }
-          auto typeExpr = parseExpression(Precedence.Unary);
-          callable.parameters.add(new ParameterDecl(typeExpr, Slice()));
-        }
+        callable.parameters.add(decl);
       } while (lexer.consume(Tok!","));
     }
     expect(Tok!")", "Expected ')'");
@@ -385,9 +373,6 @@ struct Parser {
 
   void parseCallableBody(CallableDecl callable) {
     callable.callableBody = parseBlock(new BlockStmt());
-    if (!callable.callableBody) {
-      lexer.expect(Tok!";", "Expected ';'");
-    }
   }
 
   CallableDecl parseFunction(TypeDecl parent, DeclAttr attributes) {
@@ -442,8 +427,6 @@ struct Parser {
       callable.returnExpr = propertyRef;
 
       propertyDecl.structBody = parseBlock(new BlockStmt(), propertyDecl);
-    } else {
-      lexer.expect(Tok!";", "Expected ';'");
     }
 
     return callable.withSource(sliceFrom(start));
@@ -494,7 +477,6 @@ struct Parser {
     else {
       context.error(lexer.front, "Expected '=' or ':'");
     }
-    lexer.expect(Tok!";", "Expected ';'");
 
     decl.attributes = attributes;
     decl.parent = parent;
@@ -509,7 +491,6 @@ struct Parser {
     auto ident = expect(Identifier, "Expected 'identifier'");
     expect(Tok!":", "Expected ':'");
     auto type = expect(parseExpression(Precedence.Unary), "Expected type expression");
-    lexer.expect(Tok!";", "Expected ';'");
 
     auto decl = new DistinctDecl(ident, type);
     decl.attributes = attributes;
@@ -567,8 +548,6 @@ struct Parser {
       structDecl.structBody = new BlockStmt();
       parseStatements(structDecl.structBody, structDecl);
       lexer.expect(Tok!"}", "Expected '}'");
-    } else {
-      lexer.expect(Tok!";", "Expected ';'");
     }
 
     return structDecl.withSource(sliceFrom(start));
@@ -594,12 +573,11 @@ struct Parser {
   ImportDecl parseImport(TypeDecl parent, DeclAttr attributes) {
     auto start = lexer.front;
     lexer.expect(Tok!"import", "Expected import");
-    Token ident;
-    ident = expect(StringLiteral, "Expected library name");
-    if (lexer.front.type != Tok!";") lexer.consume();
-    lexer.expect(Tok!";", "Expected ';'");
+    auto ident = expect(StringLiteral, "Expected library name");
 
-    auto decl = new ImportDecl(ident);
+    auto childContext = ident.length > 2 ? context.createImportContext(ident[1..$-1]) : null;
+    auto decl = new ImportDecl(ident, childContext);
+
     decl.attributes = attributes;
     decl.parent = parent;
 
@@ -609,15 +587,14 @@ struct Parser {
   Stmt parseReturnStmt() {
     auto start = lexer.front;
     lexer.expect(Tok!"return", "Expected return");
-    auto expr = parseExpression();
-    lexer.expect(Tok!";", "Expected ';'");
+    auto expr = parseExpression(singleline);
     return new ReturnStmt(expr).withSource(sliceFrom(start));
   }
 
   Stmt parseIf() {
     auto start = lexer.front;
     lexer.expect(Tok!"if", "Expected 'if'");
-    auto condition = expect(parseExpression(Precedence.ShortCircuitOr-1), "Expected expression.");
+    auto condition = expect(parseExpression(singleline, Precedence.ShortCircuitOr-1), "Expected expression.");
     Stmt trueBody = expect(parseStatement(null), "Expected statement after 'if'");
     Stmt falseBody;
     if (lexer.consume(Tok!"else")) {
@@ -629,14 +606,21 @@ struct Parser {
   Stmt parseWith() {
     auto start = lexer.front;
     lexer.expect(Tok!"with", "Expected 'with'");
-    auto valueExpr = expect(parseExpression(Precedence.Assignment-1), "Expected expression.");
-    Stmt withBody = expect(parseStatement(null), "Expected statement after 'if'");
+    auto valueExpr = expect(parseExpression(singleline, Precedence.Assignment-1), "Expected expression.");
+    Stmt withBody = expect(parseStatement(null), "Expected statement after 'with'");
     return new WithStmt(valueExpr, withBody);
   }
 
+  Token statementStartToken;
+
   Stmt parseStatement(TypeDecl parent, DeclAttr attributes = DeclAttr.init) {
-    switch (lexer.front.type) {
-      case Tok!";":        return null;
+    auto oldStatementStart = statementStartToken;
+    scope(exit) statementStartToken = oldStatementStart;
+    auto front = statementStartToken = lexer.front(multiline);
+    switch (front.type) {
+      case Tok!";":
+        context.error(lexer.consume(Tok!";", multiline), "Use {} for empty statements.");
+        return new BlockStmt();
       case Tok!"import":   return new DeclStmt(parseImport(parent, attributes));
       case Tok!"return":   return parseReturnStmt();
       case Tok!"if":       return parseIf();
@@ -649,7 +633,7 @@ struct Parser {
       case Tok!"alias":    return new DeclStmt(parseAlias(parent, attributes));
       case Tok!"distinct":  return new DeclStmt(parseDistinct(parent, attributes));
       case Identifier:
-        auto name = lexer.front.slice;
+        auto name = front.slice;
         if (name == "get" || name == "set") {
           return new DeclStmt(parsePropertyAccessor(parent, attributes));
         }
@@ -658,30 +642,26 @@ struct Parser {
         }
         goto default;
       default: {
-        auto start = lexer.front;
-        if (auto expr = parseExpression()) {
-          if (auto declExpr = cast(InlineDeclExpr)expr) {
-            VarDecl varDecl = (cast(VarDecl)(declExpr.declStmt.decl));
-            varDecl.attributes = attributes;
-            varDecl.parent = parent;
-            if (parent && parent.isExternal) varDecl.attributes.external = true;
+        auto expr = parseExpression();
+        if (!expr) return null;
 
-            if (lexer.front.type == Tok!"{") {
-              StructDecl propertyDecl = new PropertyDecl(varDecl.typeExpr, varDecl.name);
-              propertyDecl.attributes = varDecl.attributes;
-              propertyDecl.parent = parent;
-              varDecl.typeExpr = new RefExpr(propertyDecl);
-              propertyDecl.structBody = new BlockStmt();
-              parseBlock(propertyDecl.structBody, propertyDecl);
-            } else {
-              lexer.expect(Tok!";", "Expected ';'");
-            }
-            return declExpr.declStmt.withSource(sliceFrom(start));
-          }
-          lexer.expect(Tok!";", "Expected ';'");
-          return new ExprStmt(expr).withSource(expr);
+        auto declExpr = cast(InlineDeclExpr)expr;
+        if (!declExpr) return new ExprStmt(expr);
+
+        VarDecl varDecl = (cast(VarDecl)(declExpr.declStmt.decl));
+        varDecl.attributes = attributes;
+        varDecl.parent = parent;
+        if (parent && parent.isExternal) varDecl.attributes.external = true;
+
+        if (lexer.front.type == Tok!"{") {
+          StructDecl propertyDecl = new PropertyDecl(varDecl.typeExpr, varDecl.name);
+          propertyDecl.attributes = varDecl.attributes;
+          propertyDecl.parent = parent;
+          varDecl.typeExpr = new RefExpr(propertyDecl);
+          propertyDecl.structBody = new BlockStmt();
+          parseBlock(propertyDecl.structBody, propertyDecl);
         }
-        return null;
+        return declExpr.declStmt;
       }
     }
   }
@@ -712,7 +692,10 @@ struct Parser {
         expect(!hasAttribute, attributeSlice, "Declaration expected after attribute");
         break;
       }
-      stmt.withSource(sliceFrom(stmtStart));
+
+      if (!(lexer.consume(Tok!"\n", singleline) || lexer.consume(EOF, singleline) || lexer.front.type == Tok!"}")) {
+        lexer.expect(Tok!";", "Expected ';'");
+      }
 
       if (auto declStmt = stmt.as!DeclStmt) {
         declStmt.source += firstAttributeToken;

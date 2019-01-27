@@ -1,16 +1,16 @@
 module AA {
-  a: float = "hello";
-  b: unknown;
+  a: float = "hello"
+  b: unknown
 }
 module BB {
-  c: float = ;
+  c: float =
 }
 
 AA.c;
 /**
 OUTPUT:
 ---
-tests/not-compilable/module.duck(6:14): Error: Expected expression on right side of assignment operator.
+tests/not-compilable/module.duck(6:12): Error: Expected expression on right side of assignment operator.
 tests/not-compilable/module.duck(2:14-20): Error: Cannot coerce a value of type string to a value of type float
 tests/not-compilable/module.duck(3:6-12): Error: Undefined identifier unknown
 tests/not-compilable/module.duck(9:1-4): Error: No member c in object with type AA

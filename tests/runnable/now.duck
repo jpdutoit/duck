@@ -1,7 +1,7 @@
-distinct duration: float;
+distinct duration: float
 
-extern function wait(duration);
+extern function wait(duration)
 
-function samples(amount: float) -> duration(amount);
+function samples(amount: float) -> duration(amount)
 
-wait(1 samples);
+wait(1 samples)

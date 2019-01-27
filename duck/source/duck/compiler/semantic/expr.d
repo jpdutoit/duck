@@ -454,6 +454,10 @@ struct ExprSemantic {
 
         Expr re = arrayDecl.reference(null);
         return semantic(re);
+      },
+      (Type T) {
+        expr.error("Cannot index type " ~ T.describe());
+        return expr.taint;
       }
     );
   }
@@ -475,7 +479,7 @@ struct ExprSemantic {
     values.length = parameters.length - 1;
     Type[] types;
     types.length = parameters.length - 1;
-    foreach (int i, ValueDecl decl; parameters.elements[1..$]) {
+    foreach (size_t i, ValueDecl decl; parameters.elements[1..$]) {
       auto value = findImplicitContext(refExpr, decl);
 
       if (value) {

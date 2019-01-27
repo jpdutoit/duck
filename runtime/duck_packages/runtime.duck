@@ -23,11 +23,17 @@ distinct Time: float;
 extern SAMPLE_RATE: frequency;
 extern now: Time;
 
+extern function operator+(int) -> int;
+extern function operator-(int) -> int;
+
 extern function operator+(int, int) -> int;
 extern function operator*(int, int) -> int;
 extern function operator-(int, int) -> int;
 extern function operator/(int, int) -> int;
 extern function operator%(int, int) -> int;
+
+extern function operator+(float) -> float;
+extern function operator-(float) -> float;
 
 extern function operator+(float, float) -> float;
 extern function operator*(float, float) -> float;

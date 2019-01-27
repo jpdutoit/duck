@@ -1,8 +1,8 @@
-extern function operator-(float, float) -> float;
+extern function operator-(float, float) -> float
 
-10 * 10;
-10 / 10;
-10 - 10;
+10 * 10
+10 / 10
+10 - 10
 
 /**
 OUTPUT:

@@ -1,15 +1,15 @@
 extern function operator+(float) -> float;
 extern function operator-(float) -> float;
 extern function operator+(float, float) -> float;
-extern function operator-(float, float) -> float;
-extern function operator/(float, float) -> float;
+extern function operator-(float, float) -> float
+extern function operator/(float, float) -> float
 extern function operator*(float, float) -> float;
 extern function operator%(float, float) -> float;
 
-a: float = 1;
-b: float = +2;
-c: float = -3;
-cc: float = 123 + 234;
-e: float = a + b * a / c % a;
-f: float = ((1*2)+(3*4));
-a += 2;
+a: float = 1
+b: float = +2
+c: float = -3
+cc: float = 123 + 234
+e: float = a + b * a / c % a
+f: float = ((1*2)+(3*4))
+a += 2

@@ -49,8 +49,26 @@ enum None = Token();
 
 
 immutable Token.Type[string] reservedWords;
+
+alias WhitespaceFilter = immutable bool[Token.Type];
+WhitespaceFilter multiline;
+WhitespaceFilter singleline;
+WhitespaceFilter includeWhitespace = null;
+
 shared static this()
 {
+  multiline = [
+    Tok!" ": true,
+    EOL: true,
+    Comment: true,
+    Unknown: true
+  ];
+  singleline = [
+    Tok!" ": true,
+    Comment: true,
+    Unknown: true
+  ];
+
   reservedWords = [
     "function": Tok!"function",
     "module": Tok!"module",

@@ -1,18 +1,17 @@
 module A {
-  x: float = 440;
-
+  x: float = 440
 }
 
 module B {
-  a: A;
-  z: float;
-  alias f = a;
-  alias y = a.x;
-  alias t = this.a.x;
+  a: A
+  z: float
+  alias f = a
+  alias y = a.x
+  alias t = this.a.x
 
   function tick() {
-    this.y >> z;
-    z = this.t;
-    z >> z;
+    this.y >> z
+    z = this.t
+    z >> z
   }
 }

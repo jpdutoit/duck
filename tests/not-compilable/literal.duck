@@ -7,6 +7,7 @@ OUTPUT:
 tests/not-compilable/literal.duck(1:7-8): Error: Unterminated string
 tests/not-compilable/literal.duck(1:6): Error: Expected ';' not '2'
 tests/not-compilable/literal.duck(1:7-8): Error: Expected ';' not '";'
+tests/not-compilable/literal.duck(2:1): Error: Use {} for empty statements.
 tests/not-compilable/literal.duck(3:5-7): Error: Cannot coerce a value of type string to a value of type int
 ---
 */

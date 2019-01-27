@@ -101,6 +101,12 @@ struct JsonOutput {
       }
   }
 
+  void visit(AliasDecl decl) {
+    field("type", "declaration.alias");
+    field("name", decl.name.toString());
+    field("value", decl.value);
+  }
+
   void visit(ParameterDecl decl) {
     field("type", "declaration.callable.parameter");
     if (decl.name)

@@ -1,17 +1,17 @@
 extern module A {
-  constructor(float, float);
-  constructor(string, float);
+  constructor(float, float)
+  constructor(string, float)
 }
 
-A(2, 3);
-A("hello", 3);
-A(3, "hello");
-A(2);
-a: A;
-A(a);
-A([1, 2, 3]);
+A(2, 3)
+A("hello", 3)
+A(3, "hello")
+A(2)
+a: A
+A(a)
+A([1, 2, 3])
 
-ba: float(1);
+ba: float(1)
 
 
 /*

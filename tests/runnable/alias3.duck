@@ -1,16 +1,16 @@
-extern function assertEquals(float, float);
+extern function assertEquals(float, float)
 
 module A {
-  a: float = 100;
-  alias b = a;
+  a: float = 100
+  alias b = a
 }
 
-a: A;
-assertEquals(a.a, 100);
-assertEquals(a.b, 100);
-a.a = 200;
-assertEquals(a.a, 200);
-assertEquals(a.b, 200);
-a.b = 300;
-assertEquals(a.a, 300);
-assertEquals(a.b, 300);
+a: A
+assertEquals(a.a, 100)
+assertEquals(a.b, 100)
+a.a = 200
+assertEquals(a.a, 200)
+assertEquals(a.b, 200)
+a.b = 300
+assertEquals(a.a, 300)
+assertEquals(a.b, 300)

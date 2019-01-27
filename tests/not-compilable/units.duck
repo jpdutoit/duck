@@ -1,11 +1,11 @@
-extern struct frequency;
+extern struct frequency
 
 module AA {
-  input: frequency;
+  input: frequency
 }
 
-10 >> AA.input;
-10 >> AA;
+10 >> AA.input
+10 >> AA
 /*
 OUTPUT:
 ---

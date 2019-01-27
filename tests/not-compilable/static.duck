@@ -1,22 +1,22 @@
 
 
 struct A {
-  b0: int = 1;
+  b0: int = 1
 
   @static b1: int {
     get {
-      return 5;
+      return 5
     }
   }
 
 }
 
 
-t1 := A().b0;
-t2 := A().b1;
+t1 := A().b0
+t2 := A().b1
 
-t3 := A.b0;
-t4 := A.b1;
+t3 := A.b0
+t4 := A.b1
 
 /**
 OUTPUT:

@@ -1,24 +1,24 @@
 
-extern function operator +(float, float) -> float;
+extern function operator +(float, float) -> float
 
 struct A {
-  a: float = 2;
+  a: float = 2
   b: float {
-    @private storage: float;
+    @private storage: float
 
     get() -> float {
-      return storage;
+      return storage
     }
 
     set(value: float) {
-      storage = value;
+      storage = value
     }
   }
 }
 
 
 c: float {
-  get() -> 1 + 2;
+  get() -> 1 + 2
 }
 
 d: float {
@@ -26,19 +26,19 @@ d: float {
 }
 
 
-a: A;
-a.b = a.a;
-a.a = a.b;
-a.b = a.b;
-c = a.b;
-c = d;
-d = a.a;
-d = a.b;
-d = c;
+a: A
+a.b = a.a
+a.a = a.b
+a.b = a.b
+c = a.b
+c = d
+d = a.a
+d = a.b
+d = c
 
 
-extern function fn1(float, float) -> float;
-fn1(a.a, a.b);
+extern function fn1(float, float) -> float
+fn1(a.a, a.b)
 
 /**
 OUTPUT:

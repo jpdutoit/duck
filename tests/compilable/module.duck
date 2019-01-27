@@ -1,15 +1,15 @@
-extern function operator+(float, float) -> float;
+extern function operator+(float, float) -> float
 
 extern module A {
-  output: float;
-  constructor();
-  constructor(float);
-  constructor(float[]);
+  output: float
+  constructor()
+  constructor(float)
+  constructor(float[])
 }
 
-A(2);
-A([2.0, 3, 4]);
+A(2)
+A([2.0, 3, 4])
 
-a:A + A;
-A + b:A;
-c:A + d:A;
+a:A + A
+A + b:A
+c:A + d:A

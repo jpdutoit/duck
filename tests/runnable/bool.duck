@@ -1,26 +1,26 @@
-extern function assertEquals(bool, bool);
-extern function operator!=(bool, bool) -> bool;
-extern function operator==(bool, bool) -> bool;
+extern function assertEquals(bool, bool)
+extern function operator!=(bool, bool) -> bool
+extern function operator==(bool, bool) -> bool
 
-a := true;
-b := false;
+a := true
+b := false
 
-assertEquals(a == a, true);
-assertEquals(a == b, false);
-assertEquals(a != a, false);
-assertEquals(a != b, true);
+assertEquals(a == a, true)
+assertEquals(a == b, false)
+assertEquals(a != a, false)
+assertEquals(a != b, true)
 
-fa: float = a;
-ia: int = a;
+fa: float = a
+ia: int = a
 
 if a {
-  assertEquals(true, true);
+  assertEquals(true, true)
 } else {
-  assertEquals(false, true);
+  assertEquals(false, true)
 }
 
 if b {
-  assertEquals(false, true);
+  assertEquals(false, true)
 } else {
-  assertEquals(false, false);
+  assertEquals(false, false)
 }

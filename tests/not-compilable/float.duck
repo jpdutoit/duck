@@ -1,0 +1,7 @@
+a: float = "hello";
+/*
+OUTPUT:
+---
+tests/not-compilable/float.duck(1:12-18): Error: Cannot coerce a value of type string to a value of type float
+---
+*/
