@@ -117,7 +117,9 @@ int main(string[] args) {
     }
     if (root.errors.length > 0) return cast(int)root.errors.length;
 
-    context.library;
+    context.parsed;
+
+    context.compiled;
 
     if (targets.canFind(TARGET_AST)) {
       import duck.compiler.visitors.json;

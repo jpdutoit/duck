@@ -29,7 +29,7 @@ class CodeGenContext {
 
   this(Context root) {
     this.context = root;
-    this.metrics = new Optimizer(root.library, root);
+    this.metrics = new Optimizer(root.compiled, root);
   }
 
   private {

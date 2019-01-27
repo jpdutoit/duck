@@ -208,7 +208,7 @@ struct DeclSemantic {
 
     if (decl.targetContext) {
       auto importee = stack.find!Library;
-      if (auto library = decl.targetContext.library) {
+      if (auto library = decl.targetContext.compiled) {
         foreach(exported; library.exports) {
           import std.algorithm.searching: canFind;
 

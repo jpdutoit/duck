@@ -67,7 +67,7 @@ Commands:
                 foreach (filename; cmd.args) {
                     Context context = root.createFileContext(filename);
 
-                    context.library;
+                    context.compiled;
                     if (context.hasErrors) continue;
 
                     Backend backend = new DBackend(context);

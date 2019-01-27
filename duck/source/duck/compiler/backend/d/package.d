@@ -46,7 +46,7 @@ class DBackend : Backend, SourceToBinaryCompiler {
 private DFile genFile(Context library, CodeGenContext context) {
   Context.push(library);
   context.context = library;
-  auto code = context.library.generateCode(context);
+  auto code = context.compiled.generateCode(context);
   Context.pop();
 
   if (context.hasErrors) return DFile();

@@ -239,7 +239,9 @@ struct JsonOutput {
   void visit(ImportDecl stmt) {
     field("type", "declaration.import");
     field("name", stmt.identifier.length > 0 ? stmt.identifier[1..$-1] : "");
-    field("library", stmt.targetContext.library);
+    if (stmt.targetContext) {
+      field("library", stmt.targetContext.parsed);
+    }
   }
 
   void visit(Library library) {
@@ -264,8 +266,8 @@ struct JsonOutput {
     import std.algorithm, std.range;
     output.dictStart();
     field("builtins", []);
-    field("libraries", context.dependencies.retro.map!((context) => context.library).array ~ context.library);
-    field("main", context.library);
+    field("libraries", context.dependencies.retro.map!((context) => context.parsed).array ~ context.parsed);
+    field("main", context.parsed);
     output.dictEnd();
   }
 }

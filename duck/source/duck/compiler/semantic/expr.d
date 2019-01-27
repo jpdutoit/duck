@@ -624,7 +624,7 @@ struct ExprSemantic {
       },
       (ArrayType type) {
         if (expr.name == "size") {
-          auto reference = new RefExpr(context.library.arraySizeDecl, expr.context);
+          auto reference = new RefExpr(context.compiled.arraySizeDecl, expr.context);
           return semantic(reference.withSource(expr));
         }
         return expr.memberNotFoundError();

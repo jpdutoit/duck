@@ -62,8 +62,8 @@ class Context {
     auto context = new Context(ContextType.builtin, "__builtin", getcwd());
     Context.push(context);
     auto phaseSemantic = SemanticAnalysis(context);
-    context._library = Library.builtins;
-    phaseSemantic.semantic(context._library);
+    context._parsed = context._compiled = Library.builtins;
+    phaseSemantic.semantic(context._compiled);
     Context.pop();
     if (this.type != ContextType.root) {
       this.dependencies ~= context;
@@ -158,24 +158,44 @@ class Context {
   bool isMain() { return this.type == ContextType.main; }
 
   @property
-  Library library() {
-    if (_library) {
-      return _library;
+  Library parsed() {
+    if (_parsed) {
+      return _parsed;
     }
 
     Context.push(this);
-    auto phaseSemantic = SemanticAnalysis(this);
-
-    _library = Parser(this, buffer).parseLibrary();
-    phaseSemantic.semantic(_library);
+    _parsed = Parser(this, buffer).parseLibrary();
 
     Context.pop();
 
     for (int i = 0; i < dependencies.length; ++i) {
-      dependencies[i].library;
+      dependencies[i].parsed;
     }
 
-    return _library;
+    return _parsed;
+  }
+
+  @property
+  Library compiled() {
+    if (_compiled) {
+      return _compiled;
+    }
+
+    auto parsed = this.parsed;
+
+    Context.push(this);
+
+    auto phaseSemantic = SemanticAnalysis(this);
+    _compiled = parsed;
+    phaseSemantic.semantic(_compiled);
+
+    Context.pop();
+
+    for (int i = 0; i < dependencies.length; ++i) {
+      dependencies[i].compiled;
+    }
+
+    return _compiled;
   }
 
   void error(Args...)(Slice slice, string formatString, Args args) {
@@ -218,7 +238,8 @@ class Context {
   bool hasErrors() { return errors.length > 0; }
   CompileError[] errors = [];
 
-  protected Library _library;
+  protected Library _parsed;
+  protected Library _compiled;
 
   bool verbose() { return options.verbose; }
   Context[] dependencies;

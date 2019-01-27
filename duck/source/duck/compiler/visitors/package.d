@@ -181,6 +181,6 @@ mixin template RecursiveAccept() {
   }
 
   void recurse(ImportDecl stmt) {
-    accept(stmt.targetContext.library);
+    accept(stmt.targetContext.compiled);
   }
 }
